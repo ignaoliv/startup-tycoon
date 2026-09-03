@@ -1,4 +1,5 @@
-export type Role = "ai" | "dev" | "design" | "marketing" | "social" | "sales" | "qa" | "ops";
+export type Role = "ai" | "dev" | "design" | "marketing" | "social" | "sales" | "qa" | "ops" | "cto" | "cmo" | "cfo" | "coo";
+export type ExecRole = "cto" | "cmo" | "cfo" | "coo";
 export type Level = 1 | 2 | 3;
 export type Speed = 0 | 1 | 2;
 
@@ -94,6 +95,27 @@ export interface CampaignDef {
   risk?: { chance: number; text: string; hype: number }; // puede salir mal
 }
 
+export interface ExecDef {
+  role: ExecRole;
+  name: string;
+  icon: string;
+  baseSalary: number; // se multiplica por la valuación
+  equity: number; // % que pide al entrar
+  desc: string;
+  bonus: string;
+  penalty: string;
+  /** Texto de por qué ya lo necesitás, o null si todavía no. */
+  needed: (s: GameState) => string | null;
+}
+
+export interface ExecStatus {
+  role: ExecRole;
+  hired: boolean;
+  neededWhy: string | null;
+  salary: number;
+  fee: number;
+}
+
 export interface PendingEvent {
   id: string;
   day: number;
@@ -139,6 +161,7 @@ export interface GameState {
   pendingEvent: PendingEvent | null;
   nextEventDay: number;
   bankruptDays: number;
+  lastRaiseDay: number; // último ajuste de sueldos por inflación
   gameOver: "bankrupt" | "ipo" | "acquired" | null;
   restarts: number;
   stats: { totalRevenue: number; peakUsers: number; raised: number; hires: number };
@@ -190,4 +213,6 @@ export interface Derived {
   organicUsersDay: number; // usuarios que llegan por seguidores
   adsCostDay: number;
   adsUsersDay: number;
+  execs: ExecStatus[];
+  overhead: number; // multiplicador de productividad por burocracia (1 = sin pérdida)
 }

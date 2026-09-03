@@ -3,6 +3,7 @@ import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
 import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
 import { getFeature } from "@/lib/game/engine";
+import { EXECS } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -13,6 +14,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const nextStage = STAGES[s.stage + 1];
   const tips: { text: string; tab: string }[] = [];
   if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). El banco te presta hasta ${moneyShort(d.loanCapacity)}.`, tab: "money" });
+  for (const ex of d.execs) if (!ex.hired && ex.neededWhy) tips.push({ text: `Necesitás un ${EXECS.find((x) => x.role === ex.role)!.name}: ${ex.neededWhy}`, tab: "team" });
   if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
   if (s.done.includes("mvp") && !s.done.includes("prd")) tips.push({ text: "Sin PRD el equipo construye a ciegas: -35% crecimiento. Escribilo, es barato.", tab: "product" });
   if (s.employees.length >= OFFICES[s.office].capacity && OFFICES[s.office + 1]) tips.push({ text: "La oficina está llena. Mudate para poder contratar.", tab: "money" });

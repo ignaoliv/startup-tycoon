@@ -1,4 +1,4 @@
-import type { CampaignDef, FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
+import type { CampaignDef, ExecDef, FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 
 export const TICK_MS = 4000; // 1 día de juego
 export const OFFLINE_MAX_DAYS = 240;
@@ -13,7 +13,46 @@ export const ROLES: Record<Role, { name: string; plural: string; icon: string; b
   sales: { name: "Ventas", plural: "Vendedores", icon: "🤝", baseSalary: 3000, desc: "Convierte curiosos en clientes que pagan. Sube el ARPU.", payLabel: "/mes" },
   qa: { name: "QA", plural: "Testers", icon: "🧪", baseSalary: 2400, desc: "Encuentra lo que la IA alucinó antes que los usuarios.", payLabel: "/mes" },
   ops: { name: "DevOps", plural: "DevOps", icon: "🛠️", baseSalary: 2900, desc: "Baja la factura de servidores y tokens. Sube la moral.", payLabel: "/mes" },
+  cto: { name: "CTO", plural: "CTO", icon: "🧑‍🔬", baseSalary: 12000, desc: "Ordena la ingeniería.", payLabel: "/mes" },
+  cmo: { name: "CMO", plural: "CMO", icon: "🧑‍🎤", baseSalary: 10000, desc: "Ordena el marketing.", payLabel: "/mes" },
+  cfo: { name: "CFO", plural: "CFO", icon: "🧑‍💼", baseSalary: 11000, desc: "Ordena la plata.", payLabel: "/mes" },
+  coo: { name: "COO", plural: "COO", icon: "🧑‍✈️", baseSalary: 10000, desc: "Ordena la operación.", payLabel: "/mes" },
 };
+
+export const EXEC_ROLES = ["cto", "cmo", "cfo", "coo"] as const;
+
+export const EXECS: ExecDef[] = [
+  {
+    role: "cto", name: "CTO", icon: "🧑‍🔬", baseSalary: 12000, equity: 2,
+    desc: "Alguien que lea lo que escriben los agentes. Con más de 5 técnicos, sin CTO todo se vuelve caos.",
+    bonus: "-25% deuda técnica generada, +10% productividad dev",
+    penalty: "Sin CTO cuando hace falta: -30% productividad dev, +60% deuda técnica",
+    needed: (s) => { const n = s.employees.filter((e) => ["ai", "dev", "qa", "ops"].includes(e.role) && !e.founder).length; return n >= 6 ? `Tenés ${n} técnicos y nadie que los coordine.` : null; },
+  },
+  {
+    role: "cmo", name: "CMO", icon: "🧑‍🎤", baseSalary: 10000, equity: 1,
+    desc: "Con miles de usuarios, tirar campañas sueltas ya no alcanza. Necesitás estrategia.",
+    bonus: "+15% crecimiento, el hype cae más lento",
+    penalty: "Sin CMO cuando hace falta: -35% crecimiento, el hype cae más rápido",
+    needed: (s) => (s.users >= 3000 ? `Con ${Math.round(s.users).toLocaleString("es-AR")} usuarios el marketing casero ya no escala.` : s.followers >= 15000 ? "Con esa cantidad de seguidores necesitás alguien que piense la marca." : null),
+  },
+  {
+    role: "cfo", name: "CFO", icon: "🧑‍💼", baseSalary: 11000, equity: 1,
+    desc: "Desde Seed los inversores quieren ver números serios. Y alguien que frene el gasto.",
+    bonus: "-8% costos, mejor tasa en el banco",
+    penalty: "Sin CFO cuando hace falta: +15% costos, +2% de tasa, y los VCs no te dan la Serie A",
+    needed: (s) => (s.stage >= 2 ? "Después del Seed los inversores exigen un CFO para seguir." : s.employees.length >= 12 ? "Con 12 personas nadie sabe adónde va la plata." : null),
+  },
+  {
+    role: "coo", name: "COO", icon: "🧑‍✈️", baseSalary: 10000, equity: 1,
+    desc: "Con más de 20 personas, los procesos se comen la productividad. Alguien tiene que ordenar.",
+    bonus: "La burocracia por tamaño de equipo pesa la mitad, +8 moral",
+    penalty: "Sin COO cuando hace falta: -15% productividad general, -15 moral",
+    needed: (s) => (s.employees.length >= 24 ? `Con ${s.employees.length} personas la operación se desordena.` : null),
+  },
+];
+
+export const SALARY_INFLATION = { everyDays: 60, pct: 0.04 };
 
 export const LEVEL_NAMES = ["", "Junior", "Semi", "Senior"] as const;
 export const AI_LEVEL_NAMES = ["", "Mini", "Pro", "Ultra"] as const;
@@ -117,6 +156,10 @@ export const AVATARS: Record<Role, string[]> = {
   sales: ["👩‍💼", "👨‍💼", "🧑‍💼"],
   qa: ["👩‍🔬", "👨‍🔬", "🧑‍🔬"],
   ops: ["👩‍🔧", "👨‍🔧", "🧑‍🔧"],
+  cto: ["🧑‍🔬"],
+  cmo: ["🧑‍🎤"],
+  cfo: ["🧑‍💼"],
+  coo: ["🧑‍✈️"],
 };
 
 export const STARTUP_NAME_PARTS = {
