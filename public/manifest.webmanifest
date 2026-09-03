@@ -1,0 +1,10 @@
+{
+  "name": "Startup Tycoon",
+  "short_name": "Tycoon",
+  "description": "Fundá una startup y llegá a unicornio.",
+  "start_url": "/play",
+  "display": "standalone",
+  "background_color": "#fbf7ef",
+  "theme_color": "#fbf7ef",
+  "icons": [{ "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

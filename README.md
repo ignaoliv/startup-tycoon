@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🚀 Startup Tycoon — vibecodeá tu startup con IA
 
-## Getting Started
+Juego tipo tycoon (estilo Airplane/Hospital Tycoon) donde fundás una startup hecha 100% con IA: activás agentes que vibecodean, sumás humanos para contener la deuda técnica, shippeás features, sobrevivís a eventos (la IA borró prod, filtraste la API key, subió el precio de los tokens…), levantás rondas y llegás a unicornio.
 
-First, run the development server:
+Funciona en **celular y desktop** (responsive + PWA instalable), con **login con Google** vía Supabase y una **parte social**: ranking global, muro de fundadores con likes en tiempo real, y visitas a startups ajenas para darles hype, invertirles o robarles talento.
+
+## Correr local
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local   # opcional, ver abajo
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Sin variables de entorno el juego corre en **modo local** (guardado en el navegador, sin login ni social). Con Supabase configurado se habilita todo.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Configurar Supabase (login Google + social)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+1. Creá un proyecto en [supabase.com](https://supabase.com) (el plan free alcanza).
+2. En **SQL Editor**, pegá y ejecutá [`supabase/schema.sql`](supabase/schema.sql). Crea tablas, RLS, la vista `leaderboard`, el trigger de perfiles y habilita Realtime.
+3. En **Authentication → Providers**:
+   - **Google**: activalo. Necesitás un OAuth Client ID de Google Cloud:
+     1. [console.cloud.google.com](https://console.cloud.google.com) → APIs & Services → Credentials → *Create credentials* → *OAuth client ID* → tipo *Web application*.
+     2. En *Authorized redirect URIs* agregá la URL que te muestra Supabase (`https://<ref>.supabase.co/auth/v1/callback`).
+     3. Copiá Client ID y Client Secret en la config del provider Google de Supabase.
+   - **Anonymous sign-ins**: activalo (Authentication → Settings) para el botón "Jugar como invitado".
+4. En **Authentication → URL Configuration**:
+   - *Site URL*: tu dominio de producción (ej. `https://startup-tycoon.vercel.app`).
+   - *Redirect URLs*: agregá `http://localhost:3000/auth/callback` y `https://<tu-dominio>/auth/callback`.
+5. En `.env.local` (y en las env vars de Vercel):
 
-## Learn More
+```
+NEXT_PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon key>
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Deploy en Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+vercel
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es estática + un route handler (`/auth/callback`), no necesita nada más.
 
-## Deploy on Vercel
+## Cómo funciona el juego
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **1 día de juego = 4 s** (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
+- **Equipo**: 🤖 agentes IA (rápidos, baratos, mucha deuda técnica), 👩‍💻 devs humanos (contienen la deuda), 🎨 diseño (calidad, churn), 📣 growth (usuarios, hype), 🤝 ventas (ARPU), 🧪 QA (bugs), 🛠️ DevOps (servidores/tokens, moral). La oficina limita cuánta gente entra.
+- **Producto**: árbol de 16 features con dependencias. Cada una cambia crecimiento, ARPU, churn, calidad o hype.
+- **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO.
+- **Eventos** cada 14–30 días con dos opciones.
+- **Social** (requiere login): ranking por valuación, muro con likes (Realtime), visitar startups para dar hype (gratis, 1/día), invertir (cobrás dividendos de su MRR) o robar talento (pagás, ellos cobran indemnización). Las acciones llegan al otro jugador en tiempo real o cuando vuelve a entrar.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Estructura
+
+```
+src/lib/game/        motor puro (types, data, engine, format)
+src/lib/storage.ts   guardado local + Supabase + API social
+src/hooks/useGame.ts loop, autosave, realtime, offline
+src/components/      UI (GameShell, OfficeView SVG, paneles)
+supabase/schema.sql  tablas + RLS + realtime
+```
