@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { useState } from "react";
-import { ACHIEVEMENT_DEFS, ipo, marketingPush, raiseRound, repayLoan, sellCompany, takeLoan, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, ipo, raiseRound, repayLoan, sellCompany, takeLoan, upgradeOffice } from "@/lib/game/engine";
 import { IPO_VALUATION, OFFICES, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -14,7 +14,6 @@ export function MoneyPanel({ game }: { game: Game }) {
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
-  const mktCost = Math.round(2000 + s.users * 0.5);
   const [confirmSell, setConfirmSell] = useState(false);
   const loanOptions = [0.25, 0.5, 1].map((f) => Math.round((d.loanCapacity * f) / 100) * 100).filter((v, i, a) => v > 0 && a.indexOf(v) === i);
   const myExit = (d.sellOffer * s.equity) / 100;
@@ -31,14 +30,10 @@ export function MoneyPanel({ game }: { game: Game }) {
           <Li l="Sueldos" v={money(-d.salariesMonth) + "/mes"} tone="bad" />
           <Li l="Alquiler" v={money(-d.rentMonth) + "/mes"} tone="bad" />
           <Li l="Servidores" v={money(-d.serverMonth) + "/mes"} tone="bad" />
+          {d.adsCostDay > 0 && <Li l="Ads" v={money(-d.adsCostDay * 30) + "/mes"} tone="bad" />}
           {s.debt > 0 && <Li l="Intereses del banco" v={money(-d.debtInterestDay * 30) + "/mes"} tone="bad" />}
           <Li l="Neto" v={money(d.netDay * 30, { sign: d.netDay >= 0 }) + "/mes"} tone={d.netDay >= 0 ? "good" : "bad"} bold />
         </ul>
-        <div className="mt-3 flex gap-2">
-          <Btn variant="amber" size="sm" className="flex-1" disabled={s.cash < mktCost} onClick={() => game.mutate((st) => marketingPush(st))}>
-            📣 Campaña +15 hype · {money(mktCost)}
-          </Btn>
-        </div>
       </Card>
 
       <Card title="Banco" className={s.cash < 0 ? "!border-red" : ""}>

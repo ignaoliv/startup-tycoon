@@ -79,6 +79,21 @@ export interface GameEventDef {
   choices: EventChoice[];
 }
 
+export interface CampaignDef {
+  id: string;
+  name: string;
+  icon: string;
+  desc: string;
+  cost: (s: GameState) => number;
+  cooldown: number; // días
+  hype: number;
+  followers: (s: GameState) => number;
+  users?: (s: GameState) => number;
+  morale?: number;
+  requires?: (s: GameState) => string | null; // texto de por qué no se puede
+  risk?: { chance: number; text: string; hype: number }; // puede salir mal
+}
+
 export interface PendingEvent {
   id: string;
   day: number;
@@ -129,6 +144,9 @@ export interface GameState {
   stats: { totalRevenue: number; peakUsers: number; raised: number; hires: number };
   achievements: string[];
   portfolio: PortfolioEntry[];
+  followers: number; // seguidores en redes
+  campaignCooldowns: Record<string, number>; // id -> día en que vuelve a estar disponible
+  adsLevel: number; // 0 apagado .. 3
   customFeatures: number; // features "nuevas" repetibles completadas
   rebrands: number;
   debt: number; // deuda con el banco
@@ -165,4 +183,9 @@ export interface Derived {
   debtInterestDay: number;
   debtPaymentDay: number;
   sellOffer: number; // oferta por el 100% de la empresa
+  hypeDecayDay: number; // cuánto baja el hype por día (negativo = sube)
+  followersDay: number;
+  organicUsersDay: number; // usuarios que llegan por seguidores
+  adsCostDay: number;
+  adsUsersDay: number;
 }

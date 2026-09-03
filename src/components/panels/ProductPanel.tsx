@@ -28,7 +28,9 @@ export function ProductPanel({ game }: { game: Game }) {
             </div>
           </>
         ) : (
-          <p className="text-sm text-ink/60">Nada. Elegí algo abajo.</p>
+          <div className="rounded-xl border-2 border-dashed border-amber bg-amber/10 p-3 text-sm">
+            <b>El equipo está esperando.</b> No hay nada en desarrollo: elegí una feature abajo. Mientras tanto los devs y agentes no producen nada (pero cobran).
+          </div>
         )}
       </Card>
 

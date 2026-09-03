@@ -6,19 +6,21 @@ import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
 import { ProductPanel } from "@/components/panels/ProductPanel";
 import { MoneyPanel } from "@/components/panels/MoneyPanel";
+import { HypePanel } from "@/components/panels/HypePanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
-import { Btn, Card, Stat } from "@/components/ui";
+import { Bar, Btn, Card, Stat } from "@/components/ui";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { applyRename, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { applyRename, getFeature, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { createPost } from "@/lib/storage";
 
-type Tab = "office" | "team" | "product" | "money" | "social";
+type Tab = "office" | "team" | "product" | "hype" | "money" | "social";
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "office", label: "Oficina", icon: "🏢" },
   { id: "team", label: "Equipo", icon: "🧑‍🤝‍🧑" },
   { id: "product", label: "Producto", icon: "🛠️" },
+  { id: "hype", label: "Hype", icon: "🔥" },
   { id: "money", label: "Plata", icon: "💸" },
   { id: "social", label: "Social", icon: "🌍" },
 ];
@@ -71,6 +73,7 @@ export function GameShell() {
   const d = derived!;
   const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;
   const sector = SECTORS.find((s) => s.id === state.sector);
+  const building = state.currentFeature ? getFeature(state, state.currentFeature) : null;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
@@ -116,9 +119,23 @@ export function GameShell() {
           <Stat icon="👥" label="Usuarios" value={num(state.users)} sub={`+${num(d.newUsersDay - d.churnDay)}/día`} tone={d.newUsersDay - d.churnDay >= 0 ? "good" : "bad"} />
           <Stat icon="📈" label="MRR" value={money(d.mrr)} sub={`${money(d.arpu)} ARPU`} />
           <Stat icon="🏦" label="Valuación" value={money(d.valuation)} sub={`${state.equity}% tuyo`} />
-          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={`${(d.mktPts * 0.25 - 0.7).toFixed(1)}/día`} tone={d.mktPts * 0.25 - 0.7 >= 0 ? "good" : "bad"} />
+          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={`${-d.hypeDecayDay >= 0 ? "+" : ""}${(-d.hypeDecayDay).toFixed(1)}/día · ${num(state.followers)} seg.`} tone={-d.hypeDecayDay >= 0 ? "good" : "bad"} />
           <Stat icon="😊" label="Moral" value={`${Math.round(state.morale)}`} sub={`${state.employees.length} personas`} />
         </div>
+        {/* progreso del desarrollo, visible en todas las pantallas en mobile */}
+        <button onClick={() => setTab("product")} className={`flex w-full items-center gap-2 border-t border-ink/10 px-3 py-1.5 text-left text-xs lg:hidden ${building ? "bg-white" : "bg-amber/20"}`}>
+          {building ? (
+            <>
+              <span className="shrink-0 font-black">
+                🔨 {building.icon} {building.name}
+              </span>
+              <Bar value={state.featureProgress} max={building.cost} color="bg-green" className="flex-1" />
+              <span className="shrink-0 tabular-nums text-ink/60">{d.featureDaysLeft !== null ? `${d.featureDaysLeft}d` : "sin devs"}</span>
+            </>
+          ) : (
+            <span className="font-bold">⚠️ Nada en desarrollo. Tocá para elegir qué construir ›</span>
+          )}
+        </button>
       </header>
 
       {game.offlineDays > 0 && !offlineDismissed && (
@@ -161,6 +178,7 @@ export function GameShell() {
             </div>
             {(tab === "team" || tab === "office") && <TeamPanel game={game} />}
             {tab === "product" && <ProductPanel game={game} />}
+            {tab === "hype" && <HypePanel game={game} />}
             {tab === "money" && <MoneyPanel game={game} />}
             {tab === "social" && <SocialPanel game={game} />}
           </div>
@@ -169,7 +187,7 @@ export function GameShell() {
 
       {/* bottom nav mobile */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t-2 border-ink/10 bg-white lg:hidden">
-        <div className="mx-auto grid max-w-6xl grid-cols-5">
+        <div className="mx-auto grid max-w-6xl grid-cols-6">
           {TABS.map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-black ${tab === t.id ? "text-indigo" : "text-ink/50"}`}>
               <span className="text-xl leading-none">{t.icon}</span>

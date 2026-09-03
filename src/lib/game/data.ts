@@ -1,4 +1,4 @@
-import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
+import type { CampaignDef, FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 
 export const TICK_MS = 4000; // 1 día de juego
 export const OFFLINE_MAX_DAYS = 240;
@@ -69,6 +69,27 @@ export const FEATURES: FeatureDef[] = [
   { id: "i18n", name: "Internacional", icon: "🌎", desc: "LATAM, después el mundo.", cost: 360, requires: ["mobile", "soporte"], effects: { growth: 1.2 } },
   { id: "enterprise", name: "Enterprise (SOC2)", icon: "🏛️", desc: "Contratos con bancos. Auditorías de seguridad. Dolor.", cost: 600, requires: ["api", "soporte"], effects: { arpu: 4, churn: 0.004 } },
   { id: "marketplace", name: "Marketplace de agentes", icon: "🏪", desc: "Un ecosistema. La palabra favorita de los VCs.", cost: 780, requires: ["i18n", "enterprise"], effects: { growth: 1, arpu: 2, hype: 30 } },
+];
+
+/** Publicidad paga: gasto por día y cómo se llama cada nivel. */
+export const ADS_LEVELS = [
+  { name: "Apagado", icon: "⏹️", spendDay: 0, desc: "Sin ads. Solo orgánico." },
+  { name: "Tímido", icon: "📍", spendDay: 50, desc: "Unos Google Ads con presupuesto de estudiante." },
+  { name: "Serio", icon: "📈", spendDay: 300, desc: "Meta + Google + TikTok Ads con alguien mirando el dashboard." },
+  { name: "A lo loco", icon: "🚀", spendDay: 1500, desc: "Quemar plata de inversores como corresponde." },
+];
+
+export const CAMPAIGNS: CampaignDef[] = [
+  { id: "thread", name: "Hilo en X", icon: "🐦", desc: "Contás en 12 tweets cómo lo hiciste con IA sin escribir código.", cost: () => 0, cooldown: 4, hype: 6, followers: (s) => 120 + s.followers * 0.03, risk: { chance: 0.2, text: "Te ratioaron. 'Otro wrapper de ChatGPT'.", hype: -4 } },
+  { id: "tiktok", name: "Video demo", icon: "📹", desc: "Un TikTok/Reel de 40 segundos mostrando el producto. Con música de moda.", cost: () => 800, cooldown: 7, hype: 12, followers: (s) => 350 + s.followers * 0.05, users: (s) => 20 + s.users * 0.02 },
+  { id: "podcast", name: "Podcast de founders", icon: "🎙️", desc: "Una hora hablando de vibecoding y product-market fit.", cost: () => 0, cooldown: 14, hype: 10, followers: (s) => 250 + s.followers * 0.04, requires: (s) => (s.users < 100 ? "Con menos de 100 usuarios no te invitan." : null) },
+  { id: "meetup", name: "Meetup de la comunidad", icon: "🍻", desc: "Cerveza, pizza y una demo en vivo. Sube la moral del equipo también.", cost: (s) => 1500 + s.employees.length * 100, cooldown: 12, hype: 10, morale: 8, followers: () => 300 },
+  { id: "producthunt", name: "Lanzar en Product Hunt", icon: "🚀", desc: "Una sola vez. Si sale bien, te ven todos los early adopters del mundo.", cost: () => 0, cooldown: 100000, hype: 35, followers: () => 1500, users: (s) => 300 + s.users * 0.1, requires: (s) => (!s.done.includes("landing") ? "Necesitás la Landing con IA." : null) },
+  { id: "giveaway", name: "Sorteo en redes", icon: "🎁", desc: "Seguí, dale like y etiquetá a 3 amigos. Muchos seguidores, algunos hasta usan el producto.", cost: () => 2500, cooldown: 15, hype: 8, followers: (s) => 1200 + s.followers * 0.08, users: (s) => 150 + s.users * 0.05 },
+  { id: "influencer", name: "Influencer tech", icon: "🤝", desc: "Le pagás a alguien con 200k seguidores para que diga que le cambió la vida.", cost: (s) => 4000 + s.users * 0.5, cooldown: 20, hype: 20, followers: (s) => 800 + s.followers * 0.1, users: (s) => 100 + s.users * 0.08, risk: { chance: 0.3, text: "El influencer no entendió qué hace el producto. Salió tibio.", hype: 5 } },
+  { id: "press", name: "PR con periodistas", icon: "📰", desc: "Una agencia te consigue notas en medios tech.", cost: () => 8000, cooldown: 30, hype: 25, followers: () => 1000, users: (s) => 50 + s.users * 0.05, requires: (s) => (s.users < 500 ? "Con menos de 500 usuarios no hay nota." : null) },
+  { id: "billboard", name: "Cartel en la 9 de Julio", icon: "🏙️", desc: "Vía pública gigante. Nadie sabe si funciona, pero queda hermoso en el pitch deck.", cost: () => 25000, cooldown: 45, hype: 30, followers: () => 2000, users: (s) => 500 + s.users * 0.03, requires: (s) => (s.users < 2000 ? "Con menos de 2.000 usuarios es tirar plata." : null) },
+  { id: "conference", name: "Sponsorear conferencia", icon: "🎤", desc: "Stand, remeras y keynote. Los VCs de la región pasan a saludar.", cost: () => 40000, cooldown: 60, hype: 35, followers: () => 3000, users: (s) => 200 + s.users * 0.06, requires: (s) => (s.stage < 2 ? "Necesitás al menos la ronda Seed." : null) },
 ];
 
 export const FIRST_NAMES = ["Sofi", "Nico", "Juli", "Mati", "Cami", "Lucas", "Vale", "Fede", "Agus", "Flor", "Tomi", "Male", "Santi", "Cata", "Facu", "Pili", "Gonza", "Meli", "Nacho", "Lu", "Rodri", "Caro", "Manu", "Ro", "Franco", "Juana", "Ivo", "Guada", "Bruno", "Abril"];
