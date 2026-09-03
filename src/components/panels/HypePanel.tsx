@@ -1,6 +1,6 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
-import { ADS_LEVELS, AUTO_CAMPAIGNS, BUILD_IN_PUBLIC, CAMPAIGNS } from "@/lib/game/data";
+import { ADS_LEVELS, AUTO_CAMPAIGNS, BUILD_IN_PUBLIC, CAMPAIGNS, STAGES } from "@/lib/game/data";
 import { campaignStatus, runCampaign, setAdsLevel, toggleBuildInPublic } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -86,9 +86,11 @@ export function HypePanel({ game }: { game: Game }) {
         </div>
       </Card>
 
-      <Card title="Campañas">
+      {(["campaign", "sponsor"] as const).map((group) => (
+      <Card key={group} title={group === "campaign" ? "Campañas" : "Sponsoreos grandes"}>
+        {group === "sponsor" && <p className="mb-2 text-[11px] text-ink/60">Se desbloquean a medida que levantás rondas. Cuestan una fortuna y pueden salir mal: si salen mal, es puro gasto.</p>}
         <ul className="space-y-2">
-          {CAMPAIGNS.map((c) => {
+          {CAMPAIGNS.filter((c) => Boolean(c.sponsor) === (group === "sponsor")).map((c) => {
             const st = campaignStatus(s, c.id);
             const once = c.cooldown >= 100000;
             const done = once && (s.campaignCooldowns[c.id] ?? 0) > s.day;
@@ -101,6 +103,7 @@ export function HypePanel({ game }: { game: Game }) {
                       <span className="text-sm font-black">{c.name}</span>
                       {once && <Pill tone="indigo">1 sola vez</Pill>}
                       {c.risk && <Pill tone="bad">{Math.round(c.risk.chance * 100)}% de salir mal</Pill>}
+                      {c.minStage !== undefined && s.stage < c.minStage && <Pill tone="indigo">🔒 {STAGES[c.minStage].name}</Pill>}
                     </div>
                     <div className="text-[11px] text-ink/60">{c.desc}</div>
                     <div className="mt-1 flex flex-wrap gap-1">
@@ -121,6 +124,7 @@ export function HypePanel({ game }: { game: Game }) {
           })}
         </ul>
       </Card>
+      ))}
     </div>
   );
 }

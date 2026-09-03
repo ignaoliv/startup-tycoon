@@ -461,6 +461,7 @@ export function campaignStatus(s: GameState, id: string): { ok: boolean; reason:
   const daysLeft = Math.max(0, until - s.day);
   const req = c.requires?.(s) ?? null;
   if (!s.done.includes("mvp")) return { ok: false, reason: "Primero el MVP. No hay nada que mostrar.", daysLeft, cost };
+  if (c.minStage !== undefined && s.stage < c.minStage) return { ok: false, reason: `Se desbloquea con la ronda ${STAGES[c.minStage].name}.`, daysLeft, cost };
   if (req) return { ok: false, reason: req, daysLeft, cost };
   if (daysLeft > 0) return { ok: false, reason: c.cooldown >= 100000 ? "Ya lo hiciste. Es una sola vez." : `Disponible en ${daysLeft} días.`, daysLeft, cost };
   if (s.cash < cost) return { ok: false, reason: "No te alcanza.", daysLeft, cost };

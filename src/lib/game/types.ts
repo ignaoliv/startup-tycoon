@@ -93,6 +93,8 @@ export interface CampaignDef {
   morale?: number;
   requires?: (s: GameState) => string | null; // texto de por qué no se puede
   risk?: { chance: number; text: string; hype: number }; // puede salir mal
+  sponsor?: boolean; // sponsoreo grande, se desbloquea por ronda
+  minStage?: number;
 }
 
 export interface ExecDef {
