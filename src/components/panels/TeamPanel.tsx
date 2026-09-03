@@ -48,16 +48,6 @@ export function TeamPanel({ game }: { game: Game }) {
 
       <Card
         title={`Equipo ${s.employees.length}/${office.capacity}`}
-        right={
-          <div className="flex gap-1">
-            <Btn size="sm" variant="ghost" onClick={() => game.mutate((st) => pizza(st))} disabled={s.cash < pizzaCost(s)} title="+5 moral">
-              🍕 {money(pizzaCost(s))}
-            </Btn>
-            <Btn size="sm" variant="amber" onClick={() => game.mutate((st) => asado(st))} disabled={s.cash < asadoCost(s)} title="+12 moral">
-              🥩 {money(asadoCost(s))}
-            </Btn>
-          </div>
-        }
       >
         <div className="mb-2 flex flex-wrap gap-1">
           {counts.filter((c) => c.n > 0).map((c) => (
@@ -67,7 +57,17 @@ export function TeamPanel({ game }: { game: Game }) {
           ))}
         </div>
         <div className="mb-2 text-xs text-ink/60">
-          Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad). 🍕 Pizza +5 moral · 🥩 Asado +12 moral.
+          Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad).
+        </div>
+        <div className="mb-3 grid grid-cols-2 gap-2">
+          <Btn variant="ghost" className="flex-col !gap-0 py-2" onClick={() => game.mutate((st) => pizza(st))} disabled={s.cash < pizzaCost(s)}>
+            <span>🍕 Pizza para el equipo</span>
+            <span className="text-[11px] font-semibold text-ink/60">+5 moral · {money(pizzaCost(s))}</span>
+          </Btn>
+          <Btn variant="amber" className="flex-col !gap-0 py-2" onClick={() => game.mutate((st) => asado(st))} disabled={s.cash < asadoCost(s)}>
+            <span>🥩 Asado para el equipo</span>
+            <span className="text-[11px] font-semibold text-ink/70">+12 moral · {money(asadoCost(s))}</span>
+          </Btn>
         </div>
         <ul className="space-y-1.5">
           {s.employees.map((e) => (
