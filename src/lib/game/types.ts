@@ -1,4 +1,4 @@
-export type Role = "ai" | "dev" | "design" | "marketing" | "sales" | "qa" | "ops";
+export type Role = "ai" | "dev" | "design" | "marketing" | "social" | "sales" | "qa" | "ops";
 export type Level = 1 | 2 | 3;
 export type Speed = 0 | 1 | 2;
 
@@ -147,6 +147,7 @@ export interface GameState {
   followers: number; // seguidores en redes
   campaignCooldowns: Record<string, number>; // id -> día en que vuelve a estar disponible
   adsLevel: number; // 0 apagado .. 3
+  buildInPublic: boolean; // #buildinpublic en el perfil: suma fijo todos los días
   customFeatures: number; // features "nuevas" repetibles completadas
   rebrands: number;
   debt: number; // deuda con el banco
@@ -163,6 +164,7 @@ export interface Derived {
   mktPts: number;
   salesPts: number;
   designPts: number;
+  socialPts: number;
   opsPts: number;
   quality: number;
   arpu: number;

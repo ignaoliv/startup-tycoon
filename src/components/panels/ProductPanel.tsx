@@ -29,7 +29,7 @@ export function ProductPanel({ game }: { game: Game }) {
           </>
         ) : (
           <div className="rounded-xl border-2 border-dashed border-amber bg-amber/10 p-3 text-sm">
-            <b>El equipo está esperando.</b> No hay nada en desarrollo: elegí una feature abajo. Mientras tanto los devs y agentes no producen nada (pero cobran).
+            <b>El equipo está esperando.</b> Elegí algo abajo. Cuando termina una feature, el equipo sigue solo con la siguiente más barata (o con features nuevas si ya no queda nada).
           </div>
         )}
       </Card>

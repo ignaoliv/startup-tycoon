@@ -8,7 +8,8 @@ export const ROLES: Record<Role, { name: string; plural: string; icon: string; b
   ai: { name: "Agente IA", plural: "Agentes IA", icon: "🤖", baseSalary: 900, desc: "Vibecodea rapidísimo y barato. Deja mucha deuda técnica.", payLabel: "tokens/mes" },
   dev: { name: "Dev humano", plural: "Devs", icon: "👩‍💻", baseSalary: 3400, desc: "Más lento, pero revisa lo que escribe la IA y limpia deuda.", payLabel: "/mes" },
   design: { name: "Diseño", plural: "Diseñadores", icon: "🎨", baseSalary: 2800, desc: "Que no parezca hecho por un bot. Sube calidad, baja churn.", payLabel: "/mes" },
-  marketing: { name: "Growth", plural: "Growth", icon: "📣", baseSalary: 2600, desc: "Threads en X, demos en video. Trae usuarios y hype.", payLabel: "/mes" },
+  marketing: { name: "Growth", plural: "Growth", icon: "📣", baseSalary: 2600, desc: "Funnels, SEO y ads. Trae usuarios y mantiene el hype.", payLabel: "/mes" },
+  social: { name: "Community", plural: "Community", icon: "📱", baseSalary: 2200, desc: "Maneja las redes. Suma seguidores y, cuantos más tenés, más campañas salen solas.", payLabel: "/mes" },
   sales: { name: "Ventas", plural: "Vendedores", icon: "🤝", baseSalary: 3000, desc: "Convierte curiosos en clientes que pagan. Sube el ARPU.", payLabel: "/mes" },
   qa: { name: "QA", plural: "Testers", icon: "🧪", baseSalary: 2400, desc: "Encuentra lo que la IA alucinó antes que los usuarios.", payLabel: "/mes" },
   ops: { name: "DevOps", plural: "DevOps", icon: "🛠️", baseSalary: 2900, desc: "Baja la factura de servidores y tokens. Sube la moral.", payLabel: "/mes" },
@@ -79,6 +80,18 @@ export const ADS_LEVELS = [
   { name: "A lo loco", icon: "🚀", spendDay: 1500, desc: "Quemar plata de inversores como corresponde." },
 ];
 
+/** #buildinpublic: fijo por día mientras esté activado. */
+export const BUILD_IN_PUBLIC = { hypeDay: 0.15, followersDay: 40 };
+
+/** Campañas que se automatizan según los puntos de Community (suma de niveles). */
+export const AUTO_CAMPAIGNS: { minPts: number; id: string }[] = [
+  { minPts: 1, id: "thread" },
+  { minPts: 3, id: "tiktok" },
+  { minPts: 5, id: "podcast" },
+  { minPts: 7, id: "giveaway" },
+  { minPts: 10, id: "influencer" },
+];
+
 export const CAMPAIGNS: CampaignDef[] = [
   { id: "thread", name: "Hilo en X", icon: "🐦", desc: "Contás en 12 tweets cómo lo hiciste con IA sin escribir código.", cost: () => 0, cooldown: 4, hype: 6, followers: (s) => 120 + s.followers * 0.03, risk: { chance: 0.2, text: "Te ratioaron. 'Otro wrapper de ChatGPT'.", hype: -4 } },
   { id: "tiktok", name: "Video demo", icon: "📹", desc: "Un TikTok/Reel de 40 segundos mostrando el producto. Con música de moda.", cost: () => 800, cooldown: 7, hype: 12, followers: (s) => 350 + s.followers * 0.05, users: (s) => 20 + s.users * 0.02 },
@@ -100,6 +113,7 @@ export const AVATARS: Record<Role, string[]> = {
   dev: ["👩‍💻", "👨‍💻", "🧑‍💻"],
   design: ["👩‍🎨", "👨‍🎨", "🧑‍🎨"],
   marketing: ["🙋‍♀️", "🙋‍♂️", "🙋"],
+  social: ["🤳", "💁‍♀️", "💁‍♂️"],
   sales: ["👩‍💼", "👨‍💼", "🧑‍💼"],
   qa: ["👩‍🔬", "👨‍🔬", "🧑‍🔬"],
   ops: ["👩‍🔧", "👨‍🔧", "🧑‍🔧"],
@@ -289,6 +303,117 @@ export const EVENTS: GameEventDef[] = [
     ],
   },
   {
+    id: "rustrewrite",
+    title: "Un agente se puso creativo",
+    icon: "🦀",
+    text: "Durante la noche, un agente reescribió todo el backend en Rust 'por performance'. Nadie se lo pidió. Los tests pasan.",
+    minDay: 20,
+    choices: [
+      { label: "Dejarlo", desc: "+calidad, -progreso de la feature actual", apply: (s) => { s.bugs = Math.max(0, s.bugs - 4); s.featureProgress = Math.max(0, s.featureProgress - 6); return "Va más rápido. Nadie sabe leerlo, pero va más rápido."; } },
+      { label: "Revertir todo", desc: "Todo como estaba", apply: (s) => { s.morale = Math.max(0, s.morale - 3); return "git revert. El agente quedó ofendido (o eso parece)."; } },
+    ],
+  },
+  {
+    id: "hackernews",
+    title: "Apareciste en Hacker News",
+    icon: "🟠",
+    text: "Alguien posteó tu landing en HN. El hilo tiene 300 comentarios. Podés entrar a responder o dejarlos hablar.",
+    minUsers: 60,
+    choices: [
+      { label: "Entrar a responder", desc: "50/50: héroe o roast", apply: (s) => { if (Math.random() < 0.5) { s.hype = Math.min(100, s.hype + 25); s.followers += 800; s.users += Math.round(50 + s.users * 0.08); return "Respondiste con humildad y datos. Te aman."; } s.hype = Math.max(0, s.hype - 12); return "Discutiste con un senior de Google. Perdiste."; } },
+      { label: "Dejarlos hablar", desc: "+10 hype seguro", apply: (s) => { s.hype = Math.min(100, s.hype + 10); s.followers += 300; return "Se pelearon entre ellos. Vos sumaste hype igual."; } },
+    ],
+  },
+  {
+    id: "cofounder",
+    title: "Alguien quiere ser cofundador",
+    icon: "🤝",
+    text: "Una dev senior con dos exits te propone sumarse como cofundadora técnica. Quiere 15% de equity.",
+    minDay: 25,
+    choices: [
+      { label: "Aceptar (15% equity)", desc: "Se suma una dev senior gratis, +moral", apply: (s) => { s.equity -= 15; s.employees.push({ id: `e${s.nextId++}`, name: "Vicky Cofounder", role: "dev", level: 3, salary: 0, avatar: "👩‍💻" }); s.morale = Math.min(100, s.morale + 10); return "Bienvenida. Ahora hay alguien que entiende el código."; } },
+      { label: "Seguir solo", desc: "Mantenés el 100%", apply: () => "Solo founder. Como los grandes (y los que quiebran)." },
+    ],
+  },
+  {
+    id: "aiprovider",
+    title: "Se cayó el proveedor de IA",
+    icon: "🔌",
+    text: "El API de tu proveedor de IA está caído hace horas. Tus agentes miran el techo.",
+    minDay: 15,
+    choices: [
+      { label: "Esperar", desc: "-progreso de la feature", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 5); return "Volvió a las 6 horas. Un día perdido."; } },
+      { label: "Migrar a otro proveedor", desc: "-$2.500, sin pérdida", apply: (s) => { s.cash -= 2500; return "Cambiaste de proveedor en dos horas. Vibecoder profesional."; } },
+    ],
+  },
+  {
+    id: "raise",
+    title: "Piden aumento",
+    icon: "💬",
+    text: "Los humanos del equipo se juntaron y piden 20% de aumento. Dicen que los agentes no pagan alquiler.",
+    minDay: 45,
+    choices: [
+      { label: "Dar el aumento", desc: "+20% sueldos humanos, +moral", apply: (s) => { let n = 0; for (const e of s.employees) if (!e.founder && e.role !== "ai") { e.salary = Math.round(e.salary * 1.2); n++; } s.morale = Math.min(100, s.morale + 10); return n ? `${n} personas cobran 20% más. Moral al tope.` : "No había humanos para aumentar."; } },
+      { label: "Negar", desc: "-15 moral", apply: (s) => { s.morale = Math.max(0, s.morale - 15); return "Silencio incómodo en el daily."; } },
+    ],
+  },
+  {
+    id: "competitor_dies",
+    title: "Quebró un competidor",
+    icon: "⚰️",
+    text: "Tu principal competidor cerró. Sus usuarios buscan adónde ir y su equipo busca laburo.",
+    minUsers: 200,
+    choices: [
+      { label: "Salir a buscar a sus usuarios", desc: "+usuarios, -$3.000 en campañas", apply: (s) => { s.cash -= 3000; const n = Math.round(100 + s.users * 0.12); s.users += n; return `+${n} usuarios huérfanos que adoptaste.`; } },
+      { label: "Contratar a su equipo", desc: "Candidatos senior nuevos", apply: (s) => { s.candidates = []; for (let i = 0; i < 4; i++) { const c = makeSeniorCandidate(s); s.candidates.push(c); } s.candidatesDay = s.day; return "Cuatro seniors en la bandeja de candidatos."; } },
+    ],
+  },
+  {
+    id: "billing_bug",
+    title: "Cobraste de más",
+    icon: "🧾",
+    text: "Un bug del checkout le cobró doble a muchos usuarios este mes. Todavía nadie se dio cuenta.",
+    minUsers: 150,
+    choices: [
+      { label: "Devolver todo", desc: "-cash, +confianza", apply: (s) => { const amt = Math.round(s.users * 1.5); s.cash -= amt; s.hype = Math.min(100, s.hype + 5); return `Devolviste $${amt.toLocaleString("es-AR")} y mandaste un mail honesto. Aplausos.`; } },
+      { label: "Hacerse el distraído", desc: "Te quedás la plata, 40% de escándalo", apply: (s) => { if (Math.random() < 0.4) { const lost = Math.round(s.users * 0.12); s.users -= lost; s.hype = Math.max(0, s.hype - 20); return `Se enteraron. -${lost} usuarios y un hilo viral en tu contra.`; } return "Nadie dijo nada. Por ahora."; } },
+    ],
+  },
+  {
+    id: "longweekend",
+    title: "Finde largo",
+    icon: "🏖️",
+    text: "El equipo pide el viernes libre para irse a la costa. Los agentes IA no piden nada.",
+    minDay: 18,
+    choices: [
+      { label: "Que vayan", desc: "+8 moral, -progreso", apply: (s) => { s.morale = Math.min(100, s.morale + 8); s.featureProgress = Math.max(0, s.featureProgress - 3); return "Volvieron bronceados y con ganas."; } },
+      { label: "Hay deadline", desc: "-6 moral", apply: (s) => { s.morale = Math.max(0, s.morale - 6); return "Trabajaron. Nadie habló en todo el día."; } },
+    ],
+  },
+  {
+    id: "demoday",
+    title: "Demo day",
+    icon: "🎯",
+    text: "Una aceleradora te invita a pitchear frente a 40 inversores. Hay que preparar el deck.",
+    minDay: 50,
+    minUsers: 300,
+    choices: [
+      { label: "Preparar el pitch", desc: "-progreso, +hype, chance de cheque", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 4); s.hype = Math.min(100, s.hype + 15); if (Math.random() < 0.5) { s.cash += 30000; s.equity -= 3; s.stats.raised += 30000; return "Un inversor firmó un cheque de $30.000 por 3%. Y el hype subió."; } return "Aplausos, tarjetas, ningún cheque. Pero subió el hype."; } },
+      { label: "No ir", desc: "Nada cambia", apply: () => "Preferís shippear. Respetable." },
+    ],
+  },
+  {
+    id: "aitweet",
+    title: "Tu agente tuiteó solo",
+    icon: "🤖",
+    text: "Un agente con acceso a la cuenta de X publicó 14 tweets a las 4 AM. Algunos son... opiniones.",
+    minDay: 12,
+    choices: [
+      { label: "Dejarlos", desc: "60/40: viral o vergüenza", apply: (s) => { if (Math.random() < 0.6) { s.hype = Math.min(100, s.hype + 18); s.followers += 1200; return "Los tweets fueron un éxito. Ahora el agente es el CM."; } s.hype = Math.max(0, s.hype - 10); s.followers = Math.max(0, s.followers - 200); return "Uno de los tweets opinaba de política. Borraste todo."; } },
+      { label: "Borrar y sacarle el acceso", desc: "Sin riesgo, -2 hype", apply: (s) => { s.hype = Math.max(0, s.hype - 2); return "Borrado. Rotaste la contraseña. Otra vez."; } },
+    ],
+  },
+  {
     id: "newmodel",
     title: "Salió un modelo nuevo",
     icon: "✨",
@@ -300,3 +425,10 @@ export const EVENTS: GameEventDef[] = [
     ],
   },
 ];
+
+function makeSeniorCandidate(s: import("./types").GameState): import("./types").Candidate {
+  const roles: Role[] = ["dev", "design", "marketing", "sales", "qa", "ops", "social"];
+  const r = roles[Math.floor(Math.random() * roles.length)];
+  const salary = Math.round((ROLES[r].baseSalary * 3.6) / 50) * 50;
+  return { id: `e${s.nextId++}`, name: `${FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)]} ${LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)]}`, role: r, level: 3, salary, avatar: AVATARS[r][0], fee: Math.round(salary * 0.5) };
+}

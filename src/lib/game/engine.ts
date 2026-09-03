@@ -1,4 +1,4 @@
-import { ADS_LEVELS, AI_LEVEL_NAMES, AI_NAMES, AVATARS, CAMPAIGNS, CUSTOM_FEATURE_NAMES, EVENTS, FEATURES, NEW_FEATURE_ID, REBRAND_ID, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
+import { ADS_LEVELS, AI_LEVEL_NAMES, AI_NAMES, AUTO_CAMPAIGNS, AVATARS, BUILD_IN_PUBLIC, CAMPAIGNS, CUSTOM_FEATURE_NAMES, EVENTS, FEATURES, NEW_FEATURE_ID, REBRAND_ID, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
 import type { Candidate, Derived, Employee, FeatureDef, GameState, Level, LogEntry, Role } from "./types";
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
@@ -56,7 +56,7 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     employees: [],
     candidates: [],
     candidatesDay: 1,
-    currentFeature: null,
+    currentFeature: "mvp",
     featureProgress: 0,
     done: [],
     log: [],
@@ -71,6 +71,7 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     followers: 0,
     campaignCooldowns: {},
     adsLevel: 0,
+    buildInPublic: false,
     customFeatures: 0,
     rebrands: 0,
     debt: 0,
@@ -83,7 +84,7 @@ export function newGame(opts: { startupName: string; founderName: string; sector
   s.employees.push({ id: `e${s.nextId++}`, name: opts.founderName || "Fundador/a", role: "dev", level: 2, salary: 0, avatar: "🧑‍🚀", founder: true });
   s.employees.push({ id: `e${s.nextId++}`, name: "Claudio Mini", role: "ai", level: 1, salary: 600, avatar: "🤖" });
   refreshCandidates(s);
-  addLog(s, `Nace ${s.startupName}. Tenés $${START_CASH.toLocaleString("es-AR")}, un garage, una laptop y una suscripción a la IA. Elegí qué construir primero.`, "info");
+  addLog(s, `Nace ${s.startupName}. Tenés $${START_CASH.toLocaleString("es-AR")}, un garage, una laptop y una suscripción a la IA. El equipo arranca por el MVP.`, "info");
   return s;
 }
 
@@ -104,6 +105,7 @@ export function derive(s: GameState): Derived {
   const mktPts = pts("marketing");
   const salesPts = pts("sales");
   const designPts = pts("design");
+  const socialPts = pts("social");
   const opsPts = pts("ops");
 
   const fx = { growth: 0, arpu: 0, churn: 0, quality: 0 };
@@ -132,13 +134,15 @@ export function derive(s: GameState): Derived {
   const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7) * (hasPrd ? 1 : 0.65);
   const saturation = Math.max(0, 1 - s.users / sector.tam); // el mercado se agota
   const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
-  const viral = hasMvp ? s.users * 0.0025 * (quality / 100) * (0.4 + s.hype / 100) : 0;
-  const organicUsersDay = hasMvp ? s.followers * 0.003 * (0.5 + quality / 200) * saturation : 0;
+  const viral = hasMvp ? s.users * 0.002 * (quality / 100) * (0.4 + s.hype / 100) : 0;
+  const organicUsersDay = hasMvp ? Math.min(s.followers * 0.002, 2000 + s.followers * 0.0005) * (0.5 + quality / 200) * saturation : 0;
   const cac = 15 + s.users * 0.002; // cada usuario pago sale más caro a medida que crecés
   const adsUsersDay = hasMvp ? (adsCostDay / cac) * (0.5 + quality / 200) * saturation : 0;
   const newUsersDay = (base + viral) * growthMul * saturation + organicUsersDay + adsUsersDay;
-  const hypeDecayDay = 0.7 - Math.min(0.5, s.followers / 40000) - mktPts * 0.25 - s.adsLevel * 0.15;
-  const followersDay = s.hype * 0.3 + mktPts * 8 + s.adsLevel * 15 - s.followers * 0.004;
+  const bip = s.buildInPublic;
+  // a más hype, más rápido se enfría; seguidores, growth, community, ads y #buildinpublic lo sostienen
+  const hypeDecayDay = 0.5 + s.hype * 0.012 - Math.min(0.5, s.followers / 60000) - mktPts * 0.15 - socialPts * 0.1 - s.adsLevel * 0.12 - (bip ? BUILD_IN_PUBLIC.hypeDay : 0);
+  const followersDay = s.hype * 0.3 + mktPts * 5 + socialPts * 25 + s.adsLevel * 15 + (bip ? BUILD_IN_PUBLIC.followersDay : 0) - s.followers * 0.006;
   const churnRate = clamp(0.012 + s.bugs * 0.0008 - fx.churn - designPts * 0.0008, 0.003, 0.15);
   const churnDay = s.users * churnRate;
   const stage = STAGES[s.stage];
@@ -152,7 +156,7 @@ export function derive(s: GameState): Derived {
   const debtPaymentDay = s.debt > 0 ? Math.max(s.debt / 180, Math.min(s.debt, 50)) : 0;
   const sellOffer = hasMvp ? valuation * (0.7 + s.hype / 500) : 0;
   return {
-    devPts, qaPts, mktPts, salesPts, designPts, opsPts, quality, arpu, mrr, revenueDay, costDay,
+    devPts, qaPts, mktPts, salesPts, designPts, socialPts, opsPts, quality, arpu, mrr, revenueDay, costDay,
     salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay - debtInterestDay, newUsersDay, churnDay, valuation,
     capacity: office.capacity, featureDaysLeft, loanRate, loanCapacity, debtInterestDay, debtPaymentDay, sellOffer,
     hypeDecayDay, followersDay, organicUsersDay, adsCostDay, adsUsersDay,
@@ -203,7 +207,8 @@ export function tick(s: GameState, quiet = false) {
       if (f.id === NEW_FEATURE_ID) {
         s.customFeatures += 1;
         const name = CUSTOM_FEATURE_NAMES[(s.customFeatures - 1) % CUSTOM_FEATURE_NAMES.length];
-        addLog(s, `✨ Lanzaste ${name} (feature #${s.customFeatures}). Elegí qué sigue.`, "good");
+        addLog(s, `✨ Lanzaste ${name} (feature #${s.customFeatures}).`, "good");
+        s.currentFeature = NEW_FEATURE_ID; // nunca se acaban
       } else if (f.id === REBRAND_ID) {
         s.rebrands += 1;
         s.users = Math.round(s.users * 0.97);
@@ -211,7 +216,11 @@ export function tick(s: GameState, quiet = false) {
         addLog(s, `🎨 Rebranding listo. Elegí el nombre nuevo.`, "good");
       } else {
         s.done.push(f.id);
-        addLog(s, `${f.icon} Lanzaste ${f.name}. El equipo espera la próxima tarea.`, "good");
+        // sigue solo con la más barata disponible; si no queda nada, features nuevas infinitas
+        const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
+        s.currentFeature = next ? next.id : NEW_FEATURE_ID;
+        const nf = getFeature(s, s.currentFeature);
+        addLog(s, `${f.icon} Lanzaste ${f.name}. El equipo sigue con ${nf.icon} ${nf.name} (podés cambiarlo en Producto).`, "good");
       }
     }
   }
@@ -248,6 +257,19 @@ export function tick(s: GameState, quiet = false) {
   // hype y moral
   s.hype = clamp(s.hype - d.hypeDecayDay, 0, 100);
   s.followers = Math.max(0, s.followers + d.followersDay);
+
+  // community: las campañas salen solas según cuánta gente de redes tenés
+  if (d.socialPts > 0 && !quiet) {
+    const cm = s.employees.filter((e) => e.role === "social");
+    for (const a of AUTO_CAMPAIGNS) {
+      if (d.socialPts < a.minPts) continue;
+      const st = campaignStatus(s, a.id);
+      if (!st.ok || st.cost > s.cash * 0.05) continue;
+      const who = cm[Math.floor(Math.random() * cm.length)];
+      const err = runCampaign(s, a.id, who?.name);
+      if (!err) break; // una por día
+    }
+  }
   const targetMorale = OFFICES[s.office].morale + d.opsPts * 2 - (s.cash < 0 ? 25 : 0) - (s.employees.length > d.capacity ? 15 : 0);
   s.morale = clamp(s.morale + (targetMorale - s.morale) * 0.05, 0, 100);
 
@@ -388,7 +410,13 @@ export function campaignStatus(s: GameState, id: string): { ok: boolean; reason:
   return { ok: true, reason: null, daysLeft, cost };
 }
 
-export function runCampaign(s: GameState, id: string): string | null {
+export function toggleBuildInPublic(s: GameState): string | null {
+  s.buildInPublic = !s.buildInPublic;
+  addLog(s, s.buildInPublic ? "🧵 Pusiste #buildinpublic en el perfil. Todos los días contás qué hiciste." : "Sacaste #buildinpublic del perfil.", "info");
+  return null;
+}
+
+export function runCampaign(s: GameState, id: string, by?: string): string | null {
   const c = CAMPAIGNS.find((x) => x.id === id);
   if (!c) return "Campaña desconocida.";
   const st = campaignStatus(s, id);
@@ -396,9 +424,10 @@ export function runCampaign(s: GameState, id: string): string | null {
   s.cash -= st.cost;
   s.campaignCooldowns[id] = s.day + c.cooldown;
   const flopped = c.risk && Math.random() < c.risk.chance;
-  const hype = flopped ? c.risk!.hype : c.hype;
+  // con el hype alto cada campaña rinde menos
+  const hype = flopped ? c.risk!.hype : Math.round(c.hype * (1 - s.hype / 160));
   s.hype = clamp(s.hype + hype, 0, 100);
-  const fol = Math.round(c.followers(s) * (flopped ? 0.3 : 1));
+  const fol = Math.round(Math.min(c.followers(s), 20000 + s.followers * 0.01) * (flopped ? 0.3 : 1));
   s.followers += fol;
   const users = c.users && !flopped ? Math.round(c.users(s)) : 0;
   s.users += users;
@@ -406,7 +435,7 @@ export function runCampaign(s: GameState, id: string): string | null {
   const parts = [`${hype >= 0 ? "+" : ""}${hype} hype`, `+${fol.toLocaleString("es-AR")} seguidores`];
   if (users) parts.push(`+${users.toLocaleString("es-AR")} usuarios`);
   if (c.morale) parts.push(`+${c.morale} moral`);
-  addLog(s, `${c.icon} ${c.name}: ${flopped ? c.risk!.text + " " : ""}${parts.join(", ")}.`, flopped ? "bad" : "good");
+  addLog(s, `${c.icon} ${by ? `${by} hizo ` : ""}${c.name}: ${flopped ? c.risk!.text + " " : ""}${parts.join(", ")}.`, flopped ? "bad" : "good");
   return null;
 }
 
@@ -487,6 +516,7 @@ export function migrate(s: GameState): GameState {
   s.followers ??= 0;
   s.campaignCooldowns ??= {};
   s.adsLevel ??= 0;
+  s.buildInPublic ??= false;
   s.customFeatures ??= 0;
   s.rebrands ??= 0;
   s.debt ??= 0;

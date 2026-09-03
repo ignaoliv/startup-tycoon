@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
-import { ADS_LEVELS, CAMPAIGNS } from "@/lib/game/data";
-import { campaignStatus, runCampaign, setAdsLevel } from "@/lib/game/engine";
+import { ADS_LEVELS, AUTO_CAMPAIGNS, BUILD_IN_PUBLIC, CAMPAIGNS } from "@/lib/game/data";
+import { campaignStatus, runCampaign, setAdsLevel, toggleBuildInPublic } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -36,6 +36,34 @@ export function HypePanel({ game }: { game: Game }) {
         <p className="mt-2 text-[11px] text-ink/50">
           El hype baja solo todos los días. Los seguidores lo frenan, traen usuarios gratis y crecen con hype, growth y ads. Growth: {d.mktPts.toFixed(1)} pts.
         </p>
+      </Card>
+
+      <Card title="#buildinpublic en el perfil" right={<Pill tone={s.buildInPublic ? "good" : "ink"}>{s.buildInPublic ? "Activo" : "Apagado"}</Pill>}>
+        <p className="mb-2 text-[11px] text-ink/60">
+          Contás todos los días qué construiste, cuánto facturaste y qué se rompió. Gratis, sin cooldown: suma fijo <b>+{BUILD_IN_PUBLIC.hypeDay} hype/día</b> y <b>+{BUILD_IN_PUBLIC.followersDay} seguidores/día</b> mientras esté activo.
+        </p>
+        <Btn size="sm" variant={s.buildInPublic ? "ghost" : "amber"} className="w-full" onClick={() => game.mutate((st) => toggleBuildInPublic(st))}>
+          🧵 {s.buildInPublic ? "Sacar del perfil" : "Poner #buildinpublic en el perfil"}
+        </Btn>
+      </Card>
+
+      <Card title="Community (automático)">
+        <p className="mb-2 text-[11px] text-ink/60">
+          Tenés <b>{d.socialPts.toFixed(1)} pts</b> de Community 📱 (suma de niveles, ajustada por moral). Cada punto suma seguidores y frena la caída del hype. Cuanta más gente de redes, más campañas salen solas sin que las toques:
+        </p>
+        <ul className="flex flex-wrap gap-1">
+          {AUTO_CAMPAIGNS.map((a) => {
+            const c = CAMPAIGNS.find((x) => x.id === a.id)!;
+            const on = d.socialPts >= a.minPts;
+            return (
+              <li key={a.id}>
+                <Pill tone={on ? "good" : "ink"}>
+                  {on ? "✅" : "🔒"} {c.icon} {c.name} · {a.minPts} pts
+                </Pill>
+              </li>
+            );
+          })}
+        </ul>
       </Card>
 
       <Card title="Publicidad paga" right={<Pill tone={s.adsLevel > 0 ? "amber" : "ink"}>{ADS_LEVELS[s.adsLevel].icon} {ADS_LEVELS[s.adsLevel].name}</Pill>}>

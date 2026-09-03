@@ -50,8 +50,9 @@ Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es 
 - **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. El **banco** presta hasta el 35% de la valuación a una tasa mensual que baja con cada ronda (5% → 1,5%), con interés diario y cuota mínima. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO. También podés **vender la empresa** cuando quieras (70-90% de la valuación según el hype).
 - **Moral**: 🍕 pizza (+5) y 🥩 asado (+12), el costo escala con el equipo.
 - **Hype y redes**: el hype baja solo cada día; los seguidores lo frenan y traen usuarios orgánicos. Ads pagos en 4 niveles (el costo por usuario sube al crecer) y 10 campañas con costo, cooldown y riesgo (hilo en X, video demo, podcast, meetup, Product Hunt una sola vez, sorteo, influencer, PR, cartel en la 9 de Julio, sponsorear conferencia).
-- **Roadmap manual**: nada se elige solo. Cuando termina una feature el equipo espera; en mobile hay una barra de progreso fija bajo el header en todas las pantallas.
-- **Eventos** cada 14–30 días con dos opciones.
+- **Roadmap automático**: al terminar una feature el equipo sigue solo con la más barata disponible, y cuando se agota el árbol encadena features nuevas infinitas. Podés cambiar la elección cuando quieras. En mobile hay una barra de progreso fija bajo el header.
+- **Community 📱**: rol que suma seguidores y automatiza campañas según los puntos que tengas (1: hilo en X, 3: video demo, 5: podcast, 7: sorteo, 10: influencer). **#buildinpublic** en el perfil suma hype y seguidores fijos por día.
+- **Eventos** cada 14–30 días con dos opciones (27 distintos).
 - **Social** (requiere login): ranking por valuación, muro con likes (Realtime), visitar startups para dar hype (gratis, 1/día), invertir (cobrás dividendos de su MRR) o robar talento (pagás, ellos cobran indemnización). Las acciones llegan al otro jugador en tiempo real o cuando vuelve a entrar.
 
 ## Estructura
