@@ -375,14 +375,17 @@ export function applyOffline(s: GameState, now = Date.now()): number {
   const days = Math.min(OFFLINE_MAX_DAYS, Math.floor(elapsed / TICK_MS));
   if (days <= 0) return 0;
   const before = s.cash;
+  const beforeDay = s.day;
   for (let i = 0; i < days; i++) {
     tick(s, true);
-    if (s.gameOver) break;
+    if (s.gameOver || s.pendingEvent) break; // un evento pendiente frena el tiempo
   }
   s.lastTickAt = now;
+  const simulated = s.day - beforeDay;
+  if (simulated <= 0) return 0;
   const delta = s.cash - before;
-  addLog(s, `⏰ Pasaron ${days} días mientras no estabas. Caja: ${delta >= 0 ? "+" : ""}$${Math.round(delta).toLocaleString("es-AR")}.`, "info");
-  return days;
+  addLog(s, `⏰ Pasaron ${simulated} días mientras no estabas. Caja: ${delta >= 0 ? "+" : ""}$${Math.round(delta).toLocaleString("es-AR")}.`, "info");
+  return simulated;
 }
 
 const ACHIEVEMENTS: { id: string; name: string; icon: string; test: (s: GameState, d: Derived) => boolean }[] = [
