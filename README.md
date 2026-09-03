@@ -46,8 +46,9 @@ Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es 
 
 - **1 día de juego = 4 s** (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
 - **Equipo**: 🤖 agentes IA (rápidos, baratos, mucha deuda técnica), 👩‍💻 devs humanos (contienen la deuda), 🎨 diseño (calidad, churn), 📣 growth (usuarios, hype), 🤝 ventas (ARPU), 🧪 QA (bugs), 🛠️ DevOps (servidores/tokens, moral). La oficina limita cuánta gente entra.
-- **Producto**: árbol de 16 features con dependencias. Cada una cambia crecimiento, ARPU, churn, calidad o hype.
-- **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO.
+- **Producto**: PRD (sin él, -35% crecimiento), árbol de 16 features con dependencias, y dos proyectos siempre disponibles: **Feature nueva** (infinita, cada vez más cara, suma crecimiento/ARPU/calidad) y **Rebranding** (mucho hype, podés cambiar el nombre, perdés 3% de usuarios).
+- **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. El **banco** presta hasta el 35% de la valuación a una tasa mensual que baja con cada ronda (5% → 1,5%), con interés diario y cuota mínima. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO. También podés **vender la empresa** cuando quieras (70-90% de la valuación según el hype).
+- **Moral**: 🍕 pizza (+5) y 🥩 asado (+12), el costo escala con el equipo.
 - **Eventos** cada 14–30 días con dos opciones.
 - **Social** (requiere login): ranking por valuación, muro con likes (Realtime), visitar startups para dar hype (gratis, 1/día), invertir (cobrás dividendos de su MRR) o robar talento (pagás, ellos cobran indemnización). Las acciones llegan al otro jugador en tiempo real o cuando vuelve a entrar.
 

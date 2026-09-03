@@ -2,16 +2,19 @@
 import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
 import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
+import { getFeature } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
 export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) => void }) {
   const s = game.state!;
   const d = game.derived!;
-  const feat = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
+  const feat = s.currentFeature ? getFeature(s, s.currentFeature) : null;
   const nextStage = STAGES[s.stage + 1];
   const tips: { text: string; tab: string }[] = [];
+  if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). El banco te presta hasta ${moneyShort(d.loanCapacity)}.`, tab: "money" });
   if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
+  if (s.done.includes("mvp") && !s.done.includes("prd")) tips.push({ text: "Sin PRD el equipo construye a ciegas: -35% crecimiento. Escribilo, es barato.", tab: "product" });
   if (s.employees.length >= OFFICES[s.office].capacity && OFFICES[s.office + 1]) tips.push({ text: "La oficina está llena. Mudate para poder contratar.", tab: "money" });
   if (nextStage && nextStage.raise > 0 && d.valuation >= nextStage.minValuation) tips.push({ text: `Podés levantar la ronda ${nextStage.name}.`, tab: "money" });
   if (s.bugs > 8) tips.push({ text: "Demasiada deuda técnica. Un QA o un dev humano la bajan rápido.", tab: "team" });
@@ -66,6 +69,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
               <span>Features</span>
               <Pill>
                 {s.done.length}/{FEATURES.length}
+                {s.customFeatures > 0 && ` +${s.customFeatures}`}
               </Pill>
             </div>
           </div>
@@ -113,6 +117,10 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
       </Card>
     </div>
   );
+}
+
+function moneyShort(n: number) {
+  return money(n);
 }
 
 function Row({ l, v, tone, bold }: { l: string; v: string; tone?: "good" | "bad"; bold?: boolean }) {

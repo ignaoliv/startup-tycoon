@@ -1,5 +1,5 @@
 // Simulación headless de balance: bot simple que juega N días.
-import { derive, hire, newGame, raiseRound, resolveEvent, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { derive, hire, newGame, raiseRound, resolveEvent, setFeature, takeLoan, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 
@@ -14,6 +14,8 @@ function bot(s: GameState) {
   }
   // levantar ronda si se puede
   raiseRound(s);
+  // en rojo: préstamo por la mitad de lo que presta el banco
+  if (s.cash < 0 && d.loanCapacity > 1000) takeLoan(s, Math.round(d.loanCapacity * 0.5));
   // mudarse si lleno y hay plata sobrante (2 meses de runway)
   const cap = OFFICES[s.office].capacity;
   const nextOffice = OFFICES[s.office + 1];
@@ -46,7 +48,7 @@ for (let i = 0; i < DAYS; i++) {
   if (s.gameOver) { console.log(`GAME OVER ${s.gameOver} día ${s.day}`); break; }
   if (marks.includes(s.day)) {
     const d = derive(s);
-    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} done=${s.done.length}`);
+    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} debt=${Math.round(s.debt)} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} done=${s.done.length}`);
   }
 }
 console.log("log tail:", s.log.slice(0, 8).map((l) => `d${l.day} ${l.text}`).join(" | "));

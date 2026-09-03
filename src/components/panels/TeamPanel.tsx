@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Btn, Card, Pill } from "@/components/ui";
 import { AI_LEVEL_NAMES, LEVEL_NAMES, OFFICES, ROLES } from "@/lib/game/data";
-import { fire, hire, rerollCandidates, teamPerk } from "@/lib/game/engine";
+import { asado, asadoCost, fire, hire, pizza, pizzaCost, rerollCandidates } from "@/lib/game/engine";
 import { money } from "@/lib/game/format";
 import type { Role } from "@/lib/game/types";
 import type { Game } from "@/hooks/useGame";
@@ -49,9 +49,14 @@ export function TeamPanel({ game }: { game: Game }) {
       <Card
         title={`Equipo ${s.employees.length}/${office.capacity}`}
         right={
-          <Btn size="sm" variant="amber" onClick={() => game.mutate((st) => teamPerk(st))} disabled={s.cash < 300 * s.employees.length}>
-            🍕 Asado · {money(300 * s.employees.length)}
-          </Btn>
+          <div className="flex gap-1">
+            <Btn size="sm" variant="ghost" onClick={() => game.mutate((st) => pizza(st))} disabled={s.cash < pizzaCost(s)} title="+5 moral">
+              🍕 {money(pizzaCost(s))}
+            </Btn>
+            <Btn size="sm" variant="amber" onClick={() => game.mutate((st) => asado(st))} disabled={s.cash < asadoCost(s)} title="+12 moral">
+              🥩 {money(asadoCost(s))}
+            </Btn>
+          </div>
         }
       >
         <div className="mb-2 flex flex-wrap gap-1">
@@ -62,7 +67,7 @@ export function TeamPanel({ game }: { game: Game }) {
           ))}
         </div>
         <div className="mb-2 text-xs text-ink/60">
-          Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad)
+          Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad). 🍕 Pizza +5 moral · 🥩 Asado +12 moral.
         </div>
         <ul className="space-y-1.5">
           {s.employees.map((e) => (

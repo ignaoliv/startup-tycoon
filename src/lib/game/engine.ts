@@ -1,5 +1,5 @@
-import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, EVENTS, FEATURES, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
-import type { Candidate, Derived, Employee, GameState, Level, LogEntry, Role } from "./types";
+import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, CUSTOM_FEATURE_NAMES, EVENTS, FEATURES, NEW_FEATURE_ID, REBRAND_ID, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
+import type { Candidate, Derived, Employee, FeatureDef, GameState, Level, LogEntry, Role } from "./types";
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -68,6 +68,11 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     stats: { totalRevenue: 0, peakUsers: 0, raised: 0, hires: 0 },
     achievements: [],
     portfolio: [],
+    customFeatures: 0,
+    rebrands: 0,
+    debt: 0,
+    pendingRename: false,
+    exitAmount: 0,
     lastTickAt: Date.now(),
     speed: 1,
     nextId: 1,
@@ -107,7 +112,11 @@ export function derive(s: GameState): Derived {
     fx.churn += f.effects.churn ?? 0;
     fx.quality += f.effects.quality ?? 0;
   }
+  fx.growth += s.customFeatures * 0.08;
+  fx.arpu += s.customFeatures * 0.15;
+  fx.quality += s.customFeatures * 1;
   const hasMvp = s.done.includes("mvp");
+  const hasPrd = s.done.includes("prd");
   const quality = clamp(fx.quality + designPts * 4 - s.bugs * 0.6, 0, 100);
   const arpu = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) : 0;
   const mrr = s.users * arpu;
@@ -116,7 +125,7 @@ export function derive(s: GameState): Derived {
   const rentMonth = office.rent;
   const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - Math.min(0.6, opsPts * 0.08));
   const costDay = (salariesMonth + rentMonth + serverMonth) / 30;
-  const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7);
+  const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7) * (hasPrd ? 1 : 0.65);
   const saturation = Math.max(0, 1 - s.users / sector.tam); // el mercado se agota
   const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
   const viral = hasMvp ? s.users * 0.0025 * (quality / 100) * (0.4 + s.hype / 100) : 0;
@@ -124,20 +133,40 @@ export function derive(s: GameState): Derived {
   const churnRate = clamp(0.012 + s.bugs * 0.0008 - fx.churn - designPts * 0.0008, 0.003, 0.15);
   const churnDay = s.users * churnRate;
   const stage = STAGES[s.stage];
-  const valuation = Math.max(0, mrr * 12 * stage.multiple + s.users * 8 + Math.max(0, s.cash) * 0.5 + s.done.length * 5000);
-  const featureDaysLeft = s.currentFeature
-    ? devPts > 0
-      ? Math.ceil(((FEATURES.find((f) => f.id === s.currentFeature)?.cost ?? 0) - s.featureProgress) / devPts)
-      : null
-    : null;
+  const grossValuation = Math.max(0, mrr * 12 * stage.multiple + s.users * 8 + Math.max(0, s.cash) * 0.5 + (s.done.length + s.customFeatures) * 5000);
+  const valuation = Math.max(0, grossValuation - s.debt);
+  const featureDaysLeft = s.currentFeature ? (devPts > 0 ? Math.ceil((getFeature(s, s.currentFeature).cost - s.featureProgress) / devPts) : null) : null;
+  // banco: tasa mensual según etapa, capacidad según valuación
+  const loanRate = [0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.015][s.stage] ?? 0.02;
+  const loanCapacity = Math.max(0, Math.max(25000, grossValuation * 0.35) - s.debt);
+  const debtInterestDay = (s.debt * loanRate) / 30;
+  const debtPaymentDay = s.debt > 0 ? Math.max(s.debt / 180, Math.min(s.debt, 50)) : 0;
+  const sellOffer = hasMvp ? valuation * (0.7 + s.hype / 500) : 0;
   return {
     devPts, qaPts, mktPts, salesPts, designPts, opsPts, quality, arpu, mrr, revenueDay, costDay,
-    salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay, newUsersDay, churnDay, valuation,
-    capacity: office.capacity, featureDaysLeft,
+    salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay - debtInterestDay, newUsersDay, churnDay, valuation,
+    capacity: office.capacity, featureDaysLeft, loanRate, loanCapacity, debtInterestDay, debtPaymentDay, sellOffer,
   };
 }
 
+/** Definición de una feature, incluyendo los proyectos repetibles (feature nueva, rebranding). */
+export function getFeature(s: GameState, id: string): FeatureDef {
+  if (id === NEW_FEATURE_ID) {
+    const n = s.customFeatures + 1;
+    return { id, name: `Feature nueva #${n}`, icon: "✨", desc: "Algo que pidió un usuario. Suma un poco de crecimiento, ARPU y calidad. Nunca se acaban.", cost: Math.round(30 * Math.pow(1.18, s.customFeatures)), effects: { growth: 0.08, arpu: 0.15, quality: 1, hype: 8 } };
+  }
+  if (id === REBRAND_ID) {
+    return { id, name: s.rebrands > 0 ? `Rebranding #${s.rebrands + 1}` : "Rebranding", icon: "🎨", desc: "Logo nuevo, nombre nuevo, mismo producto. Mucho hype, algunos usuarios se confunden.", cost: Math.round(25 * Math.pow(1.4, s.rebrands)), effects: { hype: 35, quality: 5 } };
+  }
+  return FEATURES.find((x) => x.id === id) ?? { id, name: id, icon: "❓", desc: "", cost: 1, effects: {} };
+}
+
+export function isRepeatable(id: string) {
+  return id === NEW_FEATURE_ID || id === REBRAND_ID;
+}
+
 export function featureAvailable(s: GameState, id: string) {
+  if (isRepeatable(id)) return s.done.includes("mvp");
   const f = FEATURES.find((x) => x.id === id);
   if (!f || s.done.includes(id)) return false;
   return (f.requires ?? []).every((r) => s.done.includes(r));
@@ -156,16 +185,28 @@ export function tick(s: GameState, quiet = false) {
     const aiShare = s.employees.filter((e) => e.role === "ai").reduce((a, e) => a + e.level, 0) * 1.6;
     const humanShare = s.employees.filter((e) => e.role === "dev").reduce((a, e) => a + e.level * (e.founder ? 1.5 : 1), 0);
     s.bugs += Math.max(0, aiShare * 0.1 - humanShare * 0.1) + humanShare * 0.03;
-    const f = FEATURES.find((x) => x.id === s.currentFeature)!;
+    const f = getFeature(s, s.currentFeature);
     if (s.featureProgress >= f.cost) {
-      s.done.push(f.id);
       s.featureProgress = 0;
       s.currentFeature = null;
       if (f.effects.hype) s.hype = clamp(s.hype + f.effects.hype, 0, 100);
-      addLog(s, `${f.icon} Lanzaste ${f.name}.`, "good");
-      // autoelegir la siguiente disponible más barata
-      const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
-      if (next) s.currentFeature = next.id;
+      if (f.id === NEW_FEATURE_ID) {
+        s.customFeatures += 1;
+        const name = CUSTOM_FEATURE_NAMES[(s.customFeatures - 1) % CUSTOM_FEATURE_NAMES.length];
+        addLog(s, `✨ Lanzaste ${name} (feature #${s.customFeatures}).`, "good");
+        s.currentFeature = NEW_FEATURE_ID; // sigue de largo con la siguiente
+      } else if (f.id === REBRAND_ID) {
+        s.rebrands += 1;
+        s.users = Math.round(s.users * 0.97);
+        s.pendingRename = true;
+        addLog(s, `🎨 Rebranding listo. Elegí el nombre nuevo.`, "good");
+      } else {
+        s.done.push(f.id);
+        addLog(s, `${f.icon} Lanzaste ${f.name}.`, "good");
+        // autoelegir la siguiente disponible más barata
+        const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
+        s.currentFeature = next ? next.id : NEW_FEATURE_ID;
+      }
     }
   }
   // bugs
@@ -177,8 +218,20 @@ export function tick(s: GameState, quiet = false) {
   s.stats.peakUsers = Math.max(s.stats.peakUsers, s.users);
 
   // dinero
-  s.cash += d.netDay;
+  s.cash += d.revenueDay - d.costDay;
   s.stats.totalRevenue += d.revenueDay;
+
+  // banco: interés + cuota mínima
+  if (s.debt > 0) {
+    s.debt += d.debtInterestDay;
+    const pay = Math.min(s.debt, d.debtPaymentDay);
+    s.cash -= pay;
+    s.debt -= pay;
+    if (s.debt < 1) {
+      s.debt = 0;
+      addLog(s, "🏦 Terminaste de pagar el préstamo.", "good");
+    }
+  }
 
   // portfolio (inversiones en otras startups)
   for (const p of s.portfolio) {
@@ -194,7 +247,7 @@ export function tick(s: GameState, quiet = false) {
   // quiebra
   if (s.cash < 0) {
     s.bankruptDays += 1;
-    if (s.bankruptDays === 1) addLog(s, "Estás en rojo. Tenés 12 días para arreglarlo o cerrás.", "bad");
+    if (s.bankruptDays === 1) addLog(s, "Estás en rojo. Tenés 12 días para arreglarlo o cerrás. El banco presta, con interés.", "bad");
     if (s.bankruptDays >= 12) {
       s.gameOver = "bankrupt";
       addLog(s, "💀 Sin plata y sin inversores. Cerró la startup.", "bad");
@@ -272,7 +325,7 @@ export function rerollCandidates(s: GameState): string | null {
 }
 
 export function setFeature(s: GameState, id: string): string | null {
-  if (!featureAvailable(s, id)) return "Todavía no podés construir eso.";
+  if (!featureAvailable(s, id)) return isRepeatable(id) ? "Primero terminá el MVP." : "Todavía no podés construir eso.";
   if (s.currentFeature !== id) {
     s.currentFeature = id;
     s.featureProgress = 0;
@@ -310,6 +363,7 @@ export function ipo(s: GameState): string | null {
   const d = derive(s);
   if (d.valuation < IPO_VALUATION) return "Para salir a bolsa necesitás valer $1B.";
   s.gameOver = "ipo";
+  s.exitAmount = (d.valuation * s.equity) / 100;
   addLog(s, "🔔 ¡Tocaste la campana! IPO exitosa.", "good");
   return null;
 }
@@ -323,13 +377,80 @@ export function marketingPush(s: GameState): string | null {
   return null;
 }
 
-export function teamPerk(s: GameState): string | null {
-  const cost = Math.round(300 * s.employees.length);
-  if (s.cash < cost) return "No te alcanza.";
+export function pizzaCost(s: GameState) {
+  return Math.round(80 * s.employees.length);
+}
+export function asadoCost(s: GameState) {
+  return Math.round(300 * s.employees.length);
+}
+export function pizza(s: GameState): string | null {
+  const cost = pizzaCost(s);
+  if (s.cash < cost) return "No te alcanza ni para pizza.";
+  s.cash -= cost;
+  s.morale = clamp(s.morale + 5, 0, 100);
+  addLog(s, `🍕 Pizza para el equipo: +5 moral por $${cost.toLocaleString("es-AR")}.`, "info");
+  return null;
+}
+export function asado(s: GameState): string | null {
+  const cost = asadoCost(s);
+  if (s.cash < cost) return "No te alcanza para el asado.";
   s.cash -= cost;
   s.morale = clamp(s.morale + 12, 0, 100);
-  addLog(s, `🍕 Asado de equipo: +12 moral por $${cost.toLocaleString("es-AR")}.`, "info");
+  addLog(s, `🥩 Asado de equipo: +12 moral por $${cost.toLocaleString("es-AR")}.`, "info");
   return null;
+}
+
+export function takeLoan(s: GameState, amount: number): string | null {
+  const d = derive(s);
+  if (amount <= 0) return "Monto inválido.";
+  if (amount > d.loanCapacity + 1) return `El banco te presta hasta $${Math.round(d.loanCapacity).toLocaleString("es-AR")} más.`;
+  s.debt += amount;
+  s.cash += amount;
+  s.bankruptDays = 0;
+  addLog(s, `🏦 Préstamo de $${Math.round(amount).toLocaleString("es-AR")} al ${(d.loanRate * 100).toFixed(1)}% mensual. Deuda total: $${Math.round(s.debt).toLocaleString("es-AR")}.`, "info");
+  return null;
+}
+
+export function repayLoan(s: GameState, amount: number): string | null {
+  const pay = Math.min(amount, s.debt, Math.max(0, s.cash));
+  if (pay <= 0) return "No tenés caja para pagar.";
+  s.cash -= pay;
+  s.debt -= pay;
+  if (s.debt < 1) s.debt = 0;
+  addLog(s, `🏦 Pagaste $${Math.round(pay).toLocaleString("es-AR")} de deuda.${s.debt === 0 ? " ¡Sin deuda!" : ""}`, "good");
+  return null;
+}
+
+export function sellCompany(s: GameState): string | null {
+  const d = derive(s);
+  if (d.sellOffer <= 0) return "Nadie compra una startup sin producto.";
+  s.exitAmount = (d.sellOffer * s.equity) / 100;
+  s.gameOver = "acquired";
+  addLog(s, `🏦 Vendiste ${s.startupName} por $${Math.round(d.sellOffer).toLocaleString("es-AR")}. Tu parte: $${Math.round(s.exitAmount).toLocaleString("es-AR")}.`, "good");
+  return null;
+}
+
+export function applyRename(s: GameState, name: string | null) {
+  s.pendingRename = false;
+  const clean = (name ?? "").trim().slice(0, 24);
+  if (clean && clean !== s.startupName) {
+    addLog(s, `🎨 ${s.startupName} ahora se llama ${clean}.`, "good");
+    s.startupName = clean;
+  } else {
+    addLog(s, `🎨 Rebranding: mismo nombre, logo nuevo. Hype igual.`, "info");
+  }
+}
+
+/** Completa campos que faltan en partidas guardadas con versiones anteriores. */
+export function migrate(s: GameState): GameState {
+  s.customFeatures ??= 0;
+  s.rebrands ??= 0;
+  s.debt ??= 0;
+  s.pendingRename ??= false;
+  s.exitAmount ??= 0;
+  s.portfolio ??= [];
+  s.achievements ??= [];
+  return s;
 }
 
 export function investOut(s: GameState, amount: number, target: { id: string; name: string; valuation: number; mrr: number }): string | null {

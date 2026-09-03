@@ -9,7 +9,7 @@ import { MoneyPanel } from "@/components/panels/MoneyPanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { applyRename, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { createPost } from "@/lib/storage";
@@ -30,6 +30,7 @@ export function GameShell() {
   const [tab, setTab] = useState<Tab>("office");
   const [menu, setMenu] = useState(false);
   const [offlineDismissed, setOfflineDismissed] = useState(false);
+  const [newName, setNewName] = useState("");
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -132,6 +133,18 @@ export function GameShell() {
         </div>
       )}
 
+      {state.cash < 0 && !state.gameOver && tab !== "money" && (
+        <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border-2 border-red bg-red/10 px-3 py-2 text-sm">
+          <span>🚨</span>
+          <span className="flex-1">
+            Estás en rojo: <b>{state.bankruptDays}/12 días</b>. El banco presta hasta {money(d.loanCapacity)}.
+          </span>
+          <button onClick={() => setTab("money")} className="btn bg-red border-ink px-2.5 py-1 text-xs text-white">
+            Pedir préstamo
+          </button>
+        </div>
+      )}
+
       {/* body */}
       <main className="flex-1 px-3 py-3 pb-24 lg:pb-6">
         <div className="lg:grid lg:grid-cols-2 lg:gap-4">
@@ -183,6 +196,26 @@ export function GameShell() {
         </Modal>
       )}
 
+      {/* rebranding: nombre nuevo */}
+      {state.pendingRename && !state.gameOver && (
+        <Modal>
+          <div className="mb-1 text-4xl">🎨</div>
+          <h2 className="mb-1 text-xl font-black">Rebranding terminado</h2>
+          <p className="mb-3 text-sm text-ink/70">Logo nuevo, tipografía nueva. ¿Cambiás el nombre también?</p>
+          <div className="mb-3 flex gap-2">
+            <input value={newName} onChange={(e) => setNewName(e.target.value.slice(0, 24))} placeholder={state.startupName} className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-base font-bold outline-none focus:border-indigo" />
+            <Btn variant="ghost" onClick={() => setNewName(randomStartupName())} aria-label="Nombre al azar">
+              🎲
+            </Btn>
+          </div>
+          <div className="flex gap-2">
+            <Btn className="flex-1" onClick={() => { game.mutate((s) => applyRename(s, newName)); setNewName(""); }}>
+              {newName.trim() ? `Ahora somos ${newName.trim()}` : "Mantener el nombre"}
+            </Btn>
+          </div>
+        </Modal>
+      )}
+
       {/* game over */}
       {state.gameOver && (
         <Modal>
@@ -191,7 +224,7 @@ export function GameShell() {
           <p className="mb-3 text-sm text-ink/70">
             {state.gameOver === "bankrupt"
               ? `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`
-              : `Tu ${state.equity}% de ${state.startupName} vale ${money((d.valuation * state.equity) / 100)}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
+              : `Cobraste ${money(state.exitAmount || (d.valuation * state.equity) / 100)} por tu ${state.equity}% de ${state.startupName}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
           </p>
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup

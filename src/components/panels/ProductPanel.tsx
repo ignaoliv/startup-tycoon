@@ -1,13 +1,14 @@
 "use client";
 import { Bar, Card, Pill } from "@/components/ui";
-import { FEATURES } from "@/lib/game/data";
-import { featureAvailable, setFeature } from "@/lib/game/engine";
+import { FEATURES, NEW_FEATURE_ID, REBRAND_ID } from "@/lib/game/data";
+import { featureAvailable, getFeature, setFeature } from "@/lib/game/engine";
 import type { Game } from "@/hooks/useGame";
 
 export function ProductPanel({ game }: { game: Game }) {
   const s = game.state!;
   const d = game.derived!;
-  const cur = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
+  const cur = s.currentFeature ? getFeature(s, s.currentFeature) : null;
+  const repeatables = [NEW_FEATURE_ID, REBRAND_ID].map((id) => getFeature(s, id));
 
   return (
     <div className="space-y-3">
@@ -29,6 +30,47 @@ export function ProductPanel({ game }: { game: Game }) {
         ) : (
           <p className="text-sm text-ink/60">Nada. Elegí algo abajo.</p>
         )}
+      </Card>
+
+      <Card title="Siempre disponibles">
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          {repeatables.map((f) => {
+            const active = s.currentFeature === f.id;
+            const avail = featureAvailable(s, f.id);
+            return (
+              <li key={f.id}>
+                <button disabled={!avail} onClick={() => game.mutate((st) => setFeature(st, f.id))} className={`w-full rounded-xl border-2 p-2.5 text-left transition ${active ? "border-indigo bg-indigo/10" : !avail ? "border-ink/10 bg-ink/5 opacity-50" : "border-amber bg-amber/10 hover:border-indigo"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-black">
+                      {f.icon} {f.name}
+                    </span>
+                    <span className="text-[10px] font-bold text-ink/50">{active ? "🔨" : !avail ? "🔒" : `${f.cost} pts`}</span>
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-ink/60">{f.desc}</div>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {f.id === NEW_FEATURE_ID && (
+                      <>
+                        <Pill tone="good">+8% crecimiento</Pill>
+                        <Pill tone="amber">+$0.15 ARPU</Pill>
+                        <Pill>+1 calidad</Pill>
+                        <Pill tone="bad">+8 hype</Pill>
+                        <Pill tone="indigo">♾️ infinito · {s.customFeatures} hechas</Pill>
+                      </>
+                    )}
+                    {f.id === REBRAND_ID && (
+                      <>
+                        <Pill tone="bad">+35 hype</Pill>
+                        <Pill>+5 calidad</Pill>
+                        <Pill tone="indigo">nombre nuevo</Pill>
+                        <Pill>-3% usuarios</Pill>
+                      </>
+                    )}
+                  </div>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
       </Card>
 
       <Card title="Roadmap">

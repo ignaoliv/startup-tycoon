@@ -129,6 +129,11 @@ export interface GameState {
   stats: { totalRevenue: number; peakUsers: number; raised: number; hires: number };
   achievements: string[];
   portfolio: PortfolioEntry[];
+  customFeatures: number; // features "nuevas" repetibles completadas
+  rebrands: number;
+  debt: number; // deuda con el banco
+  pendingRename: boolean; // rebranding terminado, falta elegir nombre
+  exitAmount: number; // lo que cobraste al vender / IPO
   lastTickAt: number;
   speed: Speed;
   nextId: number;
@@ -155,4 +160,9 @@ export interface Derived {
   valuation: number;
   capacity: number;
   featureDaysLeft: number | null;
+  loanRate: number; // mensual
+  loanCapacity: number; // cuánto más te presta el banco
+  debtInterestDay: number;
+  debtPaymentDay: number;
+  sellOffer: number; // oferta por el 100% de la empresa
 }

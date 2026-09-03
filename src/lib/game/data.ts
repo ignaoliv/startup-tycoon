@@ -47,7 +47,12 @@ export const SECTORS: SectorDef[] = [
   { id: "ai", name: "Agentes IA", icon: "🤖", desc: "Todos quieren invertir. Los tokens salen carísimos.", growth: 0.25, arpu: 0.5, tam: 12_000_000 },
 ];
 
+export const NEW_FEATURE_ID = "new-feature";
+export const REBRAND_ID = "rebranding";
+export const CUSTOM_FEATURE_NAMES = ["Integración con Slack", "Exportar a Excel", "Widget para Notion", "Modo offline", "Comandos por voz", "Plantillas", "Dashboard de equipo", "Notificaciones push", "Búsqueda con IA", "Atajos de teclado", "Import desde CSV", "Roles y permisos", "Firma digital", "Chat en vivo", "Automatizaciones", "Extensión de Chrome", "Resumen semanal", "Integración con WhatsApp", "Gamificación", "Login con passkeys", "Modo presentación", "Comentarios", "Historial de versiones", "Etiquetas inteligentes", "Calendario", "Webhooks", "Traducción automática", "Modo zen"];
+
 export const FEATURES: FeatureDef[] = [
+  { id: "prd", name: "PRD", icon: "📝", desc: "Escribir qué vas a construir y para quién. Sin PRD el equipo construye a ciegas: -35% crecimiento.", cost: 12, effects: { quality: 5 } },
   { id: "mvp", name: "MVP de un finde", icon: "🚀", desc: "Un prompt, un deploy. Sin producto no hay usuarios.", cost: 8, effects: { quality: 20, growth: 1 } },
   { id: "landing", name: "Landing con IA", icon: "🌐", desc: "Generada en 5 minutos. Dice 'revolucionario' tres veces.", cost: 30, requires: ["mvp"], effects: { growth: 0.3, hype: 10 } },
   { id: "auth", name: "Auth de verdad", icon: "🔐", desc: "Resulta que cualquiera podía ver los datos de cualquiera.", cost: 42, requires: ["mvp"], effects: { churn: 0.004, quality: 10 } },
@@ -214,7 +219,7 @@ export const EVENTS: GameEventDef[] = [
     minDay: 120,
     minUsers: 3000,
     choices: [
-      { label: "Vender y retirarse", desc: "Fin del juego (exit)", apply: (s) => { s.gameOver = "acquired"; return "¡Exit! Te compraron. A la playa."; } },
+      { label: "Vender y retirarse", desc: "Fin del juego (exit)", apply: (s) => { s.gameOver = "acquired"; s.exitAmount = ((s.users * 8 + s.cash) * 1.5 * s.equity) / 100; return "¡Exit! Te compraron. A la playa."; } },
       { label: "Seguir construyendo", desc: "+hype por la noticia", apply: (s) => { s.hype = Math.min(100, s.hype + 20); return "Rechazaste la oferta. Los inversores aplauden (y sudan)."; } },
     ],
   },
