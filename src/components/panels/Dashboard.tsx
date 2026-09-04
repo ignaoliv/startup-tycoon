@@ -15,7 +15,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const tips: { text: string; tab: string }[] = [];
   if (s.events.length > 0) tips.push({ text: `Tenés ${s.events.length} decisión${s.events.length > 1 ? "es" : ""} pendiente${s.events.length > 1 ? "s" : ""}. Si no decidís, pasa lo pasivo.`, tab: "office" });
   if (s.burnout > 70) tips.push({ text: "Estás al borde del burnout. Cortá el crunch o comé algo.", tab: "team" });
-  if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). El banco te presta hasta ${moneyShort(d.loanCapacity)}.`, tab: "money" });
+  if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). Recortá gente, apagá ads o levantá una ronda.`, tab: "money" });
   for (const ex of d.execs) if (!ex.hired && ex.neededWhy) tips.push({ text: `Necesitás un ${EXECS.find((x) => x.role === ex.role)!.name}: ${ex.neededWhy}`, tab: "team" });
   if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
   if (s.done.includes("mvp") && !s.done.includes("prd")) tips.push({ text: "Sin PRD el equipo construye a ciegas: -35% crecimiento. Escribilo, es barato.", tab: "product" });
@@ -134,10 +134,6 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
       </Card>
     </div>
   );
-}
-
-function moneyShort(n: number) {
-  return money(n);
 }
 
 function Row({ l, v, tone, bold }: { l: string; v: string; tone?: "good" | "bad"; bold?: boolean }) {

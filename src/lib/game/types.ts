@@ -203,7 +203,6 @@ export interface GameState {
   buildInPublic: boolean; // #buildinpublic en el perfil: suma fijo todos los días
   customFeatures: number; // features "nuevas" repetibles completadas
   rebrands: number;
-  debt: number; // deuda con el banco
   pendingRename: boolean; // rebranding terminado, falta elegir nombre
   exitAmount: number; // lo que cobraste al vender / IPO
   lastTickAt: number;
@@ -233,10 +232,6 @@ export interface Derived {
   valuation: number;
   capacity: number;
   featureDaysLeft: number | null;
-  loanRate: number; // mensual
-  loanCapacity: number; // cuánto más te presta el banco
-  debtInterestDay: number;
-  debtPaymentDay: number;
   sellOffer: number; // oferta por el 100% de la empresa
   hypeDecayDay: number; // cuánto baja el hype por día (negativo = sube)
   followersDay: number;

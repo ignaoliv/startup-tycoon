@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { useState } from "react";
-import { ACHIEVEMENT_DEFS, ipo, raiseRound, repayLoan, sellCompany, takeLoan, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, ipo, raiseRound, sellCompany, upgradeOffice } from "@/lib/game/engine";
 import { IPO_VALUATION, OFFICES, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -15,7 +15,6 @@ export function MoneyPanel({ game }: { game: Game }) {
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
   const [confirmSell, setConfirmSell] = useState(false);
-  const loanOptions = [0.25, 0.5, 1].map((f) => Math.round((d.loanCapacity * f) / 100) * 100).filter((v, i, a) => v > 0 && a.indexOf(v) === i);
   const myExit = (d.sellOffer * s.equity) / 100;
 
   return (
@@ -25,57 +24,19 @@ export function MoneyPanel({ game }: { game: Game }) {
           <div className={`text-2xl font-black tabular-nums ${s.cash < 0 ? "text-red" : ""}`}>{money(s.cash)}</div>
           {runway !== null && <Pill tone={runway < 30 ? "bad" : "amber"}>{runway} días de runway</Pill>}
         </div>
+        {s.cash < 0 && (
+          <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">
+            Estás en rojo hace {s.bankruptDays} días. A los 12 cerrás. Recortá gente, apagá los ads, vendé o levantá una ronda.
+          </div>
+        )}
         <ul className="space-y-1 text-xs">
           <Li l="Ingresos (MRR)" v={money(d.mrr, { sign: true }) + "/mes"} tone="good" />
           <Li l="Sueldos" v={money(-d.salariesMonth) + "/mes"} tone="bad" />
           <Li l="Alquiler" v={money(-d.rentMonth) + "/mes"} tone="bad" />
           <Li l="Servidores" v={money(-d.serverMonth) + "/mes"} tone="bad" />
           {d.adsCostDay > 0 && <Li l="Ads" v={money(-d.adsCostDay * 30) + "/mes"} tone="bad" />}
-          {s.debt > 0 && <Li l="Intereses del banco" v={money(-d.debtInterestDay * 30) + "/mes"} tone="bad" />}
           <Li l="Neto" v={money(d.netDay * 30, { sign: d.netDay >= 0 }) + "/mes"} tone={d.netDay >= 0 ? "good" : "bad"} bold />
         </ul>
-      </Card>
-
-      <Card title="Banco" className={s.cash < 0 ? "!border-red" : ""}>
-        {s.cash < 0 && (
-          <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">
-            Estás en rojo hace {s.bankruptDays} días. A los 12 cerrás. Un préstamo te saca del rojo ya.
-          </div>
-        )}
-        <div className="mb-2 flex items-end justify-between">
-          <div>
-            <div className="text-[10px] font-bold uppercase text-ink/50">Deuda</div>
-            <div className={`text-xl font-black tabular-nums ${s.debt > 0 ? "text-red" : ""}`}>{money(s.debt)}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-[10px] font-bold uppercase text-ink/50">Tasa</div>
-            <div className="text-xl font-black tabular-nums">{(d.loanRate * 100).toFixed(1)}%/mes</div>
-          </div>
-        </div>
-        <div className="mb-2 text-[11px] text-ink/50">
-          El banco te presta hasta <b>{money(d.loanCapacity)}</b> más (35% de la valuación). Cobra el interés todos los días y una cuota mínima de {money(d.debtPaymentDay * 30)}/mes. La tasa baja a medida que levantás rondas.
-        </div>
-        {loanOptions.length > 0 ? (
-          <div className="flex gap-2">
-            {loanOptions.map((v) => (
-              <Btn key={v} size="sm" variant={s.cash < 0 ? "danger" : "ghost"} className="flex-1" onClick={() => game.mutate((st) => takeLoan(st, v))}>
-                🏦 Pedir {money(v)}
-              </Btn>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-ink/50">El banco no te presta más por ahora. Subí la valuación o pagá deuda.</div>
-        )}
-        {s.debt > 0 && (
-          <div className="mt-2 flex gap-2">
-            <Btn size="sm" variant="green" className="flex-1" disabled={s.cash <= 0} onClick={() => game.mutate((st) => repayLoan(st, Math.min(st.debt, Math.max(0, st.cash) * 0.5)))}>
-              Pagar la mitad de la caja
-            </Btn>
-            <Btn size="sm" variant="green" className="flex-1" disabled={s.cash < s.debt} onClick={() => game.mutate((st) => repayLoan(st, st.debt))}>
-              Cancelar toda la deuda
-            </Btn>
-          </div>
-        )}
       </Card>
 
       <Card title="Inversores">

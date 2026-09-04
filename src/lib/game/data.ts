@@ -50,8 +50,8 @@ export const EXECS: ExecDef[] = [
   {
     role: "cfo", name: "CFO", icon: "🧑‍💼", baseSalary: 11000, equity: 1,
     desc: "Desde Seed los inversores quieren ver números serios. Y alguien que frene el gasto.",
-    bonus: "-8% costos, mejor tasa en el banco",
-    penalty: "Sin CFO cuando hace falta: +15% costos, +2% de tasa, y los VCs no te dan la Serie A",
+    bonus: "-8% costos",
+    penalty: "Sin CFO cuando hace falta: +15% costos y los VCs no te dan la Serie A",
     needed: (s) => (s.stage >= 2 ? "Después del Seed los inversores exigen un CFO para seguir." : s.employees.length >= 12 ? "Con 12 personas nadie sabe adónde va la plata." : null),
   },
   {

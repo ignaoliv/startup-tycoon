@@ -91,7 +91,6 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     buildInPublic: false,
     customFeatures: 0,
     rebrands: 0,
-    debt: 0,
     pendingRename: false,
     exitAmount: 0,
     lastTickAt: Date.now(),
@@ -191,13 +190,8 @@ export function derive(s: GameState): Derived {
   const churnDay = s.users * churnRate;
   const stage = STAGES[s.stage];
   const grossValuation = Math.max(0, mrr * 12 * stage.multiple + s.users * 8 + Math.max(0, s.cash) * 0.5 + (s.done.length + s.customFeatures) * 5000);
-  const valuation = Math.max(0, grossValuation - s.debt);
+  const valuation = grossValuation;
   const featureDaysLeft = s.currentFeature ? (devPts > 0 ? Math.ceil((getFeature(s, s.currentFeature).cost - s.featureProgress) / devPts) : null) : null;
-  // banco: tasa mensual según etapa, capacidad según valuación
-  const loanRate = ([0.05, 0.04, 0.03, 0.025, 0.02, 0.015, 0.015][s.stage] ?? 0.02) + (needs("cfo") ? 0.02 : 0) - (has("cfo") ? 0.005 : 0);
-  const loanCapacity = Math.max(0, Math.max(25000, grossValuation * 0.35) - s.debt);
-  const debtInterestDay = (s.debt * loanRate) / 30;
-  const debtPaymentDay = s.debt > 0 ? Math.max(s.debt / 180, Math.min(s.debt, 50)) : 0;
   const sellOffer = hasMvp ? valuation * (0.7 + s.hype / 500) : 0;
   const execs: ExecStatus[] = EXECS.map((e) => {
     const salary = execSalary(e.role, grossValuation);
@@ -205,8 +199,8 @@ export function derive(s: GameState): Derived {
   });
   return {
     devPts, qaPts, mktPts, salesPts, designPts, socialPts, opsPts, quality, arpu, mrr, revenueDay, costDay,
-    salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay - debtInterestDay, newUsersDay, churnDay, valuation,
-    capacity: office.capacity, featureDaysLeft, loanRate, loanCapacity, debtInterestDay, debtPaymentDay, sellOffer,
+    salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay, newUsersDay, churnDay, valuation,
+    capacity: office.capacity, featureDaysLeft, sellOffer,
     hypeDecayDay, followersDay, organicUsersDay, adsCostDay, adsUsersDay, execs, overhead,
     incidentChance: Math.min(0.06, s.bugs * 0.0015), effectCostMul: fx0.cost, effectRevenueMul: fx0.revenue, effectPtsMul: fx0.pts,
   };
@@ -308,17 +302,6 @@ export function tick(s: GameState, quiet = false) {
   s.cash += d.revenueDay - d.costDay;
   s.stats.totalRevenue += d.revenueDay;
 
-  // banco: interés + cuota mínima
-  if (s.debt > 0) {
-    s.debt += d.debtInterestDay;
-    const pay = Math.min(s.debt, d.debtPaymentDay);
-    s.cash -= pay;
-    s.debt -= pay;
-    if (s.debt < 1) {
-      s.debt = 0;
-      addLog(s, "🏦 Terminaste de pagar el préstamo.", "good");
-    }
-  }
 
   // portfolio (inversiones en otras startups)
   for (const p of s.portfolio) {
@@ -350,7 +333,7 @@ export function tick(s: GameState, quiet = false) {
   // quiebra
   if (s.cash < 0) {
     s.bankruptDays += 1;
-    if (s.bankruptDays === 1) addLog(s, "Estás en rojo. Tenés 12 días para arreglarlo o cerrás. El banco presta, con interés.", "bad");
+    if (s.bankruptDays === 1) addLog(s, "Estás en rojo. Tenés 12 días para arreglarlo o cerrás: recortá gente, apagá ads o levantá una ronda.", "bad");
     if (s.bankruptDays >= 12) {
       s.gameOver = "bankrupt";
       addLog(s, "💀 Sin plata y sin inversores. Cerró la startup.", "bad");
@@ -622,27 +605,6 @@ export function asado(s: GameState): string | null {
   return null;
 }
 
-export function takeLoan(s: GameState, amount: number): string | null {
-  const d = derive(s);
-  if (amount <= 0) return "Monto inválido.";
-  if (amount > d.loanCapacity + 1) return `El banco te presta hasta $${Math.round(d.loanCapacity).toLocaleString("es-AR")} más.`;
-  s.debt += amount;
-  s.cash += amount;
-  s.bankruptDays = 0;
-  addLog(s, `🏦 Préstamo de $${Math.round(amount).toLocaleString("es-AR")} al ${(d.loanRate * 100).toFixed(1)}% mensual. Deuda total: $${Math.round(s.debt).toLocaleString("es-AR")}.`, "info");
-  return null;
-}
-
-export function repayLoan(s: GameState, amount: number): string | null {
-  const pay = Math.min(amount, s.debt, Math.max(0, s.cash));
-  if (pay <= 0) return "No tenés caja para pagar.";
-  s.cash -= pay;
-  s.debt -= pay;
-  if (s.debt < 1) s.debt = 0;
-  addLog(s, `🏦 Pagaste $${Math.round(pay).toLocaleString("es-AR")} de deuda.${s.debt === 0 ? " ¡Sin deuda!" : ""}`, "good");
-  return null;
-}
-
 export function sellCompany(s: GameState): string | null {
   const d = derive(s);
   if (d.sellOffer <= 0) return "Nadie compra una startup sin producto.";
@@ -681,7 +643,6 @@ export function migrate(s: GameState): GameState {
   }
   s.customFeatures ??= 0;
   s.rebrands ??= 0;
-  s.debt ??= 0;
   s.pendingRename ??= false;
   s.exitAmount ??= 0;
   s.portfolio ??= [];

@@ -1,5 +1,5 @@
 // Simulación headless de balance: bot simple que juega N días.
-import { campaignStatus, derive, hire, hireExec, newGame, raiseRound, resolveEvent, runCampaign, setAdsLevel, setFeature, takeLoan, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { campaignStatus, derive, hire, hireExec, newGame, raiseRound, resolveEvent, runCampaign, setAdsLevel, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { CAMPAIGNS } from "../src/lib/game/data";
 import { FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
@@ -23,8 +23,6 @@ function bot(s: GameState) {
   for (const ex of d.execs) if (!ex.hired && ex.neededWhy && s.cash > ex.fee + ex.salary * 3) hireExec(s, ex.role);
   // levantar ronda si se puede
   raiseRound(s);
-  // en rojo: préstamo por la mitad de lo que presta el banco
-  if (s.cash < 0 && d.loanCapacity > 1000) takeLoan(s, Math.round(d.loanCapacity * 0.5));
   // mudarse si lleno y hay plata sobrante (2 meses de runway)
   const cap = OFFICES[s.office].capacity;
   const nextOffice = OFFICES[s.office + 1];
@@ -58,7 +56,7 @@ for (let i = 0; i < DAYS; i++) {
   if (s.gameOver) { console.log(`GAME OVER ${s.gameOver} día ${s.day}`); break; }
   if (marks.includes(s.day)) {
     const d = derive(s);
-    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} debt=${Math.round(s.debt)} execs=${s.employees.filter((e) => ["cto","cmo","cfo","coo"].includes(e.role)).map((e) => e.role).join(",") || "-"} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} fol=${Math.round(s.followers)} ads=${s.adsLevel} done=${s.done.length}`);
+    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} execs=${s.employees.filter((e) => ["cto","cmo","cfo","coo"].includes(e.role)).map((e) => e.role).join(",") || "-"} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} fol=${Math.round(s.followers)} ads=${s.adsLevel} done=${s.done.length}`);
   }
 }
 console.log("log tail:", s.log.slice(0, 8).map((l) => `d${l.day} ${l.text}`).join(" | "));

@@ -180,10 +180,10 @@ export function GameShell() {
         <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border-2 border-red bg-red/10 px-3 py-2 text-sm">
           <span>🚨</span>
           <span className="flex-1">
-            Estás en rojo: <b>{state.bankruptDays}/12 días</b>. El banco presta hasta {money(d.loanCapacity)}.
+            Estás en rojo: <b>{state.bankruptDays}/12 días</b>. Recortá gastos o levantá una ronda.
           </span>
           <button onClick={() => setTab("money")} className="btn bg-red border-ink px-2.5 py-1 text-xs text-white">
-            Pedir préstamo
+            Ver plata
           </button>
         </div>
       )}
