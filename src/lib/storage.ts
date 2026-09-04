@@ -171,6 +171,65 @@ export async function saveCloud(sb: SupabaseClient, userId: string, s: GameState
   if (error) throw error;
 }
 
+export type RunRow = {
+  name: string; sector: string; idea: string; ended_as: string; day: number;
+  valuation: number; peak_users: number; mrr: number; equity: number;
+  team_size: number; stage: number; raised: number; features: number;
+};
+
+/** Resumen de una partida terminada, listo para guardar. */
+export function buildRun(s: GameState, d: Derived, endedAs: string): RunRow {
+  return {
+    name: s.startupName,
+    sector: s.sector,
+    idea: s.idea,
+    ended_as: endedAs,
+    day: s.day,
+    valuation: Math.round(d.valuation),
+    peak_users: Math.round(s.stats.peakUsers),
+    mrr: Math.round(d.mrr),
+    equity: s.equity,
+    team_size: s.employees.length,
+    stage: s.stage,
+    raised: Math.round(s.stats.raised),
+    features: s.done.length,
+  };
+}
+
+/** Guarda la partida terminada en el historial. Una sola vez por partida. */
+export async function saveRun(sb: SupabaseClient, row: RunRow, userId: string | null, anonId: string) {
+  const { error } = await sb.from("runs").insert({ ...row, user_id: userId, anon_id: anonId });
+  if (error) throw error;
+}
+
+/**
+ * Partida terminada sin sesión: queda esperando en el navegador. Si el jugador
+ * entra con Google desde el cartel del final, se guarda a su nombre; si no,
+ * se guarda anónima la próxima vez que abra el juego. En ningún caso se pierde.
+ */
+const PENDING_KEY = "startup-tycoon:pending-run";
+
+export function guardarRunPendiente(row: RunRow) {
+  try {
+    localStorage.setItem(PENDING_KEY, JSON.stringify(row));
+  } catch {}
+}
+
+export function leerRunPendiente(): RunRow | null {
+  try {
+    const raw = localStorage.getItem(PENDING_KEY);
+    return raw ? (JSON.parse(raw) as RunRow) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function borrarRunPendiente() {
+  try {
+    localStorage.removeItem(PENDING_KEY);
+  } catch {}
+}
+
 export async function ensureProfile(sb: SupabaseClient, userId: string, name: string) {
   await sb.from("profiles").upsert({ id: userId, display_name: name }, { onConflict: "id", ignoreDuplicates: true });
 }

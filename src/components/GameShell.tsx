@@ -9,6 +9,7 @@ import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
 import { AuthButton } from "@/components/AuthButton";
+import { signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import FeedbackModal from "@/components/FeedbackModal";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
@@ -208,6 +209,16 @@ export function GameShell() {
               ? `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`
               : `Tu ${state.equity}% de ${state.startupName} vale ${money((d.valuation * state.equity) / 100)}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
           </p>
+          {!game.userId && supabaseEnabled() && (
+            <div className="mb-3 rounded-xl border-2 border-indigo/25 bg-indigo/5 p-3 text-left">
+              <p className="mb-2 text-xs font-bold">
+                Entrá con Google y esta partida queda guardada en tu historial, con tus logros y tu puesto en el ranking.
+              </p>
+              <Btn variant="ghost" className="w-full" onClick={() => signInWithGoogle("/play")}>
+                Guardar esta partida
+              </Btn>
+            </div>
+          )}
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup
           </Btn>

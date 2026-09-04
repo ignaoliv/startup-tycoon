@@ -6,8 +6,8 @@ import { dayMs } from "@/lib/game/data";
 import { applyIncoming, applyOffline, derive, newGame, tick } from "@/lib/game/engine";
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
-import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, type IncomingAction } from "@/lib/storage";
-import { closeStaleRuns, trackRun, trackValuation } from "@/lib/analytics";
+import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, type IncomingAction } from "@/lib/storage";
+import { closeStaleRuns, playerId, trackRun, trackValuation } from "@/lib/analytics";
 import { loadTuning } from "@/lib/game/tuning";
 
 export type Mode = "local" | "cloud";
@@ -156,6 +156,32 @@ export function useGame(forceLocal: boolean) {
     return () => clearInterval(id);
   }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state, paused]);
 
+  // el historial se escribe una sola vez, cuando la partida termina.
+  // Sin sesión también se guarda (user_id null): cuenta para las estadísticas.
+  const runGuardado = useRef<string | null>(null);
+  useEffect(() => {
+    const s = ref.current;
+    if (!sb || !s || !s.gameOver || runGuardado.current === s.id) return;
+    runGuardado.current = s.id;
+    const row = buildRun(s, derive(s), s.gameOver);
+    // con sesión va derecho al historial; sin sesión espera en el navegador por
+    // si el jugador entra con Google desde el cartel del final
+    if (userId) saveRun(sb, row, userId, playerId()).catch(console.error);
+    else guardarRunPendiente(row);
+  }, [state?.gameOver, sb, userId]);
+
+  // partida que quedó esperando: se guarda a nombre del jugador si entró, o anónima
+  useEffect(() => {
+    if (!sb || !authChecked) return;
+    const row = leerRunPendiente();
+    if (!row) return;
+    borrarRunPendiente();
+    saveRun(sb, row, userId, playerId()).catch((e) => {
+      console.error(e);
+      guardarRunPendiente(row);
+    });
+  }, [sb, authChecked, userId]);
+
   // guardado local (siempre) + nube (cada 12s)
   useEffect(() => {
     const local = setInterval(() => {
@@ -251,11 +277,19 @@ export function useGame(forceLocal: boolean) {
   );
 
   const reset = useCallback(() => {
+    // abandonar una partida con recorrido también es un dato
+    const s = ref.current;
+    if (sb && s && !s.gameOver && s.day >= 10 && runGuardado.current !== s.id) {
+      runGuardado.current = s.id;
+      const row = buildRun(s, derive(s), "abandoned");
+      if (userId) saveRun(sb, row, userId, playerId()).catch(console.error);
+      else guardarRunPendiente(row);
+    }
     clearLocal(userId);
     setOfflineDays(0);
     ref.current = null;
     setStateRaw(null);
-  }, [userId]);
+  }, [userId, sb]);
 
   const setSpeed = useCallback((sp: Speed) => mutate((s) => void (s.speed = sp)), [mutate]);
 
