@@ -40,7 +40,6 @@ export function setTourDone(v: boolean) {
 
 export function Tour({ onClose, setTab }: { onClose: () => void; setTab: (t: string) => void }) {
   const [i, setI] = useState(0);
-  const [rect, setRect] = useState<DOMRect | null>(null);
   const [dontShow, setDontShow] = useState(true);
   const step = TOUR_STEPS[i];
 
@@ -48,26 +47,20 @@ export function Tour({ onClose, setTab }: { onClose: () => void; setTab: (t: str
     if (step.tab) setTab(step.tab);
   }, [step, setTab]);
 
+  // el botón real pulsa con un borde ámbar; sin cálculos de posición
   useLayoutEffect(() => {
-    const measure = () => {
-      if (!step.target) return setRect(null);
-      // el visible es el que tiene tamaño (display:none mide 0); sirve también para la nav fija de mobile
-      const el = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)).find((x) => {
-        const r = x.getBoundingClientRect();
-        return r.width > 0 && r.height > 0;
-      });
-      if (!el) return setRect(null);
-      el.scrollIntoView({ block: "nearest", inline: "nearest" });
-      const r = el.getBoundingClientRect();
-      setRect(r.width > 0 ? r : null);
-    };
-    const t = setTimeout(measure, 120);
-    window.addEventListener("resize", measure);
-    window.addEventListener("scroll", measure, true);
+    const clear = () => document.querySelectorAll(".tour-pulse").forEach((el) => el.classList.remove("tour-pulse"));
+    clear();
+    if (!step.target) return;
+    const t = setTimeout(() => {
+      const els = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`));
+      for (const el of els) el.classList.add("tour-pulse");
+      const visible = els.find((x) => x.getBoundingClientRect().width > 0);
+      visible?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    }, 150);
     return () => {
       clearTimeout(t);
-      window.removeEventListener("resize", measure);
-      window.removeEventListener("scroll", measure, true);
+      clear();
     };
   }, [step]);
 
@@ -76,22 +69,11 @@ export function Tour({ onClose, setTab }: { onClose: () => void; setTab: (t: str
     onClose();
   };
   const last = i === TOUR_STEPS.length - 1;
-  const pad = 6;
-  // tooltip abajo del target si hay lugar, si no arriba
-  const below = rect ? rect.bottom + 12 : null;
-  const placeBelow = rect ? rect.bottom + 220 < window.innerHeight : true;
 
   return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-label="Tutorial">
-      {rect ? (
-        <div className="absolute rounded-xl ring-4 ring-amber transition-all duration-200" style={{ left: rect.left - pad, top: rect.top - pad, width: rect.width + pad * 2, height: rect.height + pad * 2, boxShadow: "0 0 0 9999px rgba(31,27,22,0.6)" }} />
-      ) : (
-        <div className="absolute inset-0 bg-ink/60" />
-      )}
-      <div
-        className="pop absolute left-1/2 w-[calc(100%-24px)] max-w-sm -translate-x-1/2 rounded-2xl border-2 border-ink/15 bg-white p-4 shadow-xl"
-        style={rect ? (placeBelow ? { top: below! } : { bottom: window.innerHeight - rect.top + 12 }) : { top: "50%", transform: "translate(-50%, -50%)" }}
-      >
+    <div className="fixed inset-0 z-40" role="dialog" aria-label="Tutorial">
+      <div className="absolute inset-0 bg-ink/35" />
+      <div className="pop absolute inset-x-3 bottom-20 mx-auto max-w-sm rounded-2xl border-2 border-ink/15 bg-white p-4 shadow-xl lg:bottom-auto lg:top-1/2 lg:-translate-y-1/2">
         <div className="mb-1 flex items-center justify-between">
           <div className="text-3xl">{step.icon}</div>
           <div className="text-[11px] font-bold text-ink/40">
@@ -100,6 +82,7 @@ export function Tour({ onClose, setTab }: { onClose: () => void; setTab: (t: str
         </div>
         <h3 className="text-lg font-black">{step.title}</h3>
         <p className="mt-1 text-sm text-ink/70">{step.text}</p>
+        {step.target && <p className="mt-1 text-[11px] font-semibold text-ink/70">👆 Mirá el botón que parpadea.</p>}
         <div className="mt-3 flex items-center justify-between gap-2">
           <label className="flex items-center gap-1.5 text-[11px] font-semibold text-ink/60">
             <input type="checkbox" checked={dontShow} onChange={(e) => setDontShow(e.target.checked)} />
