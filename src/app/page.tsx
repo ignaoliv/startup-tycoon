@@ -27,12 +27,7 @@ export default function Home() {
       {/* barra superior */}
       <header className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
         <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} priority className="h-8 w-auto sm:h-11" />
-        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-          <AuthButton />
-          <Link href={PLAY_HREF} className="btn shrink-0 whitespace-nowrap border-ink bg-amber px-2.5 py-2 text-[13px] text-ink sm:px-5 sm:text-base">
-            <span aria-hidden>⭐</span> Crear startup
-          </Link>
-        </div>
+        <AuthButton />
       </header>
 
       {/* hero */}

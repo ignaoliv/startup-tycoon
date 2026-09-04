@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
@@ -9,6 +8,7 @@ import { MoneyPanel } from "@/components/panels/MoneyPanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
+import { AuthButton } from "@/components/AuthButton";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
@@ -102,6 +102,7 @@ export function GameShell() {
               </button>
             ))}
           </div>
+          <AuthButton compact />
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className="rounded-xl border-2 border-ink/15 bg-white px-2 py-1 text-lg" aria-label="Menú">
               ☰
@@ -110,12 +111,6 @@ export function GameShell() {
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
                 <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
-                {game.mode === "cloud" && <MenuItem onClick={game.signOut}>🚪 Cerrar sesión</MenuItem>}
-                {game.mode === "local" && (
-                  <Link href="/" className="block rounded-lg px-3 py-2 hover:bg-ink/5">
-                    🔐 Entrar con Google
-                  </Link>
-                )}
                 <MenuItem onClick={() => { setMenu(false); setConfirmReset(true); }}>🗑️ Empezar de nuevo</MenuItem>
               </div>
             )}

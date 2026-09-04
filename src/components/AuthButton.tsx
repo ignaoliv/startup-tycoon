@@ -15,7 +15,7 @@ function GoogleIcon() {
 }
 
 /** Botón de sesión de la landing. Entrar es opcional: sirve para el ranking. */
-export function AuthButton() {
+export function AuthButton({ compact = false }: { compact?: boolean } = {}) {
   const [user, setUser] = useState<User | null>(null);
   const [listo, setListo] = useState(false);
   const [abierto, setAbierto] = useState(false);
@@ -55,25 +55,25 @@ export function AuthButton() {
           if (err) setYendo(false);
         }}
         disabled={yendo}
-        className="btn shrink-0 border-ink/25 bg-white px-2.5 py-2 text-[13px] text-ink disabled:opacity-60 sm:px-4 sm:text-sm"
+        className={`btn shrink-0 border-ink/25 bg-white text-ink disabled:opacity-60 ${compact ? "px-2 py-1.5 text-[13px]" : "px-2.5 py-2 text-[13px] sm:px-4 sm:text-sm"}`}
+        title="Entrar con Google"
       >
         <GoogleIcon />
-        <span className="hidden sm:inline">{yendo ? "Abriendo…" : "Entrar con Google"}</span>
-        <span className="sm:hidden">Entrar</span>
+        {compact ? <span className="hidden sm:inline">Entrar</span> : <><span className="hidden sm:inline">{yendo ? "Abriendo…" : "Entrar con Google"}</span><span className="sm:hidden">Entrar</span></>}
       </button>
     );
   }
 
   return (
     <div className="relative shrink-0">
-      <button onClick={() => setAbierto((v) => !v)} className="btn border-ink/25 bg-white px-2 py-1.5 text-[13px] sm:px-3 sm:text-sm">
+      <button onClick={() => setAbierto((v) => !v)} className={`btn border-ink/25 bg-white text-[13px] ${compact ? "px-1.5 py-1" : "px-2 py-1.5 sm:px-3 sm:text-sm"}`} title={nombre}>
         {avatar ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={avatar} alt="" width={22} height={22} className="rounded-full" />
         ) : (
           <span aria-hidden>👤</span>
         )}
-        <span className="hidden max-w-28 truncate sm:inline">{nombre.split(" ")[0]}</span>
+        {!compact && <span className="hidden max-w-28 truncate sm:inline">{nombre.split(" ")[0]}</span>}
       </button>
       {abierto && (
         <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
