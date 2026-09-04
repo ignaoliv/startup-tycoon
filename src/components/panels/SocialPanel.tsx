@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import { signInWithGoogle } from "@/lib/supabase/client";
 import { OfficeView } from "@/components/OfficeView";
 import { Btn, Card, Pill } from "@/components/ui";
 import { AI_LEVEL_NAMES, LEVEL_NAMES, OFFICES, ROLES, SECTORS, STAGES } from "@/lib/game/data";
@@ -20,11 +20,16 @@ export function SocialPanel({ game }: { game: Game }) {
     return (
       <Card title="Social">
         <p className="mb-3 text-sm">
-          Estás jugando en <b>modo local</b>. Para ver el ranking, el muro y meterte en las startups de otros, entrá con Google.
+          Estás jugando <b>sin cuenta</b>, así que la partida se guarda solo en este dispositivo. Si entrás con Google, tu startup entra al ranking, podés escribir en el muro y meterte en las startups de otros. No perdés nada de lo que llevás jugado.
         </p>
-        <Link href="/" className="btn bg-indigo px-4 py-2 text-sm text-white border-ink">
+        <Btn
+          onClick={async () => {
+            const err = await signInWithGoogle("/play");
+            if (err) game.notify(err, "bad");
+          }}
+        >
           Entrar con Google
-        </Link>
+        </Btn>
       </Card>
     );
   }

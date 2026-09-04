@@ -20,7 +20,6 @@ export interface Toast {
 
 export function useGame(forceLocal: boolean) {
   const sb = useMemo<SupabaseClient | null>(() => (forceLocal ? null : getSupabase()), [forceLocal]);
-  const mode: Mode = sb ? "cloud" : "local";
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(!sb);
   const [state, setStateRaw] = useState<GameState | null>(null);
@@ -90,7 +89,6 @@ export function useGame(forceLocal: boolean) {
   // carga inicial
   useEffect(() => {
     if (!authChecked) return;
-    if (sb && !userId) return; // sin sesión: `loaded` se deriva abajo
     let active = true;
     (async () => {
       let s: GameState | null = null;
@@ -101,7 +99,8 @@ export function useGame(forceLocal: boolean) {
           console.error(e);
           notify("No pude leer tu partida de la nube. Uso la copia local.", "bad");
         }
-        const local = loadLocal(userId);
+        // si venías jugando sin cuenta, esa partida se sube al entrar
+        const local = loadLocal(userId) ?? loadLocal(null);
         if (!s || (local && local.day > s.day)) s = local;
         if (user) {
           const meta = user.user_metadata ?? {};
@@ -261,7 +260,9 @@ export function useGame(forceLocal: boolean) {
   const setSpeed = useCallback((sp: Speed) => mutate((s) => void (s.speed = sp)), [mutate]);
 
   const derived: Derived | null = useMemo(() => (state ? derive(state) : null), [state]);
-  const loaded = loadedState || (authChecked && Boolean(sb) && !userId);
+  const loaded = loadedState;
+  // se puede jugar sin cuenta: si hay sesión, la partida vive en la nube
+  const mode: Mode = sb && userId ? "cloud" : "local";
 
   const signOut = useCallback(async () => {
     if (sb) await sb.auth.signOut();

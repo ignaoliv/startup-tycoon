@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AuthButton } from "@/components/AuthButton";
 
-// Por ahora se entra siempre en modo local: el login todavía no tiene pantalla.
-// Cuando esté, esto pasa a ser "/play" si Supabase está configurado.
-const PLAY_HREF = "/play?local=1";
+// Se puede jugar con o sin cuenta: la sesión solo decide dónde se guarda la partida.
+const PLAY_HREF = "/play";
 
 const STATS = [
   { icon: "💵", label: "Caja", value: "$32k", sub: "+$2.2k/mes", tone: "text-green" },
@@ -27,9 +27,12 @@ export default function Home() {
       {/* barra superior */}
       <header className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
         <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} priority className="h-8 w-auto sm:h-11" />
-        <Link href={PLAY_HREF} className="btn shrink-0 whitespace-nowrap border-ink bg-amber px-2.5 py-2 text-[13px] text-ink sm:px-5 sm:text-base">
-          <span aria-hidden>⭐</span> Crear startup
-        </Link>
+        <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <AuthButton />
+          <Link href={PLAY_HREF} className="btn shrink-0 whitespace-nowrap border-ink bg-amber px-2.5 py-2 text-[13px] text-ink sm:px-5 sm:text-base">
+            <span aria-hidden>⭐</span> Crear startup
+          </Link>
+        </div>
       </header>
 
       {/* hero */}

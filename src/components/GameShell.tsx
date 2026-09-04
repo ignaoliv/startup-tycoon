@@ -77,19 +77,6 @@ export function GameShell() {
       </div>
     );
 
-  if (game.mode === "cloud" && !game.user)
-    return (
-      <div className="flex min-h-dvh items-center justify-center p-6">
-        <Card className="max-w-sm text-center">
-          <div className="mb-2 text-4xl">🔐</div>
-          <p className="mb-4 text-sm">Tenés que entrar para jugar en la nube.</p>
-          <Link href="/" className="btn bg-indigo border-ink px-4 py-2 text-sm text-white">
-            Ir al login
-          </Link>
-        </Card>
-      </div>
-    );
-
   if (!state) return <Setup onStart={game.startNew} />;
   const d = derived!;
   const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;

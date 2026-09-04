@@ -27,7 +27,6 @@ export default async function OgImage() {
         <div style={{ position: "absolute", bottom: -190, left: -130, width: 420, height: 420, borderRadius: 999, background: "#5b5bd6", opacity: 0.16, display: "flex" }} />
 
         <div style={{ display: "flex", flexDirection: "column" }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoSrc} width={560} height={150} alt="Vibe Coding Game" />
           <div style={{ fontSize: 28, color: "#1f1b16", opacity: 0.55, marginTop: 2, marginLeft: 6 }}>vibecodingame.com</div>
         </div>
