@@ -8,7 +8,7 @@ import { SUPABASE_KEY, SUPABASE_URL, supabaseConfigured } from "./env";
  */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
-  if (!supabaseConfigured()) return response;
+  if (!supabaseConfigured()) return { response, email: null as string | null };
 
   const supabase = createServerClient(SUPABASE_URL!, SUPABASE_KEY!, {
     cookies: {
@@ -24,7 +24,7 @@ export async function updateSession(request: NextRequest) {
   });
 
   // Necesario: esto es lo que dispara el refresco del token.
-  await supabase.auth.getUser();
+  const { data } = await supabase.auth.getUser();
 
-  return response;
+  return { response, email: data.user?.email ?? null };
 }
