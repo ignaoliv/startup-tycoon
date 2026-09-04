@@ -15,6 +15,8 @@ export function sanitize(s: GameState): GameState {
     s.featureProgress = 0;
   }
   s.idea ||= IDEAS[0];
+  s.boardGoal ??= null;
+  s.boardFails ??= 0;
   s.pendingEvent ??= null;
   // planificador de eventos (partidas de versiones anteriores)
   s.pace ??= 1;

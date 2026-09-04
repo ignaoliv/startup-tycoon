@@ -72,6 +72,12 @@ export function MoneyPanel({ game }: { game: Game }) {
             </Btn>
           </>
         )}
+        {s.boardGoal && (
+          <div className={`mt-2 rounded-lg border-2 px-2 py-1.5 text-[11px] ${s.boardFails > 0 ? "border-red bg-red/10" : "border-ink/15 bg-sand/60"}`}>
+            <b>🪑 Meta del board:</b> llegar a {Math.round(s.boardGoal.users).toLocaleString("es-AR")} usuarios para el día {s.boardGoal.dueDay} (faltan {Math.max(0, s.boardGoal.dueDay - s.day)} días).
+            {s.boardFails > 0 && <span className="font-bold text-red"> Ya fallaste una: si volvés a fallar, te reemplazan.</span>}
+          </div>
+        )}
         <div className="mt-2 text-[11px] text-ink/50">
           Levantado hasta ahora: <b>{money(s.stats.raised)}</b>. Tu parte vale <b>{money((d.valuation * s.equity) / 100)}</b>.
         </div>

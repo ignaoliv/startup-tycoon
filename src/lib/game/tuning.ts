@@ -16,6 +16,13 @@ export interface Tuning {
   costOverhead: number; // extra de costo por persona de más (0.015 = +1,5% por persona)
   productivityOverhead: number; // productividad perdida por persona de más
   ipoValuation: number; // valuación necesaria para salir a bolsa
+  // --- board: después de levantar, los inversores piden crecimiento
+  boardEnabled: boolean;
+  boardFromStage: number; // desde qué ronda empieza a exigir
+  boardGrowth: number; // cuánto tenés que multiplicar los usuarios
+  boardDays: number; // en cuántos días
+  boardFailsToFire: number; // cuántas metas seguidas podés fallar antes de que te echen
+  tamMul: number; // tamaño del mercado (1 = como está definido por sector)
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -34,6 +41,12 @@ export const DEFAULT_TUNING: Tuning = {
   costOverhead: 0,
   productivityOverhead: 0,
   ipoValuation: 1_000_000_000,
+  boardEnabled: true,
+  boardFromStage: 2,
+  boardGrowth: 1.8,
+  boardDays: 110,
+  boardFailsToFire: 2,
+  tamMul: 1,
 };
 
 export const TUNING_KEY = "startup-tycoon:tuning";

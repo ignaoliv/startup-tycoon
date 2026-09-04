@@ -214,10 +214,12 @@ export function GameShell() {
       {/* game over */}
       {state.gameOver && (
         <Modal>
-          <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : state.gameOver === "ipo" ? "🔔" : "🏦"}</div>
-          <h2 className="mb-1 text-xl font-black">{state.gameOver === "bankrupt" ? "Cerró la startup" : state.gameOver === "ipo" ? "¡IPO exitosa!" : "¡Exit!"}</h2>
+          <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : state.gameOver === "ipo" ? "🔔" : state.gameOver === "fired" ? "🪑" : "🏦"}</div>
+          <h2 className="mb-1 text-xl font-black">{state.gameOver === "bankrupt" ? "Cerró la startup" : state.gameOver === "ipo" ? "¡IPO exitosa!" : state.gameOver === "fired" ? "Te reemplazaron" : "¡Exit!"}</h2>
           <p className="mb-3 text-sm text-ink/70">
-            {state.gameOver === "bankrupt"
+            {state.gameOver === "fired"
+              ? `El board puso otro CEO en tu silla. ${state.startupName} sigue existiendo sin vos, y tu ${state.equity}% ahora vale ${money((d.valuation * state.equity) / 100)}.`
+              : state.gameOver === "bankrupt"
               ? `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`
               : `Tu ${state.equity}% de ${state.startupName} vale ${money((d.valuation * state.equity) / 100)}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
           </p>

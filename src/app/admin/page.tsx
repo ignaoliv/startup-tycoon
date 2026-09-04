@@ -12,6 +12,7 @@ const OUTCOME_LABEL: Record<string, string> = {
   bankrupt: "Quiebra",
   ipo: "IPO",
   acquired: "Exit",
+  fired: "Te echaron",
   abandoned: "Abandonada",
 };
 

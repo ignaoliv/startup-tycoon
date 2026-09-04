@@ -78,6 +78,8 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     officeFullDays: 0,
     usersHistory: [],
     bankruptDays: 0,
+    boardGoal: null,
+    boardFails: 0,
     gameOver: null,
     restarts: opts.restarts ?? 0,
     stats: { totalRevenue: 0, peakUsers: 0, raised: 0, hires: 0 },
@@ -136,7 +138,7 @@ export function derive(s: GameState): Derived {
   const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - Math.min(0.6, opsPts * 0.08));
   const costDay = (salariesMonth + rentMonth + serverMonth) / 30;
   const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7);
-  const saturation = Math.max(0, 1 - s.users / sector.tam); // el mercado se agota
+  const saturation = Math.max(0, 1 - s.users / (sector.tam * tuning.tamMul)); // el mercado se agota
   const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
   const viral = hasMvp ? s.users * 0.0025 * (quality / 100) * (0.4 + s.hype / 100) : 0;
   const newUsersDay = (base + viral) * growthMul * saturation;
@@ -242,12 +244,46 @@ export function tick(s: GameState, quiet = false) {
   if (!quiet) scheduleEvent(s);
   else if (s.day >= s.nextEventDay) s.nextEventDay = s.day + Math.round(rnd(3, 8));
 
+  // el board mira si cumpliste lo que prometiste
+  if (tuning.boardEnabled && s.boardGoal && s.day >= s.boardGoal.dueDay) {
+    const meta = s.boardGoal.users;
+    if (s.users >= meta) {
+      s.boardFails = 0;
+      s.hype = clamp(s.hype + 12, 0, 100);
+      addLog(s, `🪑 El board está contento: prometiste ${Math.round(meta).toLocaleString("es-AR")} usuarios y llegaste.`, "good");
+      setBoardGoal(s);
+    } else {
+      s.boardFails += 1;
+      if (s.boardFails >= tuning.boardFailsToFire) {
+        s.gameOver = "fired";
+        s.boardGoal = null;
+        addLog(s, "🪑 El board te reemplazó como CEO. Dos metas seguidas sin cumplir.", "bad");
+        return;
+      }
+      s.equity = Math.max(1, s.equity - 5);
+      s.hype = clamp(s.hype - 15, 0, 100);
+      addLog(s, `🪑 No llegaste a los ${Math.round(meta).toLocaleString("es-AR")} usuarios que pedía el board. Ronda a la baja: perdés 5% de equity. Si volvés a fallar, te reemplazan.`, "bad");
+      setBoardGoal(s);
+    }
+  }
+
   // IPO
   if (d.valuation >= tuning.ipoValuation && s.stage < STAGES.length - 1) {
     s.stage = STAGES.length - 1;
     addLog(s, "🦄 ¡Sos unicornio! Valuación de $1B. Podés salir a bolsa cuando quieras.", "good");
   }
   checkAchievements(s, d);
+}
+
+/** El board fija la próxima meta de crecimiento. */
+export function setBoardGoal(s: GameState) {
+  if (!tuning.boardEnabled || s.stage < tuning.boardFromStage) {
+    s.boardGoal = null;
+    return;
+  }
+  const objetivo = Math.max(Math.round(s.users * tuning.boardGrowth), Math.round(s.users + 400));
+  s.boardGoal = { users: objetivo, dueDay: s.day + tuning.boardDays };
+  addLog(s, `🪑 El board quiere ${objetivo.toLocaleString("es-AR")} usuarios para el día ${s.boardGoal.dueDay}.`, "info");
 }
 
 export function reactiveCtx(s: GameState): ReactiveCtx {
@@ -392,6 +428,7 @@ export function raiseRound(s: GameState): string | null {
   s.hype = clamp(s.hype + 20, 0, 100);
   s.bankruptDays = 0;
   addLog(s, `💸 Cerraste la ronda ${next.name}: $${next.raise.toLocaleString("es-AR")} por ${next.equity}% de equity.`, "good");
+  setBoardGoal(s);
   return null;
 }
 

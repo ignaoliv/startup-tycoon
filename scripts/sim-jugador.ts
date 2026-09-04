@@ -150,6 +150,47 @@ function jugar(p: Perfil, sector: string, maxDias = 1200) {
   return s;
 }
 
+// ¿cuánto crece en 110 días una partida real? Sirve para calibrar la meta del board
+if (process.argv[3] === "crecimiento") {
+  applyTuning({ ...DEFAULT_TUNING, boardEnabled: false });
+  const secs = ["saas", "fintech", "devtools", "delivery", "crypto", "ai"];
+  const ratios: { etapa: number; ratio: number }[] = [];
+  for (const perfil of [PERFILES[1]]) {
+    for (let i = 0; i < 80; i++) {
+      const s = newGame({ startupName: "Sim", founderName: "Bot", sector: secs[i % 6] });
+      const p = { ...perfil, veRunway: true };
+      const hist: number[] = [];
+      let ultimaMirada = 0;
+      for (let k = 0; k < 900; k++) {
+        if (s.pendingEvent) resolveEvent(s, elegir(s, p));
+        if (s.day - ultimaMirada >= p.atencion) {
+          ultimaMirada = s.day;
+          pasoDeJuego(s, p);
+        }
+        tick(s);
+        hist.push(s.users);
+        if (s.stage >= 2 && hist.length > 110) {
+          const antes = hist[hist.length - 111];
+          if (antes > 50) ratios.push({ etapa: s.stage, ratio: s.users / antes });
+        }
+        if (s.gameOver) break;
+      }
+    }
+  }
+  const porEtapa: Record<number, number[]> = {};
+  for (const r of ratios) (porEtapa[r.etapa] ??= []).push(r.ratio);
+  console.log(`\n=== CUÁNTO CRECEN LOS USUARIOS EN 110 DÍAS (jugador intermedio) ===`);
+  console.log(`  ${"etapa".padEnd(10)}${"muestras".padStart(10)}${"p10".padStart(9)}${"p30".padStart(9)}${"mediana".padStart(9)}${"p70".padStart(9)}`);
+  const nom = ["Bootstrap", "Pre-seed", "Seed", "Serie A", "Serie B", "Serie C", "Unicornio"];
+  for (const etapa of Object.keys(porEtapa).map(Number).sort()) {
+    const v = porEtapa[etapa].sort((a, b) => a - b);
+    const q = (p: number) => v[Math.floor(v.length * p)].toFixed(1);
+    console.log(`  ${(nom[etapa] ?? etapa).padEnd(10)}${String(v.length).padStart(10)}${q(0.1).padStart(9)}${q(0.3).padStart(9)}${q(0.5).padStart(9)}${q(0.7).padStart(9)}`);
+  }
+  console.log();
+  process.exit(0);
+}
+
 // ¿se puede perder una vez que sos rentable?
 if (process.argv[3] === "rentable") {
   applyTuning({ ...DEFAULT_TUNING });
@@ -212,13 +253,12 @@ if (process.argv[3] === "diag") {
 }
 
 const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean }[] = [
-  { nombre: "Hoy", tuning: {}, runway: false },
-  { nombre: "A: runway visible", tuning: {}, runway: true },
-  { nombre: "B: A + estructura tardía", tuning: { overheadFrom: 18, costOverhead: 0.035, productivityOverhead: 0.02 }, runway: true },
-  { nombre: "C: A + IPO a $2,5B", tuning: { ipoValuation: 2_500_000_000 }, runway: true },
-  { nombre: "D: A + IPO a $5B", tuning: { ipoValuation: 5_000_000_000 }, runway: true },
-  { nombre: "E: B + IPO a $2,5B", tuning: { overheadFrom: 18, costOverhead: 0.035, productivityOverhead: 0.02, ipoValuation: 2_500_000_000 }, runway: true },
-  { nombre: "F: E pero más fuerte", tuning: { overheadFrom: 16, costOverhead: 0.05, productivityOverhead: 0.03, ipoValuation: 4_000_000_000 }, runway: true },
+  { nombre: "Hoy", tuning: { boardEnabled: false }, runway: true },
+  { nombre: "Mercado /3", tuning: { boardEnabled: false, tamMul: 0.33 }, runway: true },
+  { nombre: "Mercado /3 + board 2x", tuning: { tamMul: 0.33, boardGrowth: 2, boardDays: 110 }, runway: true },
+  { nombre: "Mercado /6 + board 2x", tuning: { tamMul: 0.17, boardGrowth: 2, boardDays: 110 }, runway: true },
+  { nombre: "Mercado /6 + board 3x", tuning: { tamMul: 0.17, boardGrowth: 3, boardDays: 100 }, runway: true },
+  { nombre: "Mercado /10 + board 2x", tuning: { tamMul: 0.1, boardGrowth: 2, boardDays: 110 }, runway: true },
 ];
 
 const N = Number(process.argv[2] ?? 100);
@@ -247,7 +287,7 @@ for (const esc of ESCENARIOS) {
       dias.push(s.day);
     }
     const gana = (finales.ipo ?? 0) + (finales.acquired ?? 0);
-    res.push(`${Math.round((gana / N) * 100)}%`);
+    res.push(`${Math.round((gana / N) * 100)}%${finales.fired ? `/${Math.round(((finales.fired ?? 0) / N) * 100)}e` : ""}`);
     if (base.nombre === "Intermedio") minutosInterm = minsProg(Math.round(avg(dias)));
   }
   console.log(`${esc.nombre.padEnd(21)}${res[0].padStart(9)}${res[1].padStart(9)}${res[2].padStart(9)}   ${(minutosInterm.toFixed(1) + " min").padStart(10)}`);
