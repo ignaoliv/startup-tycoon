@@ -1,8 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
 
-// sin Supabase configurado, el juego corre en modo local
-const PLAY_HREF = process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? "/play" : "/play?local=1";
+// Por ahora se entra siempre en modo local: el login todavía no tiene pantalla.
+// Cuando esté, esto pasa a ser "/play" si Supabase está configurado.
+const PLAY_HREF = "/play?local=1";
 
 const STATS = [
   { icon: "💵", label: "Caja", value: "$32k", sub: "+$2.2k/mes", tone: "text-green" },
