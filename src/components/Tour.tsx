@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Btn } from "@/components/ui";
 
-export const TOUR_KEY = "startup-tycoon:tour-done";
+export const TOUR_KEY = "startup-tycoon:tour-done-2";
 
 export interface TourStep {
   target?: string; // valor de data-tour

@@ -43,7 +43,8 @@ export function GameShell() {
     }
     if (tourChecked.current) return;
     tourChecked.current = true;
-    if (gs.day <= 3 && !isTourDone()) {
+    // se muestra una vez a quien nunca lo vio, tenga la partida que tenga
+    if (!isTourDone()) {
       const t = setTimeout(() => setTour(true), 350);
       return () => clearTimeout(t);
     }
