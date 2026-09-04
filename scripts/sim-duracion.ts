@@ -1,5 +1,5 @@
 // Cuánto dura una partida en tiempo real, comparando esquemas de tiempo.
-import { derive, hire, newGame, raiseRound, resolveEvent, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { derive, hire, ipo, newGame, raiseRound, resolveEvent, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { dayMs, FEATURES, OFFICES, TICK_MS_MIN, TICK_MS_START, TICK_RAMP_DAYS } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 
@@ -11,6 +11,7 @@ function bot(s: GameState) {
     if (next) setFeature(s, next.id);
   }
   raiseRound(s);
+  ipo(s); // si ya vale $1B, sale a bolsa: es la victoria del juego
   const cap = OFFICES[s.office].capacity;
   const nextOffice = OFFICES[s.office + 1];
   if (s.employees.length >= cap && nextOffice && s.cash > nextOffice.cost + Math.max(0, -d.netDay) * 60 + 5000) upgradeOffice(s);
@@ -80,7 +81,18 @@ for (const r of runs) finales[r.fin] = (finales[r.fin] ?? 0) + 1;
 
 console.log(`\n=== ${N} partidas simuladas (bot jugando óptimo, velocidad 1x) ===\n`);
 console.log(`Días por partida: promedio ${avg(dias).toFixed(0)} · mediana ${med(dias)} · mín ${Math.min(...dias)} · máx ${Math.max(...dias)}`);
-console.log(`Finales: ${Object.entries(finales).map(([k, v]) => `${k} ${v}`).join(" · ")}`);
+const gano = (finales.ipo ?? 0) + (finales.acquired ?? 0);
+const perdio = finales.bankrupt ?? 0;
+const sinTerminar = finales.sigue ?? 0;
+console.log(`\n--- CÓMO TERMINAN ---`);
+console.log(`  🏆 GANAN:  ${gano} (${((gano / N) * 100).toFixed(0)}%)   → IPO ${finales.ipo ?? 0} · comprada ${finales.acquired ?? 0}`);
+console.log(`  💀 PIERDEN: ${perdio} (${((perdio / N) * 100).toFixed(0)}%)  → quiebra`);
+console.log(`  ⏳ SIN TERMINAR: ${sinTerminar} (${((sinTerminar / N) * 100).toFixed(0)}%) al llegar al tope de ${MAX} días`);
+const diasPorFinal = (f: string) => runs.filter((r) => r.fin === f).map((r) => r.dias);
+for (const f of ["ipo", "acquired", "bankrupt"]) {
+  const v = diasPorFinal(f);
+  if (v.length) console.log(`     ${f.padEnd(10)} día promedio ${avg(v).toFixed(0)} (${minsProgresivo(Math.round(avg(v))).toFixed(1)} min de juego)`);
+}
 console.log(`Popups por partida: ${avg(runs.map((r) => r.eventos)).toFixed(1)}\n`);
 
 const dProm = avg(dias);
