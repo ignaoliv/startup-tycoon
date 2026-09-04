@@ -25,10 +25,7 @@ export default function Home() {
     <main className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-5 sm:py-5">
       {/* barra superior */}
       <header className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xl leading-none sm:text-3xl">🧰</span>
-          <span className="whitespace-nowrap text-[15px] font-black tracking-tight sm:text-2xl">Vibe Coding Game</span>
-        </div>
+        <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} priority className="h-8 w-auto sm:h-11" />
         <Link href={PLAY_HREF} className="btn shrink-0 whitespace-nowrap border-ink bg-amber px-2.5 py-2 text-[13px] text-ink sm:px-5 sm:text-base">
           <span aria-hidden>⭐</span> Crear startup
         </Link>
