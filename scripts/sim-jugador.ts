@@ -293,12 +293,7 @@ if (process.argv[3] === "diag") {
 }
 
 const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean }[] = [
-  { nombre: "Hoy", tuning: { boardEnabled: false }, runway: true },
-  { nombre: "Mercado /3", tuning: { boardEnabled: false, tamMul: 0.33 }, runway: true },
-  { nombre: "Mercado /3 + board 2x", tuning: { tamMul: 0.33, boardGrowth: 2, boardDays: 110 }, runway: true },
-  { nombre: "Mercado /6 + board 2x", tuning: { tamMul: 0.17, boardGrowth: 2, boardDays: 110 }, runway: true },
-  { nombre: "Mercado /6 + board 3x", tuning: { tamMul: 0.17, boardGrowth: 3, boardDays: 100 }, runway: true },
-  { nombre: "Mercado /10 + board 2x", tuning: { tamMul: 0.1, boardGrowth: 2, boardDays: 110 }, runway: true },
+  { nombre: "Estado actual", tuning: {}, runway: false },
 ];
 
 const N = Number(process.argv[2] ?? 100);
