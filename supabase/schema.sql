@@ -8,6 +8,8 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   display_name text not null default 'Fundador/a',
   avatar_url text,
+  twitter text,
+  linkedin text,
   created_at timestamptz not null default now()
 );
 

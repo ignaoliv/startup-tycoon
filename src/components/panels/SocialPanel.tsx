@@ -3,11 +3,12 @@ import { useCallback, useEffect, useState } from "react";
 import { signInWithGoogle } from "@/lib/supabase/client";
 import { OfficeView } from "@/components/OfficeView";
 import { Btn, Card, Pill } from "@/components/ui";
+import { XIcon } from "@/components/SiteFooter";
 import { AI_LEVEL_NAMES, LEVEL_NAMES, OFFICES, ROLES, SECTORS, STAGES } from "@/lib/game/data";
 import { investOut, poachCost } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import type { Employee, GameState } from "@/lib/game/types";
-import { createPost, fetchLeaderboard, fetchPosts, fetchStartupState, hypedToday, sendAction, toggleLike, type LeaderRow, type Post } from "@/lib/storage";
+import { createPost, fetchLeaderboard, fetchPosts, fetchProfile, fetchProfiles, fetchStartupState, hypedToday, limpiarHandle, saveProfileLinks, sendAction, toggleLike, urlLinkedin, urlX, type LeaderRow, type Perfil, type Post } from "@/lib/storage";
 import type { Game } from "@/hooks/useGame";
 
 type Sub = "ranking" | "muro";
@@ -45,17 +46,27 @@ export function SocialPanel({ game }: { game: Game }) {
           </button>
         ))}
       </div>
-      {sub === "ranking" ? <Leaderboard game={game} onVisit={setVisiting} /> : <Feed game={game} onVisit={setVisiting} />}
+      {sub === "ranking" ? (
+        <>
+          <MiPerfil game={game} />
+          <Leaderboard game={game} onVisit={setVisiting} />
+        </>
+      ) : (
+        <Feed game={game} onVisit={setVisiting} />
+      )}
     </div>
   );
 }
 
 function Leaderboard({ game, onVisit }: { game: Game; onVisit: (id: string) => void }) {
   const [rows, setRows] = useState<LeaderRow[] | null>(null);
+  const [perfiles, setPerfiles] = useState<Record<string, Perfil>>({});
   const [err, setErr] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      setRows(await fetchLeaderboard(game.sb!));
+      const r = await fetchLeaderboard(game.sb!);
+      setRows(r);
+      setPerfiles(await fetchProfiles(game.sb!, r.map((x) => x.user_id)).catch(() => ({})));
       setErr(null);
     } catch (e) {
       setErr((e as Error).message);
@@ -105,8 +116,11 @@ function Leaderboard({ game, onVisit }: { game: Game; onVisit: (id: string) => v
                     <div className="truncate text-sm font-black">
                       {r.name} {r.game_over === "ipo" && "🔔"} {r.game_over === "acquired" && "🏦"} {r.game_over === "bankrupt" && "💀"}
                     </div>
-                    <div className="truncate text-[11px] text-ink/60">
-                      {r.display_name} · {STAGES[r.stage]?.name} · {num(Number(r.users))} usuarios · día {r.day}
+                    <div className="flex items-center gap-1.5 truncate text-[11px] text-ink/60">
+                      <span className="truncate">
+                        {r.display_name} · {STAGES[r.stage]?.name} · {num(Number(r.users))} usuarios · día {r.day}
+                      </span>
+                      <RedesDe perfil={perfiles[r.user_id]} />
                     </div>
                   </div>
                   <div className="text-right">
@@ -224,6 +238,7 @@ function Feed({ game, onVisit }: { game: Game; onVisit: (id: string) => void }) 
 
 function VisitView({ game, userId, onBack }: { game: Game; userId: string; onBack: () => void }) {
   const [data, setData] = useState<{ row: LeaderRow; state: GameState } | null | undefined>(undefined);
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [amount, setAmount] = useState(5000);
   const [hyped, setHyped] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
@@ -231,6 +246,7 @@ function VisitView({ game, userId, onBack }: { game: Game; userId: string; onBac
 
   useEffect(() => {
     fetchStartupState(game.sb!, userId).then(setData).catch(() => setData(null));
+    fetchProfile(game.sb!, userId).then(setPerfil).catch(() => setPerfil(null));
     hypedToday(game.sb!, game.userId!, userId).then(setHyped);
   }, [game.sb, game.userId, userId]);
 
@@ -310,8 +326,11 @@ function VisitView({ game, userId, onBack }: { game: Game; userId: string; onBac
           <div className="truncate text-lg font-black">
             {sec?.icon} {t.startupName}
           </div>
-          <div className="truncate text-[11px] text-ink/60">
-            de {row.display_name} · {STAGES[t.stage]?.name} · día {t.day}
+          <div className="flex items-center gap-1.5 truncate text-[11px] text-ink/60">
+            <span className="truncate">
+              de {row.display_name} · {STAGES[t.stage]?.name} · día {t.day}
+            </span>
+            <RedesDe perfil={perfil} size="md" />
           </div>
         </div>
       </div>
@@ -380,6 +399,119 @@ function VisitView({ game, userId, onBack }: { game: Game; userId: string; onBac
         </div>
       </Card>
     </div>
+  );
+}
+
+function LinkedinIcon({ className = "h-3.5 w-3.5" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className} fill="currentColor">
+      <path d="M4.98 3.5a2.5 2.5 0 1 1 0 5 2.5 2.5 0 0 1 0-5zM3 9h4v12H3zM9 9h3.8v1.7h.05c.53-.95 1.83-1.95 3.77-1.95 4.03 0 4.78 2.5 4.78 5.75V21h-4v-5.6c0-1.34-.02-3.06-1.9-3.06-1.9 0-2.2 1.45-2.2 2.96V21H9z" />
+    </svg>
+  );
+}
+
+/** Links a las redes de una persona, si las cargó. */
+export function RedesDe({ perfil, size = "sm" }: { perfil?: Perfil | null; size?: "sm" | "md" }) {
+  if (!perfil?.twitter && !perfil?.linkedin) return null;
+  const c = size === "md" ? "h-4 w-4" : "h-3.5 w-3.5";
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {perfil.twitter && (
+        <a href={urlX(perfil.twitter)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title={`@${perfil.twitter} en X`} className="text-ink/45 hover:text-ink">
+          <XIcon className={c} />
+        </a>
+      )}
+      {perfil.linkedin && (
+        <a href={urlLinkedin(perfil.linkedin)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="LinkedIn" className="text-ink/45 hover:text-[#0a66c2]">
+          <LinkedinIcon className={c} />
+        </a>
+      )}
+    </span>
+  );
+}
+
+/** Tarjeta para cargar tus redes: quedan visibles en el ranking. */
+function MiPerfil({ game }: { game: Game }) {
+  const [tw, setTw] = useState("");
+  const [li, setLi] = useState("");
+  const [cargado, setCargado] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [abierto, setAbierto] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(async () => {
+      const p = await fetchProfile(game.sb!, game.userId!).catch(() => null);
+      setTw(p?.twitter ?? "");
+      setLi(p?.linkedin ?? "");
+      setCargado(true);
+      if (!p?.twitter && !p?.linkedin) setAbierto(true);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [game.sb, game.userId]);
+
+  if (!cargado) return null;
+
+  const guardar = async () => {
+    setGuardando(true);
+    try {
+      const twitter = limpiarHandle(tw, "x");
+      const linkedin = limpiarHandle(li, "linkedin");
+      await saveProfileLinks(game.sb!, game.userId!, { twitter, linkedin });
+      setTw(twitter);
+      setLi(linkedin);
+      setAbierto(false);
+      game.notify("Perfil actualizado", "good");
+    } catch (e) {
+      game.notify((e as Error).message, "bad");
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  return (
+    <Card
+      title="Tu perfil"
+      right={
+        !abierto ? (
+          <Btn size="sm" variant="ghost" onClick={() => setAbierto(true)}>
+            Editar
+          </Btn>
+        ) : null
+      }
+    >
+      {!abierto ? (
+        <div className="flex items-center gap-2 text-xs text-ink/60">
+          {tw || li ? (
+            <>
+              <span>Tus redes se ven en el ranking:</span>
+              <RedesDe perfil={{ id: "", display_name: "", avatar_url: null, twitter: tw, linkedin: li }} size="md" />
+            </>
+          ) : (
+            <span>No cargaste redes todavía.</span>
+          )}
+        </div>
+      ) : (
+        <>
+          <p className="mb-2 text-[11px] text-ink/60">Sumá tus redes para que quien vea tu startup pueda encontrarte. Podés pegar el link completo o solo el usuario.</p>
+          <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
+            X (Twitter)
+            <input value={tw} onChange={(e) => setTw(e.target.value)} placeholder="nacho_olivieri" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+          </label>
+          <label className="mb-3 block text-[11px] font-bold uppercase text-ink/50">
+            LinkedIn
+            <input value={li} onChange={(e) => setLi(e.target.value)} placeholder="linkedin.com/in/tu-usuario" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+          </label>
+          <div className="flex gap-2">
+            <Btn size="sm" className="flex-1" onClick={guardar} disabled={guardando}>
+              Guardar
+            </Btn>
+            <Btn size="sm" variant="ghost" onClick={() => setAbierto(false)}>
+              Cancelar
+            </Btn>
+          </div>
+        </>
+      )}
+    </Card>
   );
 }
 

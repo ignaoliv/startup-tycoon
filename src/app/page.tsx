@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
+import { SiteFooter } from "@/components/SiteFooter";
 
 // Se puede jugar con o sin cuenta: la sesión solo decide dónde se guarda la partida.
 const PLAY_HREF = "/play";
@@ -102,12 +103,8 @@ export default function Home() {
         </Link>
       </section>
 
-      <footer className="mt-5 pb-4 text-center text-[11px] text-ink/40">
-        <p>Funciona en el celular y en la compu. Podés agregarlo a la pantalla de inicio.</p>
-        <p className="mt-1.5">
-          <Link href="/privacidad" className="underline">Privacidad</Link> · <Link href="/terminos" className="underline">Términos</Link>
-        </p>
-      </footer>
+      <p className="mt-5 text-center text-[11px] text-ink/40">Funciona en el celular y en la compu. Podés agregarlo a la pantalla de inicio.</p>
+      <SiteFooter />
     </main>
   );
 }

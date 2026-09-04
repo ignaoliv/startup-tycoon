@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { SiteFooter } from "@/components/SiteFooter";
 
 export const CONTACTO = "dji.olivieri@gmail.com";
 export const ACTUALIZADO = "4 de septiembre de 2026";
@@ -22,10 +23,7 @@ export function LegalLayout({ titulo, children }: { titulo: string; children: Re
         <div className="mt-5 space-y-5 text-[15px] leading-relaxed text-ink/80">{children}</div>
       </article>
 
-      <p className="mt-5 pb-6 text-center text-[11px] text-ink/40">
-        Vibe Coding Game · <Link href="/privacidad" className="underline">Privacidad</Link> ·{" "}
-        <Link href="/terminos" className="underline">Términos</Link>
-      </p>
+      <SiteFooter />
     </main>
   );
 }

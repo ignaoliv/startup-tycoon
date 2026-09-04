@@ -81,6 +81,46 @@ export interface LeaderRow {
   avatar_url: string | null;
 }
 
+export interface Perfil {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  twitter?: string | null;
+  linkedin?: string | null;
+}
+
+/** Deja solo el usuario, venga como URL, con arroba o pelado. */
+export function limpiarHandle(v: string, red: "x" | "linkedin") {
+  let s = v.trim();
+  if (!s) return "";
+  s = s.replace(/^https?:\/\//i, "").replace(/^www\./i, "");
+  if (red === "x") s = s.replace(/^(x|twitter)\.com\//i, "");
+  else s = s.replace(/^([a-z]{2,3}\.)?linkedin\.com\/(in\/)?/i, "").replace(/^in\//i, "");
+  return s.replace(/^@/, "").split(/[/?#]/)[0].slice(0, 40);
+}
+
+export const urlX = (h: string) => `https://x.com/${h}`;
+export const urlLinkedin = (h: string) => `https://www.linkedin.com/in/${h}`;
+
+/** Trae el perfil propio. Usa select(*) para no romper si faltan columnas nuevas. */
+export async function fetchProfile(sb: SupabaseClient, userId: string): Promise<Perfil | null> {
+  const { data } = await sb.from("profiles").select("*").eq("id", userId).maybeSingle();
+  return (data as Perfil) ?? null;
+}
+
+export async function fetchProfiles(sb: SupabaseClient, ids: string[]): Promise<Record<string, Perfil>> {
+  if (!ids.length) return {};
+  const { data } = await sb.from("profiles").select("*").in("id", ids);
+  const out: Record<string, Perfil> = {};
+  for (const p of (data ?? []) as Perfil[]) out[p.id] = p;
+  return out;
+}
+
+export async function saveProfileLinks(sb: SupabaseClient, userId: string, links: { twitter: string; linkedin: string }) {
+  const { error } = await sb.from("profiles").update({ twitter: links.twitter || null, linkedin: links.linkedin || null }).eq("id", userId);
+  if (error) throw error;
+}
+
 export interface Post {
   id: string;
   user_id: string;
