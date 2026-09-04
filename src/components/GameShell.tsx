@@ -9,6 +9,7 @@ import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
 import { AuthButton } from "@/components/AuthButton";
+import FeedbackModal from "@/components/FeedbackModal";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
@@ -34,6 +35,7 @@ export function GameShell() {
   const [offlineDismissed, setOfflineDismissed] = useState(false);
   const [tour, setTour] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [feedback, setFeedback] = useState(false);
   const tourChecked = useRef(false);
   const gs = game.state;
   const setPaused = game.setPaused;
@@ -111,6 +113,7 @@ export function GameShell() {
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
                 <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
+                <MenuItem onClick={() => { setMenu(false); setFeedback(true); }}>💬 Mandar feedback</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setConfirmReset(true); }}>🗑️ Empezar de nuevo</MenuItem>
               </div>
             )}
@@ -208,6 +211,9 @@ export function GameShell() {
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup
           </Btn>
+          <button onClick={() => setFeedback(true)} className="mt-2 w-full text-xs font-bold text-ink/50 underline underline-offset-2 hover:text-ink">
+            💬 Contame cómo te fue
+          </button>
         </Modal>
       )}
 
@@ -227,6 +233,27 @@ export function GameShell() {
             </Btn>
           </div>
         </Modal>
+      )}
+
+      {feedback && (
+        <FeedbackModal
+          onClose={() => setFeedback(false)}
+          contexto={{
+            dia: state.day,
+            final: state.gameOver ?? "jugando",
+            sector: state.sector,
+            usuarios: state.users,
+            mrr: Math.round(d.mrr),
+            caja: Math.round(state.cash),
+            features: state.done.length,
+            empleados: state.employees.length,
+            ronda: STAGES[state.stage].id,
+            oficina: state.office,
+            popups: state.eventCount,
+            partidas: state.restarts,
+            startup: state.startupName,
+          }}
+        />
       )}
 
       {tour && !state.gameOver && <Tour onClose={() => setTour(false)} setTab={(t) => setTab(t as Tab)} />}

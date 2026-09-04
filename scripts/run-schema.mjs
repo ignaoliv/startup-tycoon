@@ -3,7 +3,7 @@
  * Necesita un Personal Access Token guardado en ~/.supabase_token
  * (se saca en https://supabase.com/dashboard/account/tokens).
  *
- *   node scripts/run-schema.mjs
+ *   node scripts/run-schema.mjs [archivo]   (por defecto supabase/schema.sql)
  */
 import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
@@ -17,7 +17,8 @@ if (!token) {
   process.exit(1);
 }
 
-const sql = await readFile(new URL("../supabase/schema.sql", import.meta.url), "utf8");
+const archivo = process.argv[2] ?? "supabase/schema.sql";
+const sql = await readFile(new URL(`../${archivo}`, import.meta.url), "utf8");
 
 const res = await fetch(`https://api.supabase.com/v1/projects/${REF}/database/query`, {
   method: "POST",
@@ -30,5 +31,5 @@ if (!res.ok) {
   console.error(`Error ${res.status}: ${body}`);
   process.exit(1);
 }
-console.log("Schema aplicado.");
+console.log(`${archivo} aplicado.`);
 console.log(body.slice(0, 400));

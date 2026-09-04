@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { DEFAULT_TUNING, loadTuning, resetTuning, saveTuning, tuning, type Tuning } from "@/lib/game/tuning";
 import { clearRuns, getRuns, playerId, type RunRecord } from "@/lib/analytics";
+import { getSupabase } from "@/lib/supabase/client";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 
@@ -21,7 +22,8 @@ export default function AdminPage() {
   const [t, setT] = useState<Tuning>({ ...DEFAULT_TUNING });
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [me, setMe] = useState("");
-  const [tab, setTab] = useState<"metricas" | "drivers" | "eventos">("metricas");
+  const [tab, setTab] = useState<"metricas" | "drivers" | "eventos" | "feedback">("metricas");
+  const [feedback, setFeedback] = useState<FeedbackRow[] | null>(null);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -33,6 +35,21 @@ export default function AdminPage() {
     }, 0);
     return () => clearTimeout(id);
   }, []);
+
+  // el feedback vive en Supabase y solo lo puede leer el admin (RLS por mail)
+  useEffect(() => {
+    if (tab !== "feedback" || feedback) return;
+    const sb = getSupabase();
+    if (!sb) {
+      setFeedback([]);
+      return;
+    }
+    sb.from("feedback")
+      .select("id, rating, texto, contexto, created_at")
+      .order("created_at", { ascending: false })
+      .limit(200)
+      .then(({ data }) => setFeedback((data as FeedbackRow[]) ?? []));
+  }, [tab, feedback]);
 
   const set = (patch: Partial<Tuning>) => {
     const next = { ...t, ...patch };
@@ -59,9 +76,9 @@ export default function AdminPage() {
       </header>
 
       <div className="mb-4 flex gap-1 rounded-xl bg-ink/5 p-1">
-        {(["metricas", "drivers", "eventos"] as const).map((k) => (
+        {(["metricas", "drivers", "eventos", "feedback"] as const).map((k) => (
           <button key={k} onClick={() => setTab(k)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === k ? "bg-white shadow" : "text-ink/50"}`}>
-            {k === "metricas" ? "📊 Métricas" : k === "drivers" ? "🎛️ Drivers" : "🎲 Eventos"}
+            {k === "metricas" ? "📊 Métricas" : k === "drivers" ? "🎛️ Drivers" : k === "eventos" ? "🎲 Eventos" : "💬 Feedback"}
           </button>
         ))}
       </div>
@@ -233,11 +250,60 @@ export default function AdminPage() {
         </div>
       )}
 
+      {tab === "feedback" && (
+        <div className="space-y-3">
+          {feedback === null ? (
+            <Card><p className="text-xs text-ink/50">Cargando…</p></Card>
+          ) : feedback.length === 0 ? (
+            <Card><p className="text-xs text-ink/50">Todavía no mandó feedback nadie.</p></Card>
+          ) : (
+            <>
+              <Card title={`${feedback.length} mensajes`}>
+                <div className="grid grid-cols-3 gap-2">
+                  <KPI label="Nota promedio" value={promedioNota(feedback)} sub="sobre 5 🤖" />
+                  <KPI label="Con texto" value={String(feedback.filter((f) => f.texto).length)} />
+                  <KPI label="Últimos 7 días" value={String(feedback.filter((f) => Date.now() - new Date(f.created_at).getTime() < 7 * 864e5).length)} />
+                </div>
+              </Card>
+              {feedback.map((f) => (
+                <Card key={f.id}>
+                  <div className="mb-1 flex items-center gap-2">
+                    <span className="text-sm">{f.rating ? "🤖".repeat(f.rating) : "—"}</span>
+                    <span className="ml-auto text-[11px] text-ink/40">{new Date(f.created_at).toLocaleString("es-AR")}</span>
+                  </div>
+                  {f.texto && <p className="mb-2 whitespace-pre-wrap text-sm">{f.texto}</p>}
+                  {f.contexto && (
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(f.contexto).map(([k, v]) => (
+                        <Pill key={k}>{k}: {String(v)}</Pill>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              ))}
+            </>
+          )}
+        </div>
+      )}
+
       <p className="mt-4 text-center text-[11px] text-ink/40">
-        Los datos son de este navegador. Con login se van a poder ver los de todos los jugadores.
+        Las métricas de partidas son de este navegador. El feedback viene de todos los jugadores.
       </p>
     </main>
   );
+}
+
+type FeedbackRow = {
+  id: string;
+  rating: number | null;
+  texto: string | null;
+  contexto: Record<string, unknown> | null;
+  created_at: string;
+};
+
+function promedioNota(rows: FeedbackRow[]) {
+  const notas = rows.map((r) => r.rating).filter((n): n is number => !!n);
+  return notas.length ? (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1) : "—";
 }
 
 function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
