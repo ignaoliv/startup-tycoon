@@ -39,7 +39,7 @@ export default function AdminPage() {
     saveTuning(patch);
   };
 
-  const m = useMemo(() => metrics(runs), [runs]); // eslint-disable-line react-hooks/exhaustive-deps
+  const m = useMemo(() => metrics(runs), [runs]);
 
   if (!ready) return <main className="p-6 text-sm text-ink/50">Cargando…</main>;
 

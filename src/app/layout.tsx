@@ -3,12 +3,12 @@ import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
-const title = "Startup Tycoon";
+const title = "Vibe Coding Game";
 const description = "Fundá una startup hecha 100% con IA: contratá agentes, shippeá features, levantá rondas y llegá a unicornio antes que tus amigos.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vibecodingame.com"),
-  title: { default: title, template: "%s · Startup Tycoon" },
+  title: { default: title, template: "%s · Vibe Coding Game" },
   description,
   applicationName: title,
   manifest: "/manifest.webmanifest",

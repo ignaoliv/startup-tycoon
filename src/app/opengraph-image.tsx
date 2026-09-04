@@ -3,7 +3,7 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 export const runtime = "nodejs";
-export const alt = "Startup Tycoon — fundá una startup con IA y llegá a unicornio";
+export const alt = "Vibe Coding Game — fundá una startup con IA y llegá a unicornio";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -25,9 +25,9 @@ export default async function OgImage() {
         <div style={{ position: "absolute", bottom: -190, left: -130, width: 420, height: 420, borderRadius: 999, background: "#5b5bd6", opacity: 0.16, display: "flex" }} />
 
         <div style={{ display: "flex", alignItems: "center" }}>
-          <div style={{ display: "flex", width: 112, height: 112, borderRadius: 28, background: "#5b5bd6", alignItems: "center", justifyContent: "center", fontSize: 66, border: "6px solid #1f1b16", marginRight: 26 }}>🚀</div>
+          <div style={{ display: "flex", width: 112, height: 112, borderRadius: 28, background: "#f5b731", alignItems: "center", justifyContent: "center", fontSize: 66, border: "6px solid #1f1b16", marginRight: 26 }}>🚀</div>
           <div style={{ display: "flex", flexDirection: "column" }}>
-            <div style={{ fontSize: 88, color: "#1f1b16", letterSpacing: -3, lineHeight: 1 }}>Startup Tycoon</div>
+            <div style={{ fontSize: 76, color: "#1f1b16", letterSpacing: -3, lineHeight: 1 }}>Vibe Coding Game</div>
             <div style={{ fontSize: 30, color: "#1f1b16", opacity: 0.55, marginTop: 10 }}>vibecodingame.com</div>
           </div>
         </div>

@@ -1,7 +1,7 @@
 "use client";
 import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
-import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
+import { FEATURES, OFFICES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -9,14 +9,9 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const s = game.state!;
   const d = game.derived!;
   const feat = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
-  const nextStage = STAGES[s.stage + 1];
+  // único aviso: la oficina llena frena las contrataciones
   const tips: { text: string; tab: string }[] = [];
-  if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
   if (s.employees.length >= OFFICES[s.office].capacity && OFFICES[s.office + 1]) tips.push({ text: "La oficina está llena. Mudate para poder contratar.", tab: "money" });
-  if (nextStage && nextStage.raise > 0 && d.valuation >= nextStage.minValuation) tips.push({ text: `Podés levantar la ronda ${nextStage.name}.`, tab: "money" });
-  if (s.bugs > 8) tips.push({ text: "Demasiada deuda técnica. Un QA o un dev humano la bajan rápido.", tab: "team" });
-  if (d.netDay < 0 && s.cash < -d.netDay * 30) tips.push({ text: "Te queda menos de un mes de caja.", tab: "money" });
-  if (!s.currentFeature) tips.push({ text: "No estás construyendo nada. Elegí la próxima feature.", tab: "product" });
 
   return (
     <div className="space-y-3">
@@ -28,7 +23,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
         <div className="space-y-1.5">
           {tips.slice(0, 2).map((t) => (
             <button key={t.text} onClick={() => onGoTo(t.tab)} className="pop flex w-full items-center gap-2 rounded-xl border-2 border-amber bg-amber/20 px-3 py-2 text-left text-sm font-semibold">
-              <span>💡</span>
+              <span>⚠️</span>
               <span className="flex-1">{t.text}</span>
               <span className="text-ink/50">›</span>
             </button>

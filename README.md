@@ -1,4 +1,4 @@
-# 🚀 Startup Tycoon — vibecodeá tu startup con IA
+# 🚀 Vibe Coding Game — vibecodeá tu startup con IA
 
 Juego tipo tycoon (estilo Airplane/Hospital Tycoon) donde fundás una startup hecha 100% con IA: activás agentes que vibecodean, sumás humanos para contener la deuda técnica, shippeás features, sobrevivís a eventos (la IA borró prod, filtraste la API key, subió el precio de los tokens…), levantás rondas y llegás a unicornio.
 
