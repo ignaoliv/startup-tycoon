@@ -36,7 +36,26 @@ export function GameShell() {
   const [newName, setNewName] = useState("");
   const [inboxOpen, setInboxOpen] = useState(true);
   const [seenEvents, setSeenEvents] = useState(0);
-  const [tour, setTour] = useState<boolean | null>(null); // null = no decidido todavía
+  const [tour, setTour] = useState(false);
+  const tourChecked = useRef(false);
+  // abre el tutorial una sola vez en partidas nuevas, y pausa el tiempo mientras esté abierto
+  const gs = game.state;
+  const setPaused = game.setPaused;
+  useEffect(() => {
+    if (!gs) {
+      tourChecked.current = false; // partida borrada: la próxima vuelve a evaluar
+      return;
+    }
+    if (tourChecked.current) return;
+    tourChecked.current = true;
+    if (gs.day <= 3 && !isTourDone()) {
+      const t = setTimeout(() => setTour(true), 300);
+      return () => clearTimeout(t);
+    }
+  }, [gs]);
+  useEffect(() => {
+    setPaused(tour);
+  }, [tour, setPaused]);
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -75,7 +94,7 @@ export function GameShell() {
 
   if (!state) return <Setup onStart={game.startNew} />;
   const d = derived!;
-  const showTour = tour ?? (state.day <= 3 && !isTourDone());
+  const showTour = tour;
   const pending = state.events;
   const first = pending[0];
   const ev = first ? EVENTS.find((e) => e.id === first.id) : null;
