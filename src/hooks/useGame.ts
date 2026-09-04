@@ -7,6 +7,8 @@ import { applyIncoming, applyOffline, derive, newGame, tick } from "@/lib/game/e
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
 import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, type IncomingAction } from "@/lib/storage";
+import { closeStaleRuns, trackRun, trackValuation } from "@/lib/analytics";
+import { loadTuning } from "@/lib/game/tuning";
 
 export type Mode = "local" | "cloud";
 
@@ -29,6 +31,7 @@ export function useGame(forceLocal: boolean) {
   const [saving, setSaving] = useState(false);
   const [paused, setPaused] = useState(false); // pausa externa (tutorial)
   const ref = useRef<GameState | null>(null);
+  const lastTrack = useRef(0);
   const dirty = useRef(false);
   const toastId = useRef(1);
   const userId = user?.id ?? null;
@@ -61,6 +64,12 @@ export function useGame(forceLocal: boolean) {
     },
     [commit, notify],
   );
+
+  // ajustes de /admin y limpieza de partidas viejas
+  useEffect(() => {
+    loadTuning();
+    closeStaleRuns();
+  }, []);
 
   // auth
   useEffect(() => {
@@ -152,7 +161,15 @@ export function useGame(forceLocal: boolean) {
   useEffect(() => {
     const local = setInterval(() => {
       const s = ref.current;
-      if (s && dirty.current) saveLocal(s, userId);
+      if (!s) return;
+      if (dirty.current) saveLocal(s, userId);
+      const now = Date.now();
+      // si el intervalo tardó mucho, la pestaña estaba en segundo plano: no cuenta como tiempo jugado
+      const raw = lastTrack.current ? now - lastTrack.current : 0;
+      const delta = raw > 0 && raw < 5000 ? raw : 0;
+      lastTrack.current = now;
+      trackRun(s, delta);
+      trackValuation(s, derive(s).valuation);
     }, 2000);
     const cloud = setInterval(async () => {
       const s = ref.current;

@@ -9,6 +9,7 @@ import { MoneyPanel } from "@/components/panels/MoneyPanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
+import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
@@ -197,8 +198,11 @@ export function GameShell() {
           <p className="mb-4 text-sm text-ink/70">{ev.text}</p>
           <div className="space-y-2">
             {ev.choices.map((c, i) => (
-              <button key={i} onClick={() => game.mutate((s) => resolveEvent(s, i))} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
-                <div className="text-sm font-black">{c.label}</div>
+              <button key={i} onClick={() => { const d = state.day; const id = ev.id; game.mutate((s) => resolveEvent(s, i)); trackRun(state, 0, { decision: { id, choice: i, day: d } }); }} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-black">{c.label}</div>
+                  {c.chance !== undefined && <span className="shrink-0 rounded-full bg-amber/30 px-2 py-0.5 text-[10px] font-black">🎲 {Math.round(c.chance * 100)}% sale bien</span>}
+                </div>
                 <div className="text-xs text-ink/60">{c.desc}</div>
               </button>
             ))}
@@ -246,7 +250,7 @@ function MenuItem({ children, onClick }: { children: React.ReactNode; onClick: (
 
 function Modal({ children }: { children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-30 flex items-end justify-center bg-ink/50 p-3 sm:items-center">
+    <div role="dialog" aria-modal className="fixed inset-0 z-30 flex items-end justify-center bg-ink/50 p-3 sm:items-center">
       <div className="pop card w-full max-w-md">{children}</div>
     </div>
   );

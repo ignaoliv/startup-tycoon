@@ -66,7 +66,17 @@ export interface SectorDef {
 export interface EventChoice {
   label: string;
   desc: string;
-  apply: (s: GameState) => string; // devuelve texto de resultado
+  /** Si está definida, la opción es una apuesta: probabilidad (0..1) de que salga bien. */
+  chance?: number;
+  apply: (s: GameState, ok: boolean) => string; // devuelve texto de resultado
+}
+
+/** Contexto que mira el motor para disparar eventos reactivos. */
+export interface ReactiveCtx {
+  lastShipDay: number;
+  hypeHighDays: number;
+  officeFullDays: number;
+  users20: number;
 }
 
 export interface GameEventDef {
@@ -76,6 +86,14 @@ export interface GameEventDef {
   text: string;
   minDay?: number;
   minUsers?: number;
+  /** Solo aparece jugando este sector. */
+  sector?: string;
+  /** Si está, no entra en el calendario: lo dispara el estado de la partida. */
+  reactive?: {
+    test: (s: GameState, ctx: ReactiveCtx) => boolean;
+    cooldown: number;
+    once?: boolean;
+  };
   choices: EventChoice[];
 }
 
@@ -123,6 +141,16 @@ export interface GameState {
   log: LogEntry[];
   pendingEvent: PendingEvent | null;
   nextEventDay: number;
+  // --- planificador de eventos
+  pace: number; // carácter de la partida (multiplicador del intervalo)
+  seenEvents: string[]; // para no repetir
+  eventCount: number; // cuántos popups van (tope)
+  lastEventDay: number;
+  reactiveCd: Record<string, number>;
+  lastShipDay: number;
+  hypeHighDays: number;
+  officeFullDays: number;
+  usersHistory: number[];
   bankruptDays: number;
   gameOver: "bankrupt" | "ipo" | "acquired" | null;
   restarts: number;

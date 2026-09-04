@@ -1,0 +1,58 @@
+/** Drivers del ritmo de eventos. Se pueden ajustar desde /admin (guardado por navegador). */
+export interface Tuning {
+  firstEventDay: number;
+  cap: number; // tope de popups por partida
+  separation: number; // días mínimos entre dos popups cualesquiera
+  paceTranquila: number;
+  paceNormal: number;
+  paceCaotica: number;
+  intervalSmall: [number, number]; // garage / pre-seed
+  intervalMid: [number, number]; // seed / serie A
+  intervalBig: [number, number]; // serie B en adelante
+  reactiveCooldownMul: number; // 1 = como está definido en cada evento
+  chanceEnabled: boolean; // apagar el azar en las decisiones
+}
+
+export const DEFAULT_TUNING: Tuning = {
+  firstEventDay: 12,
+  cap: 25,
+  separation: 7,
+  paceTranquila: 1.25,
+  paceNormal: 1,
+  paceCaotica: 0.8,
+  intervalSmall: [15, 25],
+  intervalMid: [12, 20],
+  intervalBig: [9, 16],
+  reactiveCooldownMul: 1,
+  chanceEnabled: true,
+};
+
+export const TUNING_KEY = "startup-tycoon:tuning";
+
+// objeto vivo que lee el motor (funciona igual en el navegador y en scripts)
+export const tuning: Tuning = { ...DEFAULT_TUNING };
+
+export function applyTuning(patch: Partial<Tuning>) {
+  Object.assign(tuning, patch);
+}
+
+export function loadTuning() {
+  try {
+    const raw = localStorage.getItem(TUNING_KEY);
+    if (raw) applyTuning(JSON.parse(raw) as Partial<Tuning>);
+  } catch {}
+}
+
+export function saveTuning(patch: Partial<Tuning>) {
+  applyTuning(patch);
+  try {
+    localStorage.setItem(TUNING_KEY, JSON.stringify(tuning));
+  } catch {}
+}
+
+export function resetTuning() {
+  applyTuning(DEFAULT_TUNING);
+  try {
+    localStorage.removeItem(TUNING_KEY);
+  } catch {}
+}

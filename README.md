@@ -48,7 +48,9 @@ Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es 
 - **Equipo**: 🤖 agentes IA (rápidos, baratos, mucha deuda técnica), 👩‍💻 devs humanos (contienen la deuda), 🎨 diseño (calidad, churn), 📣 growth (usuarios, hype), 🤝 ventas (ARPU), 🧪 QA (bugs), 🛠️ DevOps (servidores/tokens, moral). La oficina limita cuánta gente entra.
 - **Producto**: árbol de 16 features con dependencias. Cada una cambia crecimiento, ARPU, churn, calidad o hype.
 - **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO.
-- **Eventos** cada 14–30 días con dos opciones.
+- **Eventos (39)**: generales, **por sector** (uno propio de cada sector), **reactivos** (los dispara tu forma de jugar: deuda técnica alta, moral baja, no shippear, escalar de golpe, hype sostenido, equity bajo, oficina llena, primer hito) y genéricos. Cerca de un tercio de las opciones son apuestas con la probabilidad a la vista. Nunca se repite uno hasta agotar el pool.
+- **Ritmo dinámico**: cada partida sortea su carácter (tranquila / normal / caótica) y el ritmo acelera con el tamaño de la empresa. Tope de 25 popups por partida; después solo siguen los reactivos.
+- **Panel de control** en `/admin`: métricas locales (duración, resultados, continuidad, popups y decisiones por partida, catálogo de eventos) y los drivers del ritmo editables en vivo.
 - **Social** (requiere login): ranking por valuación, muro con likes (Realtime), visitar startups para dar hype (gratis, 1/día), invertir (cobrás dividendos de su MRR) o robar talento (pagás, ellos cobran indemnización). Las acciones llegan al otro jugador en tiempo real o cuando vuelve a entrar.
 
 ## Estructura

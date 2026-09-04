@@ -1,5 +1,6 @@
 import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, EVENTS, FEATURES, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
-import type { Candidate, Derived, Employee, GameState, Level, LogEntry, Role } from "./types";
+import type { Candidate, Derived, Employee, GameState, Level, LogEntry, ReactiveCtx, Role } from "./types";
+import { tuning } from "./tuning";
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
@@ -61,7 +62,16 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     done: [],
     log: [],
     pendingEvent: null,
-    nextEventDay: 12,
+    nextEventDay: tuning.firstEventDay,
+    pace: pick([tuning.paceTranquila, tuning.paceNormal, tuning.paceCaotica]),
+    seenEvents: [],
+    eventCount: 0,
+    lastEventDay: -99,
+    reactiveCd: {},
+    lastShipDay: 1,
+    hypeHighDays: 0,
+    officeFullDays: 0,
+    usersHistory: [],
     bankruptDays: 0,
     gameOver: null,
     restarts: opts.restarts ?? 0,
@@ -146,6 +156,14 @@ export function featureAvailable(s: GameState, id: string) {
 /** Un día de juego. `quiet` = sin eventos (para progreso offline). */
 export function tick(s: GameState, quiet = false) {
   if (s.gameOver || s.pendingEvent) return;
+  // defensa para guardados de versiones anteriores
+  s.usersHistory ??= [];
+  s.seenEvents ??= [];
+  s.reactiveCd ??= {};
+  s.eventCount ??= 0;
+  s.lastEventDay ??= -99;
+  s.lastShipDay ??= s.day;
+  s.pace ??= 1;
   const d = derive(s);
   s.day += 1;
 
@@ -159,6 +177,7 @@ export function tick(s: GameState, quiet = false) {
     const f = FEATURES.find((x) => x.id === s.currentFeature)!;
     if (s.featureProgress >= f.cost) {
       s.done.push(f.id);
+      s.lastShipDay = s.day;
       s.featureProgress = 0;
       s.currentFeature = null;
       if (f.effects.hype) s.hype = clamp(s.hype + f.effects.hype, 0, 100);
@@ -205,15 +224,14 @@ export function tick(s: GameState, quiet = false) {
   // candidatos
   if (s.day - s.candidatesDay >= 7) refreshCandidates(s);
 
-  // eventos
-  if (!quiet && s.day >= s.nextEventDay) {
-    const pool = EVENTS.filter((e) => (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users);
-    const ev = pick(pool);
-    s.pendingEvent = { id: ev.id, day: s.day };
-    s.nextEventDay = s.day + Math.round(rnd(14, 30));
-  } else if (quiet && s.day >= s.nextEventDay) {
-    s.nextEventDay = s.day + Math.round(rnd(3, 8));
-  }
+  // contexto para los eventos reactivos
+  s.usersHistory.push(s.users);
+  if (s.usersHistory.length > 21) s.usersHistory.shift();
+  s.hypeHighDays = s.hype > 85 ? s.hypeHighDays + 1 : 0;
+  s.officeFullDays = s.employees.length >= OFFICES[s.office].capacity ? s.officeFullDays + 1 : 0;
+
+  if (!quiet) scheduleEvent(s);
+  else if (s.day >= s.nextEventDay) s.nextEventDay = s.day + Math.round(rnd(3, 8));
 
   // IPO
   if (d.valuation >= IPO_VALUATION && s.stage < STAGES.length - 1) {
@@ -223,14 +241,76 @@ export function tick(s: GameState, quiet = false) {
   checkAchievements(s, d);
 }
 
+export function reactiveCtx(s: GameState): ReactiveCtx {
+  return {
+    lastShipDay: s.lastShipDay,
+    hypeHighDays: s.hypeHighDays,
+    officeFullDays: s.officeFullDays,
+    users20: s.usersHistory[0] ?? 0,
+  };
+}
+
+/** Intervalo base entre popups según el tamaño de la empresa. */
+function eventInterval(s: GameState): [number, number] {
+  if (s.stage <= 1 && s.employees.length < 6) return tuning.intervalSmall;
+  if (s.stage <= 3) return tuning.intervalMid;
+  return tuning.intervalBig;
+}
+
+/** Decide si hoy aparece un popup: primero los reactivos, después el calendario. */
+function scheduleEvent(s: GameState) {
+  if (s.pendingEvent) return;
+  const capped = s.eventCount >= tuning.cap;
+  const sep = capped ? tuning.separation * 2 : tuning.separation;
+  if (s.day - s.lastEventDay < sep) return;
+
+  // reactivos: consecuencia de cómo venís jugando
+  const ctx = reactiveCtx(s);
+  for (const e of EVENTS) {
+    if (!e.reactive) continue;
+    if (e.reactive.once && s.seenEvents.includes(e.id)) continue;
+    if ((s.reactiveCd[e.id] ?? -999) > s.day) continue;
+    if (!e.reactive.test(s, ctx)) continue;
+    fireEvent(s, e.id);
+    s.reactiveCd[e.id] = s.day + Math.round(e.reactive.cooldown * tuning.reactiveCooldownMul);
+    return;
+  }
+
+  // calendario: se apaga al llegar al tope
+  if (capped || s.day < s.nextEventDay) return;
+  const disponibles = EVENTS.filter(
+    (e) =>
+      !e.reactive &&
+      (e.sector === undefined || e.sector === s.sector) &&
+      (e.minDay ?? 0) <= s.day &&
+      (e.minUsers ?? 0) <= s.users &&
+      !s.seenEvents.includes(e.id),
+  );
+  if (!disponibles.length) {
+    s.nextEventDay = s.day + 3; // nada disponible todavía: reintenta pronto
+    return;
+  }
+  fireEvent(s, pick(disponibles).id);
+  const [a, b] = eventInterval(s);
+  s.nextEventDay = s.day + Math.max(sep, Math.round(rnd(a, b) * s.pace));
+}
+
+function fireEvent(s: GameState, id: string) {
+  s.pendingEvent = { id, day: s.day };
+  if (!s.seenEvents.includes(id)) s.seenEvents.push(id);
+  s.eventCount += 1;
+  s.lastEventDay = s.day;
+}
+
 export function resolveEvent(s: GameState, choiceIdx: number) {
   if (!s.pendingEvent) return;
   const ev = EVENTS.find((e) => e.id === s.pendingEvent!.id);
   s.pendingEvent = null;
   if (!ev) return;
   const c = ev.choices[choiceIdx] ?? ev.choices[0];
-  const result = c.apply(s);
-  addLog(s, `${ev.icon} ${ev.title}: ${result}`, "info");
+  const ok = c.chance === undefined || !tuning.chanceEnabled ? true : Math.random() < c.chance;
+  const result = c.apply(s, ok);
+  addLog(s, `${ev.icon} ${ev.title}: ${result}`, c.chance !== undefined && !ok ? "bad" : "info");
 }
 
 export function hire(s: GameState, candId: string): string | null {

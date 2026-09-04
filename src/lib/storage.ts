@@ -15,6 +15,16 @@ export function sanitize(s: GameState): GameState {
     s.featureProgress = 0;
   }
   s.pendingEvent ??= null;
+  // planificador de eventos (partidas de versiones anteriores)
+  s.pace ??= 1;
+  s.seenEvents ??= [];
+  s.eventCount ??= 0;
+  s.lastEventDay ??= -99;
+  s.reactiveCd ??= {};
+  s.lastShipDay ??= s.day;
+  s.hypeHighDays ??= 0;
+  s.officeFullDays ??= 0;
+  s.usersHistory ??= [];
   s.portfolio ??= [];
   s.achievements ??= [];
   s.log ??= [];

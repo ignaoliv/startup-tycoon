@@ -92,8 +92,8 @@ export const EVENTS: GameEventDef[] = [
     text: "Publicaste 'Built this in a weekend with AI, no code written by hand' y explotó. 4 millones de views.",
     minUsers: 20,
     choices: [
-      { label: "Aprovechar la ola", desc: "+35 hype, entran usuarios", apply: (s) => { s.hype = Math.min(100, s.hype + 35); const n = Math.round(s.users * 0.15 + 50); s.users += n; return `+${n} usuarios y el hype por las nubes.`; } },
-      { label: "Bajo perfil", desc: "+10 hype, sin riesgo", apply: (s) => { s.hype = Math.min(100, s.hype + 10); return "Un poquito de hype. Tranquilo."; } },
+      { label: "Aprovechar la ola", desc: "+35 hype y usuarios, pero el equipo no da abasto", apply: (s) => { s.hype = Math.min(100, s.hype + 35); const n = Math.round(s.users * 0.15 + 50); s.users += n; s.morale = Math.max(0, s.morale - 8); s.bugs += 3; return `+${n} usuarios y el hype por las nubes. Tres noches sin dormir y algo se rompió.`; } },
+      { label: "Bajo perfil", desc: "+10 hype y el equipo descansa", apply: (s) => { s.hype = Math.min(100, s.hype + 10); s.morale = Math.min(100, s.morale + 5); return "Un poquito de hype y nadie tuvo que trabajar el fin de semana."; } },
     ],
   },
   {
@@ -147,8 +147,8 @@ export const EVENTS: GameEventDef[] = [
     text: "Un medio tech grande quiere una nota: 'El fundador que no escribió una línea de código'.",
     minUsers: 200,
     choices: [
-      { label: "Dar la entrevista", desc: "+25 hype, +usuarios", apply: (s) => { s.hype = Math.min(100, s.hype + 25); const n = Math.round(s.users * 0.1 + 100); s.users += n; return `Salió la nota. +${n} usuarios.`; } },
-      { label: "Mandar al de growth", desc: "+10 hype", apply: (s) => { s.hype = Math.min(100, s.hype + 10); return "Salió bien, pero nadie se acuerda del nombre."; } },
+      { label: "Dar la entrevista", desc: "+25 hype y usuarios, perdés dos días de trabajo", apply: (s) => { s.hype = Math.min(100, s.hype + 25); const n = Math.round(s.users * 0.1 + 100); s.users += n; s.featureProgress = Math.max(0, s.featureProgress - 4); return `Salió la nota. +${n} usuarios, y el roadmap se atrasó dos días.`; } },
+      { label: "Mandar al de growth", desc: "+10 hype, vos seguís shippeando", apply: (s) => { s.hype = Math.min(100, s.hype + 10); s.featureProgress += 2; return "Salió bien, nadie se acuerda del nombre, pero vos avanzaste."; } },
     ],
   },
   {
@@ -170,7 +170,7 @@ export const EVENTS: GameEventDef[] = [
     minDay: 15,
     choices: [
       { label: "Dale, pizza para todos", desc: "-$1.500, +progreso, +moral, +deuda", apply: (s) => { s.cash -= 1500; s.featureProgress += 8; s.bugs += 2; s.morale = Math.min(100, s.morale + 10); return "Salieron tres features y nadie sabe cómo funcionan. Moral al tope."; } },
-      { label: "Hay que dormir", desc: "Nada cambia", apply: (s) => { s.morale = Math.max(0, s.morale - 3); return "El equipo entendió. Medio a regañadientes."; } },
+      { label: "Hay que dormir", desc: "+moral, sin deuda técnica", apply: (s) => { s.morale = Math.min(100, s.morale + 6); s.bugs = Math.max(0, s.bugs - 1); return "Nadie trasnochó. Al otro día el código salió limpio."; } },
     ],
   },
   {
@@ -192,7 +192,7 @@ export const EVENTS: GameEventDef[] = [
     minUsers: 150,
     choices: [
       { label: "Pagar el bounty", desc: "-$5.000, +calidad", apply: (s) => { s.cash -= 5000; s.bugs = Math.max(0, s.bugs - 4); return "Pagaste, arreglaste y hasta lo agradeciste en X."; } },
-      { label: "Ignorarlo", desc: "Lo publica. Duele.", apply: (s) => { const lost = Math.round(s.users * 0.15); s.users -= lost; s.hype = Math.max(0, s.hype - 25); return `Lo publicó. -${lost} usuarios y un hilo viral en tu contra.`; } },
+      { label: "Ignorarlo", desc: "Puede que se olvide del tema", chance: 0.45, apply: (s, ok) => { if (ok) return "Se aburrió y no publicó nada. Zafaste."; const lost = Math.round(s.users * 0.15); s.users -= lost; s.hype = Math.max(0, s.hype - 25); return `Lo publicó. -${lost} usuarios y un hilo viral en tu contra.`; } },
     ],
   },
   {
@@ -248,7 +248,7 @@ export const EVENTS: GameEventDef[] = [
     minUsers: 300,
     choices: [
       { label: "Aceptar el contrato", desc: "+$40.000 ahora, frena el roadmap", apply: (s) => { s.cash += 40000; s.stats.totalRevenue += 40000; s.featureProgress = Math.max(0, s.featureProgress - 8); return "Cobraste el contrato. El roadmap se atrasó un poco."; } },
-      { label: "Rechazar", desc: "Foco en el producto", apply: (s) => { s.morale = Math.min(100, s.morale + 4); return "El equipo agradece no hacer integraciones con SAP."; } },
+      { label: "Rechazar", desc: "+moral y el roadmap avanza", apply: (s) => { s.morale = Math.min(100, s.morale + 6); s.featureProgress += 6; return "El equipo agradece no hacer integraciones con SAP y shippea el doble."; } },
     ],
   },
   {
@@ -270,7 +270,195 @@ export const EVENTS: GameEventDef[] = [
     minDay: 35,
     choices: [
       { label: "Migrar ya", desc: "-progreso ahora, agentes mejoran", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 5); for (const e of s.employees) if (e.role === "ai" && e.level < 3) e.level = (e.level + 1) as 1 | 2 | 3; return "Tus agentes subieron de nivel. Y de precio, seguramente."; } },
-      { label: "Esperar", desc: "Nada cambia", apply: (s) => { s.hype = Math.max(0, s.hype - 5); return "Seguís con lo viejo. Twitter se burla un poco."; } },
+      { label: "Esperar", desc: "No frenás el desarrollo", apply: (s) => { s.featureProgress += 5; return "Seguís con lo viejo y sin parar. Twitter se burla un poco."; } },
+    ],
+  },
+
+  // ============ POR SECTOR ============
+  {
+    id: "sec_google", sector: "saas", title: "Google lanzó tu feature", icon: "🔍", minDay: 40, minUsers: 300,
+    text: "Google anunció exactamente lo que hacés vos, gratis, adentro de su suite. Tu feed no habla de otra cosa.",
+    choices: [
+      { label: "Pivotar a un nicho", desc: "Perdés usuarios pero quedás con los que importan", apply: (s) => { const lost = Math.round(s.users * 0.3); s.users -= lost; s.featureProgress = 0; s.hype = Math.min(100, s.hype + 8); return `Te enfocaste en un nicho. -${lost} usuarios, pero los que quedaron te aman.`; } },
+      { label: "Competirles de frente", desc: "50%: la gente prefiere tu producto", chance: 0.5, apply: (s, ok) => { if (ok) { s.hype = Math.min(100, s.hype + 15); const lost = Math.round(s.users * 0.05); s.users -= lost; return `La gente prefiere una herramienta dedicada. Solo perdiste ${lost} usuarios.`; } const lost = Math.round(s.users * 0.35); s.users -= lost; s.hype = Math.max(0, s.hype - 15); return `Gratis le gana a mejor. -${lost} usuarios.`; } },
+    ],
+  },
+  {
+    id: "sec_fraude", sector: "fintech", title: "Ola de fraude", icon: "🃏", minDay: 30, minUsers: 200,
+    text: "Alguien está usando tarjetas robadas en tu plataforma. Los bancos empiezan a mandar contracargos.",
+    choices: [
+      { label: "Reembolsar todo y reforzar", desc: "Caro, pero cerrás el tema", apply: (s) => { const cost = Math.round(s.users * 2.5 + 3000); s.cash -= cost; s.bugs = Math.max(0, s.bugs - 2); return `Pagaste $${cost.toLocaleString("es-AR")} y sumaste verificación. Se cortó.`; } },
+      { label: "Pelear los contracargos", desc: "45%: los ganás", chance: 0.45, apply: (s, ok) => { if (ok) return "Presentaste evidencia y ganaste casi todos. Cero pérdida."; const cost = Math.round(s.users * 5 + 6000); s.cash -= cost; s.hype = Math.max(0, s.hype - 10); return `Perdiste los contracargos: $${cost.toLocaleString("es-AR")} y el banco te miró feo.`; } },
+    ],
+  },
+  {
+    id: "sec_api", sector: "devtools", title: "Un dev famoso destroza tu API", icon: "🧵", minDay: 30, minUsers: 150,
+    text: "Alguien con 100k seguidores publicó un hilo detallado explicando por qué tu API está mal diseñada. Tiene razón en la mitad.",
+    choices: [
+      { label: "Reescribir la API", desc: "Frena el roadmap, baja la deuda técnica", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 8); s.bugs = Math.max(0, s.bugs - 5); s.hype = Math.min(100, s.hype + 10); return "Dos semanas de refactor. Quedó bien y hasta él lo reconoció."; } },
+      { label: "Responderle en público", desc: "45%: quedás como campeón", chance: 0.45, apply: (s, ok) => { if (ok) { s.hype = Math.min(100, s.hype + 18); s.users += Math.round(30 + s.users * 0.05); return "Respondiste con humildad y datos. Terminaste ganando seguidores."; } s.hype = Math.max(0, s.hype - 15); s.users -= Math.round(s.users * 0.05); return "Te pusiste a la defensiva. El hilo creció y quedaste peor."; } },
+    ],
+  },
+  {
+    id: "sec_vendedor", sector: "delivery", title: "Se va tu vendedor estrella", icon: "🏆", minDay: 40, minUsers: 300,
+    text: "El que más factura en tu marketplace recibió una oferta de la competencia. Se lleva a sus clientes.",
+    choices: [
+      { label: "Igualar con mejores condiciones", desc: "Te cuesta plata todos los meses", apply: (s) => { const cost = Math.round(s.users * 1.5 + 4000); s.cash -= cost; return `Le bajaste la comisión: $${cost.toLocaleString("es-AR")} menos. Se queda.`; } },
+      { label: "Dejarlo ir", desc: "Se lleva parte de tus usuarios", apply: (s) => { const lost = Math.round(s.users * 0.15); s.users -= lost; s.hype = Math.max(0, s.hype - 5); return `Se fue con ${lost} usuarios. Que le vaya bien.`; } },
+    ],
+  },
+  {
+    id: "sec_exchange", sector: "crypto", title: "Se cae el exchange", icon: "🏚️", minDay: 30, minUsers: 100,
+    text: "El exchange donde tenés la caja de la empresa frenó los retiros. Twitter dice que es insolvente.",
+    choices: [
+      { label: "Sacar todo ya, aunque pierdas", desc: "-20% de la caja, pero es tuya", apply: (s) => { const loss = Math.round(Math.max(0, s.cash) * 0.2); s.cash -= loss; return `Pagaste $${loss.toLocaleString("es-AR")} de castigo, pero la plata está en tu cuenta.`; } },
+      { label: "Esperar a que se resuelva", desc: "40%: sale todo bien", chance: 0.4, apply: (s, ok) => { if (ok) { s.hype = Math.min(100, s.hype + 5); return "Reabrieron los retiros. No perdiste un peso."; } const loss = Math.round(Math.max(0, s.cash) * 0.6); s.cash -= loss; return `Quebró. Perdiste $${loss.toLocaleString("es-AR")}.`; } },
+    ],
+  },
+  {
+    id: "sec_proveedor", sector: "ai", title: "El proveedor prohíbe tu caso de uso", icon: "🚫", minDay: 35, minUsers: 150,
+    text: "Cambiaron los términos de servicio y tu producto quedó explícitamente prohibido. Tenés 15 días.",
+    choices: [
+      { label: "Migrar a otro modelo", desc: "Frena todo y deja bugs", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 10); s.bugs += 5; return "Migraste a las apuradas. Anda, pero raro."; } },
+      { label: "Negociar una excepción", desc: "50%: te la dan", chance: 0.5, apply: (s, ok) => { if (ok) { const cost = 6000; s.cash -= cost; return "Firmaste un acuerdo enterprise. Caro, pero seguís igual."; } const lost = Math.round(s.users * 0.2); s.users -= lost; s.bugs += 3; return `Te cortaron el acceso. -${lost} usuarios y una migración de urgencia.`; } },
+    ],
+  },
+  // ============ REACTIVOS ============
+  {
+    id: "r_deuda", title: "Se cayó producción", icon: "💥",
+    text: "Tanto código sin revisar pasó factura: la app está caída y nadie sabe por dónde empezar.",
+    reactive: { test: (s) => s.bugs > 15, cooldown: 80 },
+    choices: [
+      { label: "Freezar features y limpiar", desc: "Se para el roadmap, baja mucho la deuda", apply: (s) => { s.featureProgress = 0; s.bugs = Math.max(0, s.bugs - 10); s.morale = Math.min(100, s.morale + 4); return "Una semana entera limpiando. El equipo respira."; } },
+      { label: "Parche rápido y seguir", desc: "50%: aguanta", chance: 0.5, apply: (s, ok) => { if (ok) { s.bugs = Math.max(0, s.bugs - 2); return "El parche aguantó. Por ahora."; } const lost = Math.round(s.users * 0.08); s.users -= lost; s.hype = Math.max(0, s.hype - 10); s.bugs += 3; return `Se volvió a caer dos veces. -${lost} usuarios.`; } },
+    ],
+  },
+  {
+    id: "r_moral", title: "Carta del equipo", icon: "✉️",
+    text: "Te dejaron una carta firmada por todos. Dice, con mucha educación, que así no se puede seguir.",
+    reactive: { test: (s) => s.morale < 52 && s.employees.filter((e) => !e.founder && e.role !== "ai").length >= 2, cooldown: 80 },
+    choices: [
+      { label: "Escucharlos y cambiar cosas", desc: "Cuesta plata, sube mucho la moral", apply: (s) => { const cost = Math.round(1200 + s.employees.length * 400); s.cash -= cost; s.morale = Math.min(100, s.morale + 20); return `Invertiste $${cost.toLocaleString("es-AR")} en arreglar lo que pedían. El clima cambió.`; } },
+      { label: "Seguir como venimos", desc: "60%: alguien renuncia", chance: 0.4, apply: (s, ok) => { if (ok) { s.morale = Math.max(0, s.morale - 5); return "Nadie se fue, pero el ambiente quedó raro."; } const e = s.employees.filter((x) => !x.founder && x.role !== "ai")[0]; if (e) s.employees = s.employees.filter((x) => x.id !== e.id); s.morale = Math.max(0, s.morale - 12); return e ? `${e.name} renunció al día siguiente.` : "El clima empeoró."; } },
+    ],
+  },
+  {
+    id: "r_sinship", title: "Te dan por muerto", icon: "🪦",
+    text: "Hace rato que no lanzás nada y en los foros ya preguntan si el producto sigue vivo.",
+    reactive: { test: (s, ctx) => s.day - ctx.lastShipDay > 55 && s.done.includes("mvp"), cooldown: 90 },
+    choices: [
+      { label: "Publicar el roadmap", desc: "+hype, pero perdés días explicando", apply: (s) => { s.hype = Math.min(100, s.hype + 15); s.featureProgress = Math.max(0, s.featureProgress - 3); return "Publicaste qué se viene. La gente se entusiasmó de nuevo."; } },
+      { label: "Que hable el producto", desc: "Perdés usuarios mientras tanto", apply: (s) => { const lost = Math.round(s.users * 0.07); s.users -= lost; s.hype = Math.max(0, s.hype - 10); return `Se fueron ${lost} usuarios cansados de esperar.`; } },
+    ],
+  },
+  {
+    id: "r_escala", title: "Los servidores no dan abasto", icon: "📡",
+    text: "Creciste tan rápido que la infraestructura empezó a crujir. Hay lentitud en todas las pantallas.",
+    reactive: { test: (s, ctx) => s.users > 800 && s.users > ctx.users20 * 2.5, cooldown: 100 },
+    choices: [
+      { label: "Invertir en infraestructura", desc: "Caro pero se termina el problema", apply: (s) => { const cost = Math.round(4000 + s.users * 1.2); s.cash -= cost; s.bugs = Math.max(0, s.bugs - 3); return `$${cost.toLocaleString("es-AR")} en servidores. Vuela.`; } },
+      { label: "Aguantar con lo que hay", desc: "40%: zafás", chance: 0.4, apply: (s, ok) => { if (ok) return "El pico bajó solo y aguantó. Suerte."; const lost = Math.round(s.users * 0.12); s.users -= lost; s.hype = Math.max(0, s.hype - 12); return `Se cayó en el peor momento. -${lost} usuarios.`; } },
+    ],
+  },
+  {
+    id: "r_hype", title: "Vienen a robarte gente", icon: "🎯",
+    text: "Con tanta prensa, los headhunters tienen a tu equipo en la mira. Ya llamaron a tres.",
+    reactive: { test: (s, ctx) => ctx.hypeHighDays >= 20 && s.employees.filter((e) => !e.founder && e.role !== "ai").length >= 3, cooldown: 100 },
+    choices: [
+      { label: "Subir sueldos 15%", desc: "Más costo fijo, se quedan todos", apply: (s) => { let n = 0; for (const e of s.employees) if (!e.founder && e.role !== "ai") { e.salary = Math.round(e.salary * 1.15); n++; } s.morale = Math.min(100, s.morale + 8); return `${n} sueldos actualizados. Nadie se mueve.`; } },
+      { label: "Confiar en el proyecto", desc: "50%: se quedan igual", chance: 0.5, apply: (s, ok) => { if (ok) { s.morale = Math.min(100, s.morale + 5); return "Les importa más lo que están construyendo. Se quedaron."; } const e = [...s.employees].filter((x) => !x.founder && x.role !== "ai").sort((a, b) => b.level - a.level)[0]; if (e) s.employees = s.employees.filter((x) => x.id !== e.id); s.morale = Math.max(0, s.morale - 8); return e ? `${e.name} se fue a una big tech por el doble.` : "Zafaste."; } },
+    ],
+  },
+  {
+    id: "r_equity", title: "Los inversores te aprietan", icon: "🪑",
+    text: "Ya tenés más socios que acciones. En la reunión mensual te 'sugieren' cómo manejar la empresa.",
+    reactive: { test: (s) => s.equity < 50, cooldown: 120 },
+    choices: [
+      { label: "Aceptar sus condiciones", desc: "-3% de equity, entra plata", apply: (s) => { s.equity -= 3; const cash = 40000; s.cash += cash; s.stats.raised += cash; return `Entraron $${cash.toLocaleString("es-AR")} más y vos tenés menos empresa.`; } },
+      { label: "Plantarte", desc: "50%: te respetan", chance: 0.5, apply: (s, ok) => { if (ok) { s.morale = Math.min(100, s.morale + 8); s.hype = Math.min(100, s.hype + 5); return "Defendiste tu visión y te la respetaron."; } const cost = Math.round(Math.max(0, s.cash) * 0.1 + 5000); s.cash -= cost; s.hype = Math.max(0, s.hype - 10); return `Te cortaron el apoyo y hubo que cubrir $${cost.toLocaleString("es-AR")} solo.`; } },
+    ],
+  },
+  {
+    id: "r_oficina", title: "No entra un alfiler", icon: "🪑",
+    text: "Hace semanas que hay gente trabajando en el pasillo. Alguien ya amenazó con irse por el ruido.",
+    reactive: { test: (s, ctx) => ctx.officeFullDays >= 12, cooldown: 120 },
+    choices: [
+      { label: "Alquilar un espacio extra", desc: "Cuesta, pero se calma todo", apply: (s) => { const cost = Math.round(2000 + s.employees.length * 250); s.cash -= cost; s.morale = Math.min(100, s.morale + 10); return `$${cost.toLocaleString("es-AR")} por unos escritorios más. Se respira mejor.`; } },
+      { label: "Aguantar hasta la mudanza", desc: "50%: nadie se va", chance: 0.5, apply: (s, ok) => { if (ok) { s.morale = Math.max(0, s.morale - 4); return "Se bancaron el hacinamiento, refunfuñando."; } const e = s.employees.filter((x) => !x.founder && x.role !== "ai")[0]; if (e) s.employees = s.employees.filter((x) => x.id !== e.id); s.morale = Math.max(0, s.morale - 8); return e ? `${e.name} renunció: "así no puedo trabajar".` : "El clima empeoró."; } },
+    ],
+  },
+  {
+    id: "r_hito", title: "¡Mil usuarios!", icon: "🎉",
+    text: "Alguien lo gritó en el canal general: acabás de pasar los 1.000 usuarios. El equipo quiere festejar.",
+    reactive: { test: (s) => s.users >= 1000, cooldown: 0, once: true },
+    choices: [
+      { label: "Festejar como corresponde", desc: "Cuesta poco, sube mucho la moral", apply: (s) => { const cost = Math.round(500 + s.employees.length * 200); s.cash -= cost; s.morale = Math.min(100, s.morale + 18); s.hype = Math.min(100, s.hype + 5); return `Brindis, fotos y un posteo. $${cost.toLocaleString("es-AR")} bien gastados.`; } },
+      { label: "Seguir trabajando", desc: "+progreso, el equipo se desinfla un poco", apply: (s) => { s.featureProgress += 5; s.morale = Math.max(0, s.morale - 6); return "Nadie festejó nada. Se shippeó más, eso sí."; } },
+    ],
+  },
+  // ============ GENÉRICOS ============
+  {
+    id: "aceleradora", title: "Te aceptan en una aceleradora", icon: "🏫", minDay: 25,
+    text: "Quedaste seleccionado en un programa conocido: $50.000, mentores y demo day. A cambio, 7%.",
+    choices: [
+      { label: "Entrar al programa", desc: "+$50.000 y contactos, -7% equity", apply: (s) => { s.cash += 50000; s.equity -= 7; s.stats.raised += 50000; s.hype = Math.min(100, s.hype + 12); return "Entraste. Ahora tenés mentores y una remera."; } },
+      { label: "Seguir solo", desc: "Mantenés tu equity y el foco", apply: (s) => { s.morale = Math.min(100, s.morale + 5); s.featureProgress += 4; return "Nada de viajes ni mentorías. A shippear."; } },
+    ],
+  },
+  {
+    id: "cartadoc", title: "Carta documento por el nombre", icon: "📜", minDay: 40, minUsers: 100,
+    text: "Una empresa que ya tenía registrada la marca te intima a dejar de usar el nombre en 30 días.",
+    choices: [
+      { label: "Cambiar de nombre", desc: "Perdés hype y algo de usuarios", apply: (s) => { s.hype = Math.max(0, s.hype - 18); const lost = Math.round(s.users * 0.06); s.users -= lost; return `Rebranding forzado. -${lost} usuarios que no se enteraron del cambio.`; } },
+      { label: "Pelearla con abogados", desc: "50%: te la quedás", chance: 0.5, apply: (s, ok) => { const cost = 7000; s.cash -= cost; if (ok) { s.hype = Math.min(100, s.hype + 8); return `$${cost.toLocaleString("es-AR")} en abogados y el nombre es tuyo. Hasta te dio prensa.`; } s.hype = Math.max(0, s.hype - 18); const lost = Math.round(s.users * 0.06); s.users -= lost; return `Perdiste el juicio: $${cost.toLocaleString("es-AR")} tirados y encima tuviste que cambiar el nombre.`; } },
+    ],
+  },
+  {
+    id: "cofundador", title: "Alguien quiere ser cofundador", icon: "🤝", minDay: 20,
+    text: "Una dev senior con dos exits atrás te propone sumarse full time. No quiere sueldo: quiere 15%.",
+    choices: [
+      { label: "Aceptar", desc: "Dev senior gratis, -15% equity", apply: (s) => { s.equity -= 15; s.employees.push({ id: `e${s.nextId++}`, name: "Vicky Cofundadora", role: "dev", level: 3, salary: 0, avatar: "👩‍💻" }); s.morale = Math.min(100, s.morale + 10); return "Se sumó. Por primera vez alguien más entiende el código."; } },
+      { label: "Seguir siendo solo founder", desc: "Mantenés el 100%", apply: (s) => { s.morale = Math.max(0, s.morale - 3); return "Solo founder. Como los grandes y como los que quiebran."; } },
+    ],
+  },
+  {
+    id: "amigo", title: "Un amigo te pide trabajo", icon: "🫂", minDay: 15,
+    text: "Un amigo de toda la vida se quedó sin laburo y te pide una chance. No sabe programar, pero es capaz.",
+    choices: [
+      { label: "Darle una chance", desc: "55%: resulta ser un crack", chance: 0.55, apply: (s, ok) => { const salary = 1800; if (ok) { s.employees.push({ id: `e${s.nextId++}`, name: "Tu amigo", role: "marketing", level: 2, salary, avatar: "🧑‍💼" }); s.morale = Math.min(100, s.morale + 8); return "Resultó ser buenísimo en growth. Quién lo hubiera dicho."; } s.employees.push({ id: `e${s.nextId++}`, name: "Tu amigo", role: "marketing", level: 1, salary, avatar: "🧑‍💼" }); s.morale = Math.max(0, s.morale - 6); return "No termina de encajar y el equipo lo nota. Pero es tu amigo."; } },
+      { label: "Decirle que no", desc: "Charla incómoda, foco intacto", apply: (s) => { s.morale = Math.max(0, s.morale - 2); return "Fue una charla horrible, pero la empresa no es un favor."; } },
+    ],
+  },
+  {
+    id: "usuario_pesado", title: "El usuario que exige", icon: "📞", minUsers: 150,
+    text: "Tu usuario más ruidoso quiere una feature hecha a medida para él. Si no, se va y avisa que lo va a contar.",
+    choices: [
+      { label: "Hacerle la feature", desc: "Frena el roadmap general", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 7); s.hype = Math.min(100, s.hype + 4); return "Quedó feliz y lo contó en redes. El resto del roadmap esperó."; } },
+      { label: "Bancarte que se vaya", desc: "40%: se va con ruido", chance: 0.6, apply: (s, ok) => { if (ok) { s.morale = Math.min(100, s.morale + 5); s.featureProgress += 3; return "Se fue en silencio y el equipo trabajó tranquilo."; } const lost = Math.round(s.users * 0.05 + 10); s.users -= lost; s.hype = Math.max(0, s.hype - 8); return `Se fue tirando mierda en todos lados. -${lost} usuarios.`; } },
+    ],
+  },
+  {
+    id: "cobraste_menos", title: "Les cobraste de menos", icon: "🧮", minUsers: 200,
+    text: "Un bug de facturación viene cobrando la mitad hace tres meses. Nadie se quejó, obviamente.",
+    choices: [
+      { label: "Avisar y corregir", desc: "Recuperás plata, algunos se van", apply: (s) => { const gain = Math.round(s.users * 3); s.cash += gain; s.stats.totalRevenue += gain; const lost = Math.round(s.users * 0.05); s.users -= lost; return `Mail honesto y precios corregidos: +$${gain.toLocaleString("es-AR")}, -${lost} usuarios.`; } },
+      { label: "Corregirlo en silencio", desc: "50%: nadie lo nota", chance: 0.5, apply: (s, ok) => { const gain = Math.round(s.users * 2); s.cash += gain; s.stats.totalRevenue += gain; if (ok) return `Nadie dijo nada y entraron $${gain.toLocaleString("es-AR")} más.`; const lost = Math.round(s.users * 0.12); s.users -= lost; s.hype = Math.max(0, s.hype - 15); return `Se dieron cuenta del aumento sin aviso. -${lost} usuarios enojados.`; } },
+    ],
+  },
+  {
+    id: "uso_inesperado", title: "Lo están usando para otra cosa", icon: "🔭", minUsers: 300,
+    text: "Descubrís que un montón de gente usa tu producto para algo que nunca imaginaste. Y les funciona.",
+    choices: [
+      { label: "Abrazar ese caso de uso", desc: "Muchos usuarios nuevos, se desvía el roadmap", apply: (s) => { const n = Math.round(s.users * 0.25 + 80); s.users += n; s.featureProgress = Math.max(0, s.featureProgress - 6); s.hype = Math.min(100, s.hype + 12); return `+${n} usuarios de un mercado que no sabías que existía.`; } },
+      { label: "Bloquearlo y mantener el foco", desc: "Perdés esos usuarios, ganás calidad", apply: (s) => { const lost = Math.round(s.users * 0.08); s.users -= lost; s.bugs = Math.max(0, s.bugs - 3); s.featureProgress += 4; return `-${lost} usuarios, pero el producto volvió a tener una sola forma de usarse.`; } },
+    ],
+  },
+  {
+    id: "competidor_quiebra", title: "Quebró un competidor", icon: "⚰️", minDay: 60, minUsers: 200,
+    text: "Uno de los grandes de tu categoría cerró de un día para el otro. Sus usuarios están buscando adónde ir.",
+    choices: [
+      { label: "Salir a buscarlos con campaña", desc: "Cuesta, pero entran muchos", apply: (s) => { const cost = Math.round(3000 + s.users * 0.8); s.cash -= cost; const n = Math.round(s.users * 0.3 + 120); s.users += n; s.hype = Math.min(100, s.hype + 10); return `$${cost.toLocaleString("es-AR")} en campaña y +${n} usuarios huérfanos.`; } },
+      { label: "Esperar a que lleguen solos", desc: "Gratis, entran menos", apply: (s) => { const n = Math.round(s.users * 0.08 + 25); s.users += n; return `Llegaron ${n} por su cuenta. Gratis es gratis.`; } },
     ],
   },
 ];
