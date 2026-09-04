@@ -260,6 +260,47 @@ export function enviarRunPendienteAlSalir(anonId: string) {
   }).catch(() => guardarRunPendiente(row));
 }
 
+export interface RunRanking {
+  id: string;
+  user_id: string | null;
+  name: string;
+  sector: string;
+  ended_as: string;
+  day: number;
+  valuation: number;
+  peak_users: number;
+  created_at: string;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
+const CAMPOS_RUN = "sector, ended_as, day, valuation, peak_users, equity, team_size, stage, created_at";
+
+/** Historial completo del jugador, para la carrera y los logros. */
+export async function fetchMisRuns(sb: SupabaseClient, userId: string) {
+  const { data, error } = await sb
+    .from("runs")
+    .select(`id, name, idea, ${CAMPOS_RUN}`)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(500);
+  if (error) throw error;
+  return data ?? [];
+}
+
+/**
+ * Ranking de partidas terminadas. `desdeDias` lo acota a los últimos días
+ * (el semanal); sin eso es el salón de la fama. Las partidas sin sesión quedan
+ * afuera: no tienen nombre para mostrar.
+ */
+export async function fetchRankingRuns(sb: SupabaseClient, desdeDias?: number, limit = 50): Promise<RunRanking[]> {
+  let q = sb.from("runs_ranking").select("*").not("user_id", "is", null);
+  if (desdeDias) q = q.gte("created_at", new Date(Date.now() - desdeDias * 864e5).toISOString());
+  const { data, error } = await q.order("valuation", { ascending: false }).limit(limit);
+  if (error) throw error;
+  return (data as RunRanking[]) ?? [];
+}
+
 export async function ensureProfile(sb: SupabaseClient, userId: string, name: string) {
   await sb.from("profiles").upsert({ id: userId, display_name: name }, { onConflict: "id", ignoreDuplicates: true });
 }

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
 import { ProductPanel } from "@/components/panels/ProductPanel";
@@ -29,6 +29,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export function GameShell() {
   const params = useSearchParams();
+  const router = useRouter();
   const forceLocal = params.get("local") === "1";
   const game = useGame(forceLocal);
   const [tab, setTab] = useState<Tab>("office");
@@ -114,6 +115,7 @@ export function GameShell() {
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
                 <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
+                <MenuItem onClick={() => { setMenu(false); router.push("/home"); }}>🏆 Mi carrera y el ranking</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setFeedback(true); }}>💬 Mandar feedback</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setConfirmReset(true); }}>🗑️ Empezar de nuevo</MenuItem>
               </div>

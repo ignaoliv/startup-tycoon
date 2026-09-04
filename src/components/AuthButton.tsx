@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { User } from "@supabase/supabase-js";
 import { getSupabase, signInWithGoogle, signOut, supabaseEnabled } from "@/lib/supabase/client";
 
@@ -78,6 +79,9 @@ export function AuthButton({ compact = false }: { compact?: boolean } = {}) {
       {abierto && (
         <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
           <div className="truncate px-3 py-1.5 text-[11px] text-ink/50">{user.email ?? nombre}</div>
+          <Link href="/home" onClick={() => setAbierto(false)} className="block rounded-lg px-3 py-2 hover:bg-ink/5">
+            🏆 Mi carrera y el ranking
+          </Link>
           <button
             onClick={async () => {
               await signOut();

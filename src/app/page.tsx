@@ -70,9 +70,14 @@ export default function Home() {
           <p className="mx-auto mt-4 max-w-md text-base leading-relaxed text-ink/60 sm:text-lg lg:mx-0">
             Fundá tu empresa, contratá agentes IA, conseguí usuarios y levantá inversión. Todo desde una interfaz simple y caótica, como una startup de verdad.
           </p>
-          <Link href={PLAY_HREF} className="btn mt-6 w-full justify-center border-ink bg-amber px-6 py-4 text-lg text-ink sm:w-auto sm:text-xl">
-            <span aria-hidden>🚀</span> Crear mi startup
-          </Link>
+          <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
+            <Link href={PLAY_HREF} className="btn w-full justify-center border-ink bg-amber px-6 py-4 text-lg text-ink sm:w-auto sm:text-xl">
+              <span aria-hidden>🚀</span> Crear mi startup
+            </Link>
+            <Link href="/home" className="btn w-full justify-center border-ink/25 bg-white px-5 py-4 text-base text-ink sm:w-auto">
+              <span aria-hidden>🏆</span> Ver el ranking
+            </Link>
+          </div>
         </div>
 
         {/* vista previa del juego */}
