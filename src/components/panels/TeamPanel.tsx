@@ -14,6 +14,12 @@ export function TeamPanel({ game }: { game: Game }) {
   const office = OFFICES[s.office];
   const full = s.employees.length >= office.capacity;
   const rerollCost = 500 + s.employees.length * 100;
+  // días de caja: lo que decide la mayoría de las partidas
+  const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
+  const runwayCon = (salario: number) => {
+    const netoDespues = d.netDay - salario / 30;
+    return netoDespues < 0 ? Math.floor(s.cash / -netoDespues) : null;
+  };
   const counts = (Object.keys(ROLES) as Role[]).map((r) => ({ r, n: s.employees.filter((e) => e.role === r).length }));
 
   return (
@@ -27,6 +33,10 @@ export function TeamPanel({ game }: { game: Game }) {
         }
       >
         {full && <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">Oficina llena ({office.capacity}). Mudate en la pestaña Plata.</div>}
+        <div className={`mb-2 flex items-center justify-between rounded-lg px-2 py-1.5 text-xs ${runway === null ? "bg-green/10" : runway < 45 ? "bg-red/10 text-red" : runway < 90 ? "bg-amber/20" : "bg-ink/5"}`}>
+          <span>💵 Días de caja</span>
+          <b className="tabular-nums">{runway === null ? "ganás plata" : `${runway} días`}</b>
+        </div>
         <ul className="space-y-2">
           {s.candidates.map((c) => (
             <li key={c.id} className="flex items-center gap-2 rounded-xl border-2 border-ink/10 p-2">
@@ -36,6 +46,11 @@ export function TeamPanel({ game }: { game: Game }) {
                 <div className="text-[11px] text-ink/60">
                   {ROLES[c.role].icon} {ROLES[c.role].name} · <b>{(c.role === "ai" ? AI_LEVEL_NAMES : LEVEL_NAMES)[c.level]}</b> · {money(c.salary)} {ROLES[c.role].payLabel}
                 </div>
+                {(() => {
+                  const r = runwayCon(c.salary);
+                  if (r === null) return <div className="text-[11px] font-semibold text-green">te sigue quedando plata todos los meses</div>;
+                  return <div className={`text-[11px] font-semibold ${r < 45 ? "text-red" : r < 90 ? "text-ink/60" : "text-ink/50"}`}>te deja en {r} días de caja</div>;
+                })()}
               </div>
               <Btn size="sm" variant="green" disabled={full || s.cash < c.fee} onClick={() => game.mutate((st) => hire(st, c.id))}>
                 {c.role === "ai" ? "Activar" : "Contratar"} {money(c.fee)}

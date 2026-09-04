@@ -31,6 +31,8 @@ interface Perfil {
   veRunway?: boolean;
   /** contrata un Project Manager apenas puede */
   contrataPM?: boolean;
+  /** el juego le avisa a los 3 días que el equipo está parado, así que reacciona antes */
+  veAvisos?: boolean;
 }
 
 const PERFILES: Perfil[] = [
@@ -272,7 +274,7 @@ if (process.argv[3] === "rentable") {
 
 // diagnóstico: por qué muere el novato
 if (process.argv[3] === "diag") {
-  const p = PERFILES[0];
+  const p = { ...PERFILES[0], veRunway: true, veAvisos: true };
   const muertes: GameState[] = [];
   for (let i = 0; i < 60; i++) {
     const s = jugar(p, ["saas", "fintech", "devtools", "delivery", "crypto", "ai"][i % 6]);
@@ -290,13 +292,17 @@ if (process.argv[3] === "diag") {
   console.log(`  tenía MVP: ${((muertes.filter((s) => s.done.includes("mvp")).length / muertes.length) * 100).toFixed(0)}%`);
   console.log(`  se mudó de oficina: ${((muertes.filter((s) => s.office > 0).length / muertes.length) * 100).toFixed(0)}%`);
   console.log(`  popups vistos: ${avgD((s) => s.eventCount ?? 0).toFixed(1)}`);
+  console.log(`  días con el equipo parado al morir: ${avgD((s) => s.idleDays).toFixed(1)}`);
+  console.log(`  features lanzadas por cada 100 días: ${(avgD((s) => s.done.length) / avgD((s) => s.day) * 100).toFixed(1)}`);
+  console.log(`  ingresos vs sueldos: $${avgD((s) => derive(s).mrr).toFixed(0)} contra $${avgD((s) => s.employees.reduce((a, e) => a + e.salary, 0)).toFixed(0)}`);
   console.log();
   process.exit(0);
 }
 
-const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean }[] = [
-  { nombre: "Sin PM (eligen a mano)", tuning: {}, runway: false },
-  { nombre: "Contratan PM apenas pueden", tuning: {}, runway: false, pm: true },
+const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean; avisos?: boolean }[] = [
+  { nombre: "Hoy", tuning: {}, runway: true, avisos: true },
+  { nombre: "20 días en rojo", tuning: { bankruptLimit: 20 }, runway: true, avisos: true },
+  { nombre: "20 días + $45k inicial", tuning: { bankruptLimit: 20, startCash: 45000 }, runway: true, avisos: true },
 ];
 
 const N = Number(process.argv[2] ?? 100);
@@ -316,7 +322,7 @@ for (const esc of ESCENARIOS) {
   const res: string[] = [];
   let minutosInterm = 0;
   for (const base of PERFILES) {
-    const p = { ...base, veRunway: esc.runway, contrataPM: esc.pm };
+    const p = { ...base, veRunway: esc.runway, contrataPM: esc.pm, veAvisos: esc.avisos };
     const finales: Record<string, number> = {};
     const dias: number[] = [];
     for (let i = 0; i < N; i++) {

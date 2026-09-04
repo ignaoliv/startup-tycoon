@@ -23,6 +23,8 @@ export interface Tuning {
   boardDays: number; // en cuántos días
   boardFailsToFire: number; // cuántas metas seguidas podés fallar antes de que te echen
   tamMul: number; // tamaño del mercado (1 = como está definido por sector)
+  bankruptLimit: number; // días en rojo antes de cerrar
+  startCash: number; // plata inicial
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -47,6 +49,8 @@ export const DEFAULT_TUNING: Tuning = {
   boardDays: 110,
   boardFailsToFire: 2,
   tamMul: 1,
+  bankruptLimit: 12,
+  startCash: 30000,
 };
 
 export const TUNING_KEY = "startup-tycoon:tuning";

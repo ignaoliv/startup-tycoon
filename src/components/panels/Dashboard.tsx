@@ -1,7 +1,7 @@
 "use client";
 import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
-import { FEATURES, OFFICES } from "@/lib/game/data";
+import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -11,7 +11,10 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const feat = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
   // único aviso: la oficina llena frena las contrataciones
   const tips: { text: string; tab: string }[] = [];
+  const proxima = STAGES[s.stage + 1];
+  if (proxima && proxima.raise > 0 && d.valuation >= proxima.minValuation) tips.push({ text: `Podés levantar la ronda ${proxima.name}. Entran ${money(proxima.raise)} a cambio de ${proxima.equity}% de la empresa.`, tab: "money" });
   if (s.employees.length >= OFFICES[s.office].capacity && OFFICES[s.office + 1]) tips.push({ text: "La oficina está llena. Mudate para poder contratar.", tab: "money" });
+  if (s.idleDays >= 3) tips.push({ text: `Hace ${s.idleDays} días que el equipo no construye nada. Estás muy manija con la serie: enfocate y elegí qué sigue.`, tab: "product" });
 
   return (
     <div className="space-y-3">

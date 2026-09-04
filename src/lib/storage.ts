@@ -25,6 +25,7 @@ export function sanitize(s: GameState): GameState {
   s.lastEventDay ??= -99;
   s.reactiveCd ??= {};
   s.lastShipDay ??= s.day;
+  s.idleDays ??= 0;
   s.hypeHighDays ??= 0;
   s.officeFullDays ??= 0;
   s.usersHistory ??= [];

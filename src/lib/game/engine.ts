@@ -51,7 +51,7 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     idea: opts.idea?.trim() || randomIdea(),
     sector: opts.sector,
     day: 1,
-    cash: START_CASH + (opts.restarts ?? 0) * 10000,
+    cash: tuning.startCash + (opts.restarts ?? 0) * 10000,
     users: 0,
     hype: 15,
     morale: 70,
@@ -74,6 +74,7 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     lastEventDay: -99,
     reactiveCd: {},
     lastShipDay: 1,
+    idleDays: 0,
     hypeHighDays: 0,
     officeFullDays: 0,
     usersHistory: [],
@@ -174,6 +175,7 @@ export function tick(s: GameState, quiet = false) {
   s.eventCount ??= 0;
   s.lastEventDay ??= -99;
   s.lastShipDay ??= s.day;
+  s.idleDays ??= 0;
   s.pace ??= 1;
   const d = derive(s);
   s.day += 1;
@@ -231,8 +233,8 @@ export function tick(s: GameState, quiet = false) {
   // quiebra
   if (s.cash < 0) {
     s.bankruptDays += 1;
-    if (s.bankruptDays === 1) addLog(s, "Estás en rojo. Tenés 12 días para arreglarlo o cerrás.", "bad");
-    if (s.bankruptDays >= 12) {
+    if (s.bankruptDays === 1) addLog(s, `Estás en rojo. Tenés ${tuning.bankruptLimit} días para arreglarlo o cerrás: recortá gente o levantá una ronda.`, "bad");
+    if (s.bankruptDays >= tuning.bankruptLimit) {
       s.gameOver = "bankrupt";
       addLog(s, "💀 Sin plata y sin inversores. Cerró la startup.", "bad");
       return;
@@ -246,6 +248,8 @@ export function tick(s: GameState, quiet = false) {
   s.usersHistory.push(s.users);
   if (s.usersHistory.length > 21) s.usersHistory.shift();
   s.hypeHighDays = s.hype > 85 ? s.hypeHighDays + 1 : 0;
+  // días seguidos con el equipo sin nada que construir
+  s.idleDays = !s.currentFeature && s.done.includes("mvp") ? s.idleDays + 1 : 0;
   s.officeFullDays = s.employees.length >= OFFICES[s.office].capacity ? s.officeFullDays + 1 : 0;
 
   if (!quiet) scheduleEvent(s);

@@ -151,6 +151,7 @@ export interface GameState {
   lastEventDay: number;
   reactiveCd: Record<string, number>;
   lastShipDay: number;
+  idleDays: number;
   hypeHighDays: number;
   officeFullDays: number;
   usersHistory: number[];
