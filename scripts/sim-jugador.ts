@@ -5,6 +5,7 @@
 import { derive, fire, hire, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { dayMs, EVENTS, FEATURES, OFFICES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
+import { applyTuning, DEFAULT_TUNING } from "../src/lib/game/tuning";
 
 interface Perfil {
   nombre: string;
@@ -26,6 +27,8 @@ interface Perfil {
   haceMarketing: boolean;
   /** contrata de más sin necesidad */
   sobrecontrata: boolean;
+  /** ve el runway en pantalla al contratar: no contrata si le queda poca caja */
+  veRunway?: boolean;
 }
 
 const PERFILES: Perfil[] = [
@@ -52,6 +55,80 @@ function elegir(s: GameState, p: Perfil): number {
   return 0;
 }
 
+
+/** todo lo que hace el jugador cuando mira el juego. Devuelve desde cuándo está sin feature. */
+function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
+      const d = derive(s);
+
+  // elegir qué construir (con demora según el perfil)
+  if (!s.currentFeature) {
+    if (sinFeatureDesde < 0) sinFeatureDesde = s.day;
+    if (s.day - sinFeatureDesde >= p.demoraFeature) {
+      const disp = FEATURES.filter((f) => featureAvailable(s, f.id));
+      const elegida = p.decision === "azar" ? disp[Math.floor(Math.random() * disp.length)] : disp.sort((a, b) => a.cost - b.cost)[0];
+      if (elegida) setFeature(s, elegida.id);
+      sinFeatureDesde = -1;
+    }
+  } else sinFeatureDesde = -1;
+
+  // ronda / IPO
+  if (Math.random() < p.probRonda) raiseRound(s);
+  if (p.decision !== "azar" || Math.random() < 0.5) ipo(s);
+
+  // mudanza
+  const cap = OFFICES[s.office].capacity;
+  const sig = OFFICES[s.office + 1];
+  if (s.employees.length >= cap && sig && Math.random() < p.probMudanza) {
+    const colchon = p.cuidaCaja ? Math.max(0, -d.netDay) * 60 + 5000 : 0;
+    if (s.cash > sig.cost + colchon) upgradeOffice(s);
+  }
+
+  // pánico: cuando la caja está en rojo, cualquiera reacciona (la pantalla lo grita)
+  if (s.cash < 0) {
+    raiseRound(s);
+    if (s.cash < 0 && s.bankruptDays >= (p.decision === "azar" ? 5 : 2)) {
+      const candidatos = s.employees.filter((e) => !e.founder);
+      const victima = p.decision === "azar" ? candidatos[Math.floor(Math.random() * candidatos.length)] : [...candidatos].sort((a, b) => b.salary - a.salary)[0];
+      if (victima) fire(s, victima.id);
+    }
+    return sinFeatureDesde; // en modo pánico no contrata
+  }
+
+  // contratar
+  for (const c of s.candidates) {
+    if (s.employees.length >= cap) break;
+    if (s.cash < c.fee * (p.cuidaCaja ? 3 : 1.2)) continue;
+    if (p.veRunway && !p.cuidaCaja) {
+      // ve el número en pantalla y frena si queda poca caja, aunque no sepa optimizar
+      const mensual = d.costDay * 30 + c.salary - d.mrr;
+      const runway = mensual > 0 ? s.cash / (mensual / 30) : 999;
+      if (runway < 55) continue;
+    }
+    if (p.cuidaCaja) {
+      const mensual = d.costDay * 30 + c.salary - d.mrr;
+      const runway = mensual > 0 ? s.cash / (mensual / 30) : 999;
+      if (runway < 100) continue;
+      const cuenta = (r: string) => s.employees.filter((e) => e.role === r).length;
+      const ok =
+        (c.role === "ai" && cuenta("ai") < 2 + cuenta("dev") * 2) ||
+        (c.role === "dev" && cuenta("dev") < 1 + Math.floor(cuenta("ai") / 2)) ||
+        (c.role === "marketing" && s.done.includes("mvp") && cuenta("marketing") < 1 + Math.floor(s.employees.length / 3)) ||
+        (c.role === "qa" && s.bugs > 3 && cuenta("qa") < 1 + Math.floor(cuenta("ai") / 3)) ||
+        (c.role === "design" && cuenta("design") < 1 + Math.floor(s.employees.length / 6)) ||
+        (c.role === "sales" && s.users > 200 && cuenta("sales") < 1 + Math.floor(s.employees.length / 6)) ||
+        (c.role === "ops" && s.employees.length > 8 && cuenta("ops") < 2);
+      if (!ok) continue;
+    } else if (!p.sobrecontrata && Math.random() < 0.5) continue;
+    hire(s, c.id);
+  }
+
+  // moral y marketing
+  if (p.cuidaMoral && s.morale < 55 && s.cash > 20000) teamPerk(s);
+  if (p.haceMarketing && s.hype < 25 && s.cash > 30000) marketingPush(s);
+    
+  return sinFeatureDesde;
+}
+
 function jugar(p: Perfil, sector: string, maxDias = 1200) {
   const s = newGame({ startupName: "Sim", founderName: "Bot", sector });
   let ultimaMirada = 0;
@@ -64,75 +141,50 @@ function jugar(p: Perfil, sector: string, maxDias = 1200) {
     const mira = s.day - ultimaMirada >= p.atencion;
     if (mira) {
       ultimaMirada = s.day;
-      const d = derive(s);
-
-      // elegir qué construir (con demora según el perfil)
-      if (!s.currentFeature) {
-        if (sinFeatureDesde < 0) sinFeatureDesde = s.day;
-        if (s.day - sinFeatureDesde >= p.demoraFeature) {
-          const disp = FEATURES.filter((f) => featureAvailable(s, f.id));
-          const elegida = p.decision === "azar" ? disp[Math.floor(Math.random() * disp.length)] : disp.sort((a, b) => a.cost - b.cost)[0];
-          if (elegida) setFeature(s, elegida.id);
-          sinFeatureDesde = -1;
-        }
-      } else sinFeatureDesde = -1;
-
-      // ronda / IPO
-      if (Math.random() < p.probRonda) raiseRound(s);
-      if (p.decision !== "azar" || Math.random() < 0.5) ipo(s);
-
-      // mudanza
-      const cap = OFFICES[s.office].capacity;
-      const sig = OFFICES[s.office + 1];
-      if (s.employees.length >= cap && sig && Math.random() < p.probMudanza) {
-        const colchon = p.cuidaCaja ? Math.max(0, -d.netDay) * 60 + 5000 : 0;
-        if (s.cash > sig.cost + colchon) upgradeOffice(s);
-      }
-
-      // pánico: cuando la caja está en rojo, cualquiera reacciona (la pantalla lo grita)
-      if (s.cash < 0) {
-        raiseRound(s);
-        if (s.cash < 0 && s.bankruptDays >= (p.decision === "azar" ? 5 : 2)) {
-          const candidatos = s.employees.filter((e) => !e.founder);
-          const victima = p.decision === "azar" ? candidatos[Math.floor(Math.random() * candidatos.length)] : [...candidatos].sort((a, b) => b.salary - a.salary)[0];
-          if (victima) fire(s, victima.id);
-        }
-        tick(s);
-        if (s.gameOver) break;
-        continue; // en modo pánico no contrata
-      }
-
-      // contratar
-      for (const c of s.candidates) {
-        if (s.employees.length >= cap) break;
-        if (s.cash < c.fee * (p.cuidaCaja ? 3 : 1.2)) continue;
-        if (p.cuidaCaja) {
-          const mensual = d.costDay * 30 + c.salary - d.mrr;
-          const runway = mensual > 0 ? s.cash / (mensual / 30) : 999;
-          if (runway < 100) continue;
-          const cuenta = (r: string) => s.employees.filter((e) => e.role === r).length;
-          const ok =
-            (c.role === "ai" && cuenta("ai") < 2 + cuenta("dev") * 2) ||
-            (c.role === "dev" && cuenta("dev") < 1 + Math.floor(cuenta("ai") / 2)) ||
-            (c.role === "marketing" && s.done.includes("mvp") && cuenta("marketing") < 1 + Math.floor(s.employees.length / 3)) ||
-            (c.role === "qa" && s.bugs > 3 && cuenta("qa") < 1 + Math.floor(cuenta("ai") / 3)) ||
-            (c.role === "design" && cuenta("design") < 1 + Math.floor(s.employees.length / 6)) ||
-            (c.role === "sales" && s.users > 200 && cuenta("sales") < 1 + Math.floor(s.employees.length / 6)) ||
-            (c.role === "ops" && s.employees.length > 8 && cuenta("ops") < 2);
-          if (!ok) continue;
-        } else if (!p.sobrecontrata && Math.random() < 0.5) continue;
-        hire(s, c.id);
-      }
-
-      // moral y marketing
-      if (p.cuidaMoral && s.morale < 55 && s.cash > 20000) teamPerk(s);
-      if (p.haceMarketing && s.hype < 25 && s.cash > 30000) marketingPush(s);
+      sinFeatureDesde = pasoDeJuego(s, p, sinFeatureDesde);
     }
 
     tick(s);
     if (s.gameOver) break;
   }
   return s;
+}
+
+// ¿se puede perder una vez que sos rentable?
+if (process.argv[3] === "rentable") {
+  applyTuning({ ...DEFAULT_TUNING });
+  let rentables = 0, murieronDespues = 0, ganaron = 0;
+  const secs = ["saas", "fintech", "devtools", "delivery", "crypto", "ai"];
+  for (const perfil of [PERFILES[0], PERFILES[1]]) {
+    for (let i = 0; i < 120; i++) {
+      const s = newGame({ startupName: "Sim", founderName: "Bot", sector: secs[i % 6] });
+      let fueRentable = false;
+      const p = { ...perfil, veRunway: true };
+      let ultimaMirada = 0;
+      for (let k = 0; k < 1200; k++) {
+        if (s.pendingEvent) resolveEvent(s, elegir(s, p));
+        if (s.day - ultimaMirada >= p.atencion) {
+          ultimaMirada = s.day;
+          pasoDeJuego(s, p);
+        }
+        tick(s);
+        const d = derive(s);
+        // rentable de verdad: gana plata y ya pasó el arranque
+        if (!fueRentable && d.netDay > 0 && s.day > 120 && s.cash > 50000) fueRentable = true;
+        if (s.gameOver) break;
+      }
+      if (fueRentable) {
+        rentables++;
+        if (s.gameOver === "bankrupt") murieronDespues++;
+        if (s.gameOver === "ipo" || s.gameOver === "acquired") ganaron++;
+      }
+    }
+  }
+  console.log(`\n=== ¿SE PUEDE PERDER SIENDO RENTABLE? ===`);
+  console.log(`  partidas que llegaron a ser rentables: ${rentables}`);
+  console.log(`  de esas, terminaron en quiebra: ${murieronDespues} (${((murieronDespues / rentables) * 100).toFixed(1)}%)`);
+  console.log(`  de esas, ganaron: ${ganaron} (${((ganaron / rentables) * 100).toFixed(1)}%)\n`);
+  process.exit(0);
 }
 
 // diagnóstico: por qué muere el novato
@@ -159,6 +211,16 @@ if (process.argv[3] === "diag") {
   process.exit(0);
 }
 
+const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean }[] = [
+  { nombre: "Hoy", tuning: {}, runway: false },
+  { nombre: "A: runway visible", tuning: {}, runway: true },
+  { nombre: "B: A + estructura tardía", tuning: { overheadFrom: 18, costOverhead: 0.035, productivityOverhead: 0.02 }, runway: true },
+  { nombre: "C: A + IPO a $2,5B", tuning: { ipoValuation: 2_500_000_000 }, runway: true },
+  { nombre: "D: A + IPO a $5B", tuning: { ipoValuation: 5_000_000_000 }, runway: true },
+  { nombre: "E: B + IPO a $2,5B", tuning: { overheadFrom: 18, costOverhead: 0.035, productivityOverhead: 0.02, ipoValuation: 2_500_000_000 }, runway: true },
+  { nombre: "F: E pero más fuerte", tuning: { overheadFrom: 16, costOverhead: 0.05, productivityOverhead: 0.03, ipoValuation: 4_000_000_000 }, runway: true },
+];
+
 const N = Number(process.argv[2] ?? 100);
 const sectores = ["saas", "fintech", "devtools", "delivery", "crypto", "ai"];
 const minsProg = (n: number) => {
@@ -168,24 +230,26 @@ const minsProg = (n: number) => {
 };
 const avg = (v: number[]) => (v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0);
 
-console.log(`\n=== ${N} partidas por perfil ===\n`);
-console.log(`${"perfil".padEnd(12)}${"gana".padStart(7)}${"IPO".padStart(7)}${"exit".padStart(7)}${"quiebra".padStart(9)}${"sin fin".padStart(9)}${"días".padStart(7)}${"minutos".padStart(9)}${"popups".padStart(8)}`);
+console.log(`\n=== ${N} partidas por perfil y escenario ===\n`);
+console.log(`${"escenario".padEnd(21)}${"NOVATO".padStart(9)}${"INTERM.".padStart(9)}${"EXPERTO".padStart(9)}   ${"min/partida (interm.)".padStart(10)}`);
 
-for (const p of PERFILES) {
-  const finales: Record<string, number> = {};
-  const dias: number[] = [];
-  const popups: number[] = [];
-  for (let i = 0; i < N; i++) {
-    const s = jugar(p, sectores[i % sectores.length]);
-    const fin = s.gameOver ?? "sigue";
-    finales[fin] = (finales[fin] ?? 0) + 1;
-    dias.push(s.day);
-    popups.push(s.eventCount ?? 0);
+for (const esc of ESCENARIOS) {
+  applyTuning({ ...DEFAULT_TUNING, ...esc.tuning });
+  const res: string[] = [];
+  let minutosInterm = 0;
+  for (const base of PERFILES) {
+    const p = { ...base, veRunway: esc.runway };
+    const finales: Record<string, number> = {};
+    const dias: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const s = jugar(p, sectores[i % sectores.length]);
+      finales[s.gameOver ?? "sigue"] = (finales[s.gameOver ?? "sigue"] ?? 0) + 1;
+      dias.push(s.day);
+    }
+    const gana = (finales.ipo ?? 0) + (finales.acquired ?? 0);
+    res.push(`${Math.round((gana / N) * 100)}%`);
+    if (base.nombre === "Intermedio") minutosInterm = minsProg(Math.round(avg(dias)));
   }
-  const gana = (finales.ipo ?? 0) + (finales.acquired ?? 0);
-  const d = avg(dias);
-  console.log(
-    `${p.nombre.padEnd(12)}${String(Math.round((gana / N) * 100) + "%").padStart(7)}${String(finales.ipo ?? 0).padStart(7)}${String(finales.acquired ?? 0).padStart(7)}${String(finales.bankrupt ?? 0).padStart(9)}${String(finales.sigue ?? 0).padStart(9)}${d.toFixed(0).padStart(7)}${(minsProg(Math.round(d)).toFixed(1) + "m").padStart(9)}${avg(popups).toFixed(1).padStart(8)}`,
-  );
+  console.log(`${esc.nombre.padEnd(21)}${res[0].padStart(9)}${res[1].padStart(9)}${res[2].padStart(9)}   ${(minutosInterm.toFixed(1) + " min").padStart(10)}`);
 }
-console.log(`\n(los minutos no incluyen lo que tarda una persona en leer y decidir cada popup)\n`);
+console.log(`\nObjetivo buscado: novato ~30% · intermedio ~55% · experto ~70%\n`);

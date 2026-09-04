@@ -102,7 +102,11 @@ export function addLog(s: GameState, text: string, kind: LogEntry["kind"] = "inf
 export function derive(s: GameState): Derived {
   const office = OFFICES[s.office];
   const sector = SECTORS.find((x) => x.id === s.sector) ?? SECTORS[1];
-  const moraleMul = 0.5 + s.morale / 200; // 0.5..1
+  // la estructura pesa: cada persona de más cuesta plata y resta productividad
+  const exceso = Math.max(0, s.employees.length - tuning.overheadFrom);
+  const overheadCosto = 1 + exceso * tuning.costOverhead;
+  const overheadProd = Math.max(0.45, 1 - exceso * tuning.productivityOverhead);
+  const moraleMul = (0.5 + s.morale / 200) * overheadProd; // 0.5..1
   const pts = (role: Role) => s.employees.filter((e) => e.role === role).reduce((a, e) => a + e.level * (e.founder ? 1.5 : 1), 0) * moraleMul;
   const aiPts = pts("ai") * 1.6; // la IA vibecodea rápido
   const humanDev = pts("dev");
@@ -127,7 +131,7 @@ export function derive(s: GameState): Derived {
   const arpu = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) : 0;
   const mrr = s.users * arpu;
   const revenueDay = mrr / 30;
-  const salariesMonth = s.employees.reduce((a, e) => a + e.salary, 0);
+  const salariesMonth = s.employees.reduce((a, e) => a + e.salary, 0) * overheadCosto;
   const rentMonth = office.rent;
   const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - Math.min(0.6, opsPts * 0.08));
   const costDay = (salariesMonth + rentMonth + serverMonth) / 30;
@@ -239,7 +243,7 @@ export function tick(s: GameState, quiet = false) {
   else if (s.day >= s.nextEventDay) s.nextEventDay = s.day + Math.round(rnd(3, 8));
 
   // IPO
-  if (d.valuation >= IPO_VALUATION && s.stage < STAGES.length - 1) {
+  if (d.valuation >= tuning.ipoValuation && s.stage < STAGES.length - 1) {
     s.stage = STAGES.length - 1;
     addLog(s, "🦄 ¡Sos unicornio! Valuación de $1B. Podés salir a bolsa cuando quieras.", "good");
   }
@@ -393,7 +397,7 @@ export function raiseRound(s: GameState): string | null {
 
 export function ipo(s: GameState): string | null {
   const d = derive(s);
-  if (d.valuation < IPO_VALUATION) return "Para salir a bolsa necesitás valer $1B.";
+  if (d.valuation < tuning.ipoValuation) return `Para salir a bolsa necesitás valer $${Math.round(tuning.ipoValuation / 1e9)}B.`;
   s.gameOver = "ipo";
   addLog(s, "🔔 ¡Tocaste la campana! IPO exitosa.", "good");
   return null;

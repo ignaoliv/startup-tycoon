@@ -11,6 +11,11 @@ export interface Tuning {
   intervalBig: [number, number]; // serie B en adelante
   reactiveCooldownMul: number; // 1 = como está definido en cada evento
   chanceEnabled: boolean; // apagar el azar en las decisiones
+  // --- presión de escala (0 = apagado)
+  overheadFrom: number; // a partir de cuántas personas empieza a pesar la estructura
+  costOverhead: number; // extra de costo por persona de más (0.015 = +1,5% por persona)
+  productivityOverhead: number; // productividad perdida por persona de más
+  ipoValuation: number; // valuación necesaria para salir a bolsa
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -25,6 +30,10 @@ export const DEFAULT_TUNING: Tuning = {
   intervalBig: [9, 16],
   reactiveCooldownMul: 1,
   chanceEnabled: true,
+  overheadFrom: 10,
+  costOverhead: 0,
+  productivityOverhead: 0,
+  ipoValuation: 1_000_000_000,
 };
 
 export const TUNING_KEY = "startup-tycoon:tuning";
