@@ -287,10 +287,18 @@ function Modal({ children }: { children: React.ReactNode }) {
 }
 
 function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: string; idea: string; sector: string }) => void }) {
-  const [name, setName] = useState(() => randomStartupName());
-  const [idea, setIdea] = useState(() => randomIdea());
-  const [founder, setFounder] = useState("");
   const [sector, setSector] = useState("saas");
+  const [name, setName] = useState(() => randomStartupName("saas"));
+  const [idea, setIdea] = useState(() => randomIdea("saas"));
+  const [founder, setFounder] = useState("");
+  // si el jugador escribió lo suyo, cambiar de sector no se lo pisa
+  const escrito = useRef({ name: false, idea: false });
+
+  const elegirSector = (id: string) => {
+    setSector(id);
+    if (!escrito.current.name) setName(randomStartupName(id));
+    if (!escrito.current.idea) setIdea(randomIdea(id));
+  };
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-4">
       <Card>
@@ -300,8 +308,8 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
         <label className="mb-3 block text-xs font-bold uppercase text-ink/50">
           Nombre de la startup
           <div className="mt-1 flex gap-2">
-            <input value={name} onChange={(e) => setName(e.target.value.slice(0, 24))} className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-base font-bold normal-case outline-none focus:border-indigo" />
-            <Btn variant="ghost" onClick={() => setName(randomStartupName())} aria-label="Nombre al azar">
+            <input value={name} onChange={(e) => { escrito.current.name = true; setName(e.target.value.slice(0, 24)); }} className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-base font-bold normal-case outline-none focus:border-indigo" />
+            <Btn variant="ghost" onClick={() => setName(randomStartupName(sector))} aria-label="Nombre al azar">
               🎲
             </Btn>
           </div>
@@ -309,8 +317,8 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
         <label className="mb-3 block text-xs font-bold uppercase text-ink/50">
           Tu idea
           <div className="mt-1 flex gap-2">
-            <input value={idea} onChange={(e) => setIdea(e.target.value.slice(0, 60))} placeholder="¿Qué vas a construir?" className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
-            <Btn variant="ghost" onClick={() => setIdea(randomIdea())} aria-label="Idea al azar">
+            <input value={idea} onChange={(e) => { escrito.current.idea = true; setIdea(e.target.value.slice(0, 60)); }} placeholder="¿Qué vas a construir?" className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+            <Btn variant="ghost" onClick={() => setIdea(randomIdea(sector))} aria-label="Idea al azar">
               🎲
             </Btn>
           </div>
@@ -322,7 +330,7 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
         <div className="mb-1 text-xs font-bold uppercase text-ink/50">Sector</div>
         <div className="mb-4 grid grid-cols-2 gap-1.5">
           {SECTORS.map((s) => (
-            <button key={s.id} onClick={() => setSector(s.id)} className={`rounded-xl border-2 p-2 text-left ${sector === s.id ? "border-indigo bg-indigo/10" : "border-ink/15 bg-white"}`}>
+            <button key={s.id} onClick={() => elegirSector(s.id)} className={`rounded-xl border-2 p-2 text-left ${sector === s.id ? "border-indigo bg-indigo/10" : "border-ink/15 bg-white"}`}>
               <div className="text-sm font-black">
                 {s.icon} {s.name}
               </div>

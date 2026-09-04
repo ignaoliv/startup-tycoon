@@ -1,4 +1,4 @@
-import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, PM_SALARY, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
+import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IDEAS_POR_SECTOR, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, PM_SALARY, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
 import type { Candidate, Derived, Employee, GameState, Level, LogEntry, ReactiveCtx, Role } from "./types";
 import { tuning } from "./tuning";
 
@@ -6,12 +6,16 @@ const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
-export function randomStartupName() {
-  return pick(STARTUP_NAME_PARTS.a) + pick(STARTUP_NAME_PARTS.b);
+/** Nombre al azar con el color del sector; sin sector, mezcla todos. */
+export function randomStartupName(sector?: string) {
+  const partes = sector ? STARTUP_NAME_PARTS[sector] : undefined;
+  const a = partes?.a ?? Object.values(STARTUP_NAME_PARTS).flatMap((x) => x.a);
+  const b = partes?.b ?? Object.values(STARTUP_NAME_PARTS).flatMap((x) => x.b);
+  return pick(a) + pick(b);
 }
 
-export function randomIdea() {
-  return pick(IDEAS);
+export function randomIdea(sector?: string) {
+  return pick((sector ? IDEAS_POR_SECTOR[sector] : undefined) ?? IDEAS);
 }
 
 export function makeCandidate(s: GameState, role?: Role): Candidate {
@@ -46,9 +50,9 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
   const s: GameState = {
     version: 1,
     id: `g${Date.now().toString(36)}`,
-    startupName: opts.startupName || randomStartupName(),
+    startupName: opts.startupName || randomStartupName(opts.sector),
     founderName: opts.founderName || "Fundador/a",
-    idea: opts.idea?.trim() || randomIdea(),
+    idea: opts.idea?.trim() || randomIdea(opts.sector),
     sector: opts.sector,
     day: 1,
     cash: tuning.startCash + (opts.restarts ?? 0) * 10000,
