@@ -3,7 +3,7 @@
  * Tres perfiles que se equivocan de distinta manera: novato, intermedio y experto.
  */
 import { derive, fire, hire, hirePM, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, tienePM, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
-import { dayMs, EVENTS, FEATURES, OFFICES } from "../src/lib/game/data";
+import { dayMs, EVENTS, FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 import { applyTuning, DEFAULT_TUNING } from "../src/lib/game/tuning";
 
@@ -67,7 +67,9 @@ function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
   // elegir qué construir (con demora según el perfil)
   if (!s.currentFeature) {
     if (sinFeatureDesde < 0) sinFeatureDesde = s.day;
-    if (s.day - sinFeatureDesde >= p.demoraFeature) {
+    // el aviso de "el equipo no construye nada" aparece a los 3 días y lo empuja a elegir
+    const demora = p.veAvisos && s.idleDays >= 3 ? 0 : p.demoraFeature;
+    if (s.day - sinFeatureDesde >= demora) {
       const disp = FEATURES.filter((f) => featureAvailable(s, f.id));
       const elegida = p.decision === "azar" ? disp[Math.floor(Math.random() * disp.length)] : disp.sort((a, b) => a.cost - b.cost)[0];
       if (elegida) setFeature(s, elegida.id);
@@ -76,7 +78,11 @@ function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
   } else sinFeatureDesde = -1;
 
   // ronda / IPO
-  if (Math.random() < p.probRonda) raiseRound(s);
+  // el aviso de ronda disponible en el panel sube muchísimo la chance de que la levante
+  const proxima = STAGES[s.stage + 1];
+  const rondaALaVista = !!proxima && proxima.raise > 0 && d.valuation >= proxima.minValuation;
+  const probRonda = p.veAvisos && rondaALaVista ? 0.9 : p.probRonda;
+  if (Math.random() < probRonda) raiseRound(s);
   if (p.decision !== "azar" || Math.random() < 0.5) ipo(s);
 
   // mudanza
@@ -97,6 +103,9 @@ function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
     }
     return sinFeatureDesde; // en modo pánico no contrata
   }
+
+  // contratar un PM para que el roadmap vaya solo
+  if (p.contrataPM && !tienePM(s) && s.done.includes("mvp") && s.cash > 20000) hirePM(s);
 
   // contratar
   for (const c of s.candidates) {
@@ -299,10 +308,11 @@ if (process.argv[3] === "diag") {
   process.exit(0);
 }
 
-const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean; avisos?: boolean }[] = [
+const PRESEED = STAGES[1].minValuation;
+const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean; avisos?: boolean; preseed?: number }[] = [
+  { nombre: "Sin avisos (antes)", tuning: {}, runway: false, avisos: false },
   { nombre: "Hoy", tuning: {}, runway: true, avisos: true },
-  { nombre: "20 días en rojo", tuning: { bankruptLimit: 20 }, runway: true, avisos: true },
-  { nombre: "20 días + $45k inicial", tuning: { bankruptLimit: 20, startCash: 45000 }, runway: true, avisos: true },
+  { nombre: "Hoy + contrata PM", tuning: {}, runway: true, avisos: true, pm: true },
 ];
 
 const N = Number(process.argv[2] ?? 100);
@@ -319,6 +329,7 @@ console.log(`${"escenario".padEnd(21)}${"NOVATO".padStart(9)}${"INTERM.".padStar
 
 for (const esc of ESCENARIOS) {
   applyTuning({ ...DEFAULT_TUNING, ...esc.tuning });
+  STAGES[1].minValuation = esc.preseed ?? PRESEED;
   const res: string[] = [];
   let minutosInterm = 0;
   for (const base of PERFILES) {
