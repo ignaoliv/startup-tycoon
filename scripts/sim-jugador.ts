@@ -180,7 +180,7 @@ if (process.argv[3] === "hitos") {
   }
   const prog = (n: number) => { let ms = 0; for (let d = 1; d <= n; d++) ms += dayMs(d); return ms / 60000; };
   console.log(`\n=== CUÁNDO APARECEN LOS HITOS (${N2} partidas, jugador intermedio) ===`);
-  for (const id of ["h_diez", "h_verde", "h_cien", "h_equipo", "r_hito"]) {
+  for (const id of ["h_diez", "h_equipo", "h_cien", "r_sinship", "r_hito", "h_verde"]) {
     const v = dias[id] ?? [];
     if (!v.length) { console.log(`  ${id.padEnd(10)} nunca`); continue; }
     const prom = v.reduce((a, b) => a + b, 0) / v.length;

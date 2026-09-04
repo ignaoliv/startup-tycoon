@@ -382,7 +382,7 @@ export const EVENTS: GameEventDef[] = [
   {
     id: "r_sinship", title: "Te dan por muerto", icon: "🪦",
     text: "Hace rato que no lanzás nada y en los foros ya preguntan si el producto sigue vivo.",
-    reactive: { test: (s, ctx) => s.day - ctx.lastShipDay > 55 && s.done.includes("mvp"), cooldown: 90 },
+    reactive: { test: (s, ctx) => s.day - ctx.lastShipDay > 30 && s.done.includes("mvp"), cooldown: 70 },
     choices: [
       { label: "Publicar el roadmap", desc: "+hype, pero perdés días explicando", apply: (s) => { s.hype = Math.min(100, s.hype + 15); s.featureProgress = Math.max(0, s.featureProgress - 3); return "Publicaste qué se viene. La gente se entusiasmó de nuevo."; } },
       { label: "Que hable el producto", desc: "Perdés usuarios mientras tanto", apply: (s) => { const lost = Math.round(s.users * 0.07); s.users -= lost; s.hype = Math.max(0, s.hype - 10); return `Se fueron ${lost} usuarios cansados de esperar.`; } },
