@@ -92,18 +92,7 @@ export default function Home() {
         ))}
       </ul>
 
-      {/* cierre */}
-      <section className="mt-6 flex flex-col items-center gap-3 rounded-2xl border border-amber/60 bg-amber/15 px-4 py-4 text-center sm:flex-row sm:justify-between sm:px-6 sm:text-left lg:mt-8">
-        <p className="flex items-center gap-2.5 text-base font-black sm:text-xl">
-          <span className="text-2xl leading-none sm:text-3xl" aria-hidden>🏆</span>
-          Empezás en un garage. Terminás tocando la campana.
-        </p>
-        <Link href={PLAY_HREF} className="btn shrink-0 border-ink/25 bg-white px-4 py-2.5 text-sm">
-          Jugar ahora
-        </Link>
-      </section>
 
-      <p className="mt-5 text-center text-[11px] text-ink/40">Funciona en el celular y en la compu. Podés agregarlo a la pantalla de inicio.</p>
       <SiteFooter />
     </main>
   );
