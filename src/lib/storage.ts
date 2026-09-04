@@ -1,6 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
-import { migrate } from "./game/engine";
 
 export const LOCAL_KEY = "startup-tycoon:save";
 
@@ -14,7 +13,7 @@ export function loadLocal(userId?: string | null): GameState | null {
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
     if (s.version !== 1) return null;
-    return migrate(s);
+    return s;
   } catch {
     return null;
   }
@@ -75,7 +74,7 @@ export async function loadCloud(sb: SupabaseClient, userId: string): Promise<Gam
   if (error) throw error;
   if (!data) return null;
   const s = data.state as GameState;
-  return s?.version === 1 ? migrate(s) : null;
+  return s?.version === 1 ? s : null;
 }
 
 export async function saveCloud(sb: SupabaseClient, userId: string, s: GameState, d: Derived) {

@@ -44,19 +44,11 @@ Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es 
 
 ## Cómo funciona el juego
 
-- **1 día de juego = 5 s** (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
+- **1 día de juego = 4 s** (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
 - **Equipo**: 🤖 agentes IA (rápidos, baratos, mucha deuda técnica), 👩‍💻 devs humanos (contienen la deuda), 🎨 diseño (calidad, churn), 📣 growth (usuarios, hype), 🤝 ventas (ARPU), 🧪 QA (bugs), 🛠️ DevOps (servidores/tokens, moral). La oficina limita cuánta gente entra.
-- **Producto**: PRD (sin él, -35% crecimiento), árbol de 16 features con dependencias, y dos proyectos siempre disponibles: **Feature nueva** (infinita, cada vez más cara, suma crecimiento/ARPU/calidad) y **Rebranding** (mucho hype, podés cambiar el nombre, perdés 3% de usuarios).
-- **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO. También podés **vender la empresa** cuando quieras (70-90% de la valuación según el hype).
-- **Moral**: 🍕 pizza (+5) y 🥩 asado (+12), el costo escala con el equipo.
-- **C-level**: CTO (con 6+ técnicos), CMO (3.000 usuarios o 15k seguidores), CFO (desde Seed o 12 personas; sin CFO no hay Serie A) y COO (24+ personas). Sueldo que escala con la valuación, piden equity, fee de dos sueldos. Si hacen falta y no están, penalizan productividad, deuda técnica, crecimiento, costos o moral.
-- **Presión de escala**: burocracia (cada persona por encima de 10 resta productividad; el COO la reduce a la mitad) e inflación de sueldos humanos (+4% cada 60 días).
-- **Hype y redes**: el hype baja solo cada día; los seguidores lo frenan y traen usuarios orgánicos. Ads pagos en 4 niveles (el costo por usuario sube al crecer) y 10 campañas con costo, cooldown y riesgo (hilo en X, video demo, podcast, meetup, Product Hunt una sola vez, sorteo, influencer, PR, cartel en la 9 de Julio, sponsorear conferencia). **Sponsoreos grandes** que se desbloquean por ronda (parrilla del barrio, camiseta de un club del ascenso, festival, F1, naming de estadio, Super Bowl, satélite): carísimos y con 30-50% de salir mal y ser puro gasto.
-- **Roadmap automático**: al terminar una feature el equipo sigue solo con la más barata disponible, y cuando se agota el árbol encadena features nuevas infinitas. Podés cambiar la elección cuando quieras. En mobile hay una barra de progreso fija bajo el header.
-- **Community 📱**: rol que suma seguidores y automatiza campañas según los puntos que tengas (1: hilo en X, 3: video demo, 5: podcast, 7: sorteo, 10: influencer). **#buildinpublic** en el perfil suma hype y seguidores fijos por día.
-- **Revelado progresivo**: cada sistema aparece cuando tiene sentido (C-level al mudarte, sponsoreos en Pre-seed, ads con landing, crunch con 3 personas, vender desde Pre-seed). El dashboard explica en palabras "por qué crecés así".
-- **Decisiones (popups)**: 45+ eventos, como máximo una cada 8 días (salvo burnout o deuda técnica disparada). No pausan el juego: se acumulan en una bandeja con cuenta regresiva y, si no decidís, pasa la opción pasiva. Hay eventos generales, **incidentes** cuya probabilidad diaria crece con la deuda técnica, **modo Argentina** (dólar, cepo, AFIP, paro, luz, Mundial, monotributo) y **dinámicos** (alguien con otra oferta: contraoferta, dejarlo ir o stock options; burnout del fundador).
-- **Vida tech**: modo crunch (+30% productividad, -moral, sube tu burnout; a 85 te quemás y tenés que parar), onboarding (los nuevos rinden la mitad 15 días), renuncias por moral baja, sueldo bajo mercado o crunch, y efectos temporales visibles bajo el header.
+- **Producto**: árbol de 16 features con dependencias. Cada una cambia crecimiento, ARPU, churn, calidad o hype.
+- **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO.
+- **Eventos** cada 14–30 días con dos opciones.
 - **Social** (requiere login): ranking por valuación, muro con likes (Realtime), visitar startups para dar hype (gratis, 1/día), invertir (cobrás dividendos de su MRR) o robar talento (pagás, ellos cobran indemnización). Las acciones llegan al otro jugador en tiempo real o cuando vuelve a entrar.
 
 ## Estructura

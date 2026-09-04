@@ -1,26 +1,17 @@
 // Simulación headless de balance: bot simple que juega N días.
-import { campaignStatus, derive, hire, hireExec, newGame, raiseRound, resolveEvent, runCampaign, setAdsLevel, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
-import { CAMPAIGNS } from "../src/lib/game/data";
+import { derive, hire, newGame, raiseRound, resolveEvent, setFeature, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 
 function bot(s: GameState) {
   const d = derive(s);
   // resolver eventos: opción 0
-  while (s.events.length) resolveEvent(s, 0, 0);
-  if (s.burnout > 70 && s.crunch) s.crunch = false;
+  if (s.pendingEvent) resolveEvent(s, 0);
   // elegir feature
   if (!s.currentFeature) {
     const next = FEATURES.filter((f) => featureAvailable(s, f.id)).sort((a, b) => a.cost - b.cost)[0];
     if (next) setFeature(s, next.id);
   }
-  // marketing: campañas baratas si el hype está bajo; ads según caja
-  if (s.hype < 50) for (const c of CAMPAIGNS) { const st = campaignStatus(s, c.id); if (st.ok && st.cost < s.cash * 0.1) runCampaign(s, c.id); }
-  if (!s.buildInPublic && s.done.includes("mvp")) s.buildInPublic = true;
-  const wantAds = s.cash > 200000 ? 3 : s.cash > 30000 ? 2 : s.cash > 8000 && s.done.includes("mvp") ? 1 : 0;
-  if (wantAds !== s.adsLevel) setAdsLevel(s, wantAds);
-  // ejecutivos cuando hacen falta y hay caja
-  for (const ex of d.execs) if (!ex.hired && ex.neededWhy && s.cash > ex.fee + ex.salary * 3) hireExec(s, ex.role);
   // levantar ronda si se puede
   raiseRound(s);
   // mudarse si lleno y hay plata sobrante (2 meses de runway)
@@ -28,7 +19,7 @@ function bot(s: GameState) {
   const nextOffice = OFFICES[s.office + 1];
   if (s.employees.length >= cap && nextOffice && s.cash > nextOffice.cost + Math.max(0, -d.netDay) * 60 + 5000) upgradeOffice(s);
   // contratar si hay runway > 90 días después de contratar
-  const roles = ["ai", "dev", "marketing", "social", "design", "qa", "sales", "ops"] as const;
+  const roles = ["ai", "dev", "marketing", "design", "qa", "sales", "ops"] as const;
   const want = roles.map((r) => ({ r, n: s.employees.filter((e) => e.role === r).length }));
   for (const c of s.candidates) {
     const monthlyAfter = (d.costDay * 30 + c.salary) - d.mrr;
@@ -41,8 +32,7 @@ function bot(s: GameState) {
       (c.role === "qa" && s.bugs > 3 && counts.qa < 1 + Math.floor(counts.ai / 3)) ||
       (c.role === "design" && counts.design < 1 + Math.floor(s.employees.length / 6)) ||
       (c.role === "sales" && s.users > 200 && counts.sales < 1 + Math.floor(s.employees.length / 6)) ||
-      (c.role === "ops" && s.employees.length > 8 && counts.ops < 2) ||
-      (c.role === "social" && s.done.includes("mvp") && counts.social < 1 + Math.floor(s.employees.length / 5));
+      (c.role === "ops" && s.employees.length > 8 && counts.ops < 2);
     if (ok && runway > 100 && s.employees.length < cap) hire(s, c.id);
   }
 }
@@ -56,7 +46,7 @@ for (let i = 0; i < DAYS; i++) {
   if (s.gameOver) { console.log(`GAME OVER ${s.gameOver} día ${s.day}`); break; }
   if (marks.includes(s.day)) {
     const d = derive(s);
-    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} execs=${s.employees.filter((e) => ["cto","cmo","cfo","coo"].includes(e.role)).map((e) => e.role).join(",") || "-"} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} fol=${Math.round(s.followers)} ads=${s.adsLevel} done=${s.done.length}`);
+    console.log(`d${s.day} cash=${Math.round(s.cash)} users=${Math.round(s.users)} mrr=${Math.round(d.mrr)} net/d=${Math.round(d.netDay)} val=${Math.round(d.valuation)} stage=${STAGES[s.stage].name} team=${s.employees.length} office=${OFFICES[s.office].name} bugs=${s.bugs.toFixed(1)} q=${Math.round(d.quality)} hype=${Math.round(s.hype)} done=${s.done.length}`);
   }
 }
 console.log("log tail:", s.log.slice(0, 8).map((l) => `d${l.day} ${l.text}`).join(" | "));

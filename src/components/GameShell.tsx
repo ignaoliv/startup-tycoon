@@ -6,22 +6,19 @@ import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
 import { ProductPanel } from "@/components/panels/ProductPanel";
 import { MoneyPanel } from "@/components/panels/MoneyPanel";
-import { HypePanel } from "@/components/panels/HypePanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
-import { Bar, Btn, Card, Stat } from "@/components/ui";
-import { Tour, isTourDone } from "@/components/Tour";
+import { Btn, Card, Stat } from "@/components/ui";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { applyRename, eventText, eventTitle, getFeature, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { createPost } from "@/lib/storage";
 
-type Tab = "office" | "team" | "product" | "hype" | "money" | "social";
+type Tab = "office" | "team" | "product" | "money" | "social";
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: "office", label: "Oficina", icon: "🏢" },
   { id: "team", label: "Equipo", icon: "🧑‍🤝‍🧑" },
   { id: "product", label: "Producto", icon: "🛠️" },
-  { id: "hype", label: "Hype", icon: "🔥" },
   { id: "money", label: "Plata", icon: "💸" },
   { id: "social", label: "Social", icon: "🌍" },
 ];
@@ -33,29 +30,6 @@ export function GameShell() {
   const [tab, setTab] = useState<Tab>("office");
   const [menu, setMenu] = useState(false);
   const [offlineDismissed, setOfflineDismissed] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [inboxOpen, setInboxOpen] = useState(true);
-  const [seenEvents, setSeenEvents] = useState(0);
-  const [tour, setTour] = useState(false);
-  const tourChecked = useRef(false);
-  // abre el tutorial una sola vez en partidas nuevas, y pausa el tiempo mientras esté abierto
-  const gs = game.state;
-  const setPaused = game.setPaused;
-  useEffect(() => {
-    if (!gs) {
-      tourChecked.current = false; // partida borrada: la próxima vuelve a evaluar
-      return;
-    }
-    if (tourChecked.current) return;
-    tourChecked.current = true;
-    if (gs.day <= 3 && !isTourDone()) {
-      const t = setTimeout(() => setTour(true), 300);
-      return () => clearTimeout(t);
-    }
-  }, [gs]);
-  useEffect(() => {
-    setPaused(tour);
-  }, [tour, setPaused]);
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -94,18 +68,8 @@ export function GameShell() {
 
   if (!state) return <Setup onStart={game.startNew} />;
   const d = derived!;
-  const showTour = tour;
-  const pending = state.events;
-  const first = pending[0];
-  const ev = first ? EVENTS.find((e) => e.id === first.id) : null;
-  // cada evento nuevo reabre la bandeja
-  if (pending.length > seenEvents) {
-    setSeenEvents(pending.length);
-    if (!inboxOpen) setInboxOpen(true);
-  } else if (pending.length < seenEvents) setSeenEvents(pending.length);
-  const activeEffects = state.effects.filter((e) => e.until >= state.day);
+  const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;
   const sector = SECTORS.find((s) => s.id === state.sector);
-  const building = state.currentFeature ? getFeature(state, state.currentFeature) : null;
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
@@ -120,7 +84,7 @@ export function GameShell() {
               Día {state.day} · {STAGES[state.stage].name} · {game.mode === "cloud" ? (game.saving ? "guardando…" : "☁️ nube") : "💾 local"}
             </div>
           </div>
-          <div data-tour="speed" className="flex items-center gap-1 rounded-xl border-2 border-ink/15 bg-white p-0.5">
+          <div className="flex items-center gap-1 rounded-xl border-2 border-ink/15 bg-white p-0.5">
             {([0, 1, 2] as const).map((sp) => (
               <button key={sp} onClick={() => game.setSpeed(sp)} className={`rounded-lg px-2 py-1 text-sm font-black ${state.speed === sp ? "bg-ink text-white" : "text-ink/50"}`} aria-label={["Pausar", "Velocidad normal", "Velocidad rápida"][sp]}>
                 {["⏸", "▶", "⏩"][sp]}
@@ -134,7 +98,6 @@ export function GameShell() {
             {menu && (
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
-                <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
                 {game.mode === "cloud" && <MenuItem onClick={game.signOut}>🚪 Cerrar sesión</MenuItem>}
                 {game.mode === "local" && (
                   <Link href="/" className="block rounded-lg px-3 py-2 hover:bg-ink/5">
@@ -147,44 +110,14 @@ export function GameShell() {
           </div>
         </div>
         {/* stats */}
-        <div data-tour="stats" className="grid grid-cols-3 gap-1.5 px-3 pb-2 sm:grid-cols-6">
+        <div className="grid grid-cols-3 gap-1.5 px-3 pb-2 sm:grid-cols-6">
           <Stat icon="💵" label="Caja" value={money(state.cash)} sub={`${money(d.netDay * 30, { sign: d.netDay >= 0 })}/mes`} tone={d.netDay >= 0 ? "good" : "bad"} />
           <Stat icon="👥" label="Usuarios" value={num(state.users)} sub={`+${num(d.newUsersDay - d.churnDay)}/día`} tone={d.newUsersDay - d.churnDay >= 0 ? "good" : "bad"} />
           <Stat icon="📈" label="MRR" value={money(d.mrr)} sub={`${money(d.arpu)} ARPU`} />
           <Stat icon="🏦" label="Valuación" value={money(d.valuation)} sub={`${state.equity}% tuyo`} />
-          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={`${-d.hypeDecayDay >= 0 ? "+" : ""}${(-d.hypeDecayDay).toFixed(1)}/día · ${num(state.followers)} seg.`} tone={-d.hypeDecayDay >= 0 ? "good" : "bad"} />
+          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={`${(d.mktPts * 0.25 - 0.7).toFixed(1)}/día`} tone={d.mktPts * 0.25 - 0.7 >= 0 ? "good" : "bad"} />
           <Stat icon="😊" label="Moral" value={`${Math.round(state.morale)}`} sub={`${state.employees.length} personas`} />
         </div>
-        {/* progreso del desarrollo, visible en todas las pantallas en mobile */}
-        <button onClick={() => setTab("product")} className={`flex w-full items-center gap-2 border-t border-ink/10 px-3 py-1.5 text-left text-xs lg:hidden ${building ? "bg-white" : "bg-amber/20"}`}>
-          {building ? (
-            <>
-              <span className="shrink-0 font-black">
-                🔨 {building.icon} {building.name}
-              </span>
-              <Bar value={state.featureProgress} max={building.cost} color="bg-green" className="flex-1" />
-              <span className="shrink-0 tabular-nums text-ink/60">{d.featureDaysLeft !== null ? `${d.featureDaysLeft}d` : "sin devs"}</span>
-            </>
-          ) : (
-            <span className="font-bold">⚠️ Nada en desarrollo. Tocá para elegir qué construir ›</span>
-          )}
-        </button>
-        {(pending.length > 0 || activeEffects.length > 0 || state.crunch || state.founderOffUntil > state.day) && (
-          <div className="flex flex-wrap items-center gap-1.5 border-t border-ink/10 px-3 py-1.5">
-            {pending.length > 0 && (
-              <button onClick={() => setInboxOpen(true)} className="btn animate-pulse bg-amber border-ink px-2.5 py-1 text-xs">
-                📬 {pending.length} decisión{pending.length > 1 ? "es" : ""} pendiente{pending.length > 1 ? "s" : ""}
-              </button>
-            )}
-            {state.crunch && <span className="rounded-full bg-red/15 px-2 py-0.5 text-[11px] font-bold text-red">🔥 Crunch · burnout {Math.round(state.burnout)}</span>}
-            {state.founderOffUntil > state.day && <span className="rounded-full bg-indigo/15 px-2 py-0.5 text-[11px] font-bold text-indigo">🧘 Fundador de licencia · {state.founderOffUntil - state.day} días</span>}
-            {activeEffects.map((e) => (
-              <span key={e.id} className="rounded-full bg-ink/10 px-2 py-0.5 text-[11px] font-bold" title={`${e.until - state.day} días`}>
-                {e.icon} {e.label} · {e.until - state.day}d
-              </span>
-            ))}
-          </div>
-        )}
       </header>
 
       {game.offlineDays > 0 && !offlineDismissed && (
@@ -199,18 +132,6 @@ export function GameShell() {
         </div>
       )}
 
-      {state.cash < 0 && !state.gameOver && tab !== "money" && (
-        <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border-2 border-red bg-red/10 px-3 py-2 text-sm">
-          <span>🚨</span>
-          <span className="flex-1">
-            Estás en rojo: <b>{state.bankruptDays}/12 días</b>. Recortá gastos o levantá una ronda.
-          </span>
-          <button onClick={() => setTab("money")} className="btn bg-red border-ink px-2.5 py-1 text-xs text-white">
-            Ver plata
-          </button>
-        </div>
-      )}
-
       {/* body */}
       <main className="flex-1 px-3 py-3 pb-24 lg:pb-6">
         <div className="lg:grid lg:grid-cols-2 lg:gap-4">
@@ -220,14 +141,13 @@ export function GameShell() {
           <div className={tab === "office" ? "hidden lg:block" : ""}>
             <div className="mb-3 hidden gap-1 rounded-xl bg-ink/5 p-1 lg:flex">
               {TABS.filter((t) => t.id !== "office").map((t) => (
-                <button key={t.id} data-tour={`tab-${t.id}`} onClick={() => setTab(t.id)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === t.id || (tab === "office" && t.id === "team") ? "bg-white shadow" : "text-ink/50"}`}>
+                <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === t.id || (tab === "office" && t.id === "team") ? "bg-white shadow" : "text-ink/50"}`}>
                   {t.icon} {t.label}
                 </button>
               ))}
             </div>
             {(tab === "team" || tab === "office") && <TeamPanel game={game} />}
             {tab === "product" && <ProductPanel game={game} />}
-            {tab === "hype" && <HypePanel game={game} />}
             {tab === "money" && <MoneyPanel game={game} />}
             {tab === "social" && <SocialPanel game={game} />}
           </div>
@@ -236,9 +156,9 @@ export function GameShell() {
 
       {/* bottom nav mobile */}
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t-2 border-ink/10 bg-white lg:hidden">
-        <div className="mx-auto grid max-w-6xl grid-cols-6">
+        <div className="mx-auto grid max-w-6xl grid-cols-5">
           {TABS.map((t) => (
-            <button key={t.id} data-tour={`tab-${t.id}`} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-black ${tab === t.id ? "text-indigo" : "text-ink/50"}`}>
+            <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-black ${tab === t.id ? "text-indigo" : "text-ink/50"}`}>
               <span className="text-xl leading-none">{t.icon}</span>
               {t.label}
             </button>
@@ -247,52 +167,18 @@ export function GameShell() {
       </nav>
 
       {/* evento */}
-      {ev && first && inboxOpen && !state.gameOver && !state.pendingRename && (
+      {ev && (
         <Modal>
-          <div className="mb-1 flex items-start justify-between">
-            <div className="text-4xl">{ev.icon}</div>
-            <div className="text-right text-[11px] font-bold text-ink/50">
-              {pending.length > 1 && <div>1 de {pending.length}</div>}
-              <div className={first.expiresDay - state.day <= 2 ? "text-red" : ""}>⏳ se resuelve sola en {Math.max(0, first.expiresDay - state.day)} días</div>
-            </div>
-          </div>
-          <h2 className="mb-1 text-xl font-black">{eventTitle(ev, state, first.payload)}</h2>
-          <p className="mb-4 text-sm text-ink/70">{eventText(ev, state, first.payload)}</p>
+          <div className="mb-1 text-4xl">{ev.icon}</div>
+          <h2 className="mb-1 text-xl font-black">{ev.title}</h2>
+          <p className="mb-4 text-sm text-ink/70">{ev.text}</p>
           <div className="space-y-2">
-            {ev.choices.map((c, i) => {
-              const isDefault = (ev.defaultChoice ?? ev.choices.length - 1) === i;
-              return (
-                <button key={i} onClick={() => game.mutate((s) => resolveEvent(s, 0, i))} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
-                  <div className="text-sm font-black">
-                    {c.label} {isDefault && <span className="text-[10px] font-semibold text-ink/40">(pasa solo si no decidís)</span>}
-                  </div>
-                  <div className="text-xs text-ink/60">{c.desc}</div>
-                </button>
-              );
-            })}
-          </div>
-          <button onClick={() => setInboxOpen(false)} className="mt-3 w-full text-center text-xs font-bold text-ink/50 underline">
-            Decidir después (el juego sigue)
-          </button>
-        </Modal>
-      )}
-
-      {/* rebranding: nombre nuevo */}
-      {state.pendingRename && !state.gameOver && (
-        <Modal>
-          <div className="mb-1 text-4xl">🎨</div>
-          <h2 className="mb-1 text-xl font-black">Rebranding terminado</h2>
-          <p className="mb-3 text-sm text-ink/70">Logo nuevo, tipografía nueva. ¿Cambiás el nombre también?</p>
-          <div className="mb-3 flex gap-2">
-            <input value={newName} onChange={(e) => setNewName(e.target.value.slice(0, 24))} placeholder={state.startupName} className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-base font-bold outline-none focus:border-indigo" />
-            <Btn variant="ghost" onClick={() => setNewName(randomStartupName())} aria-label="Nombre al azar">
-              🎲
-            </Btn>
-          </div>
-          <div className="flex gap-2">
-            <Btn className="flex-1" onClick={() => { game.mutate((s) => applyRename(s, newName)); setNewName(""); }}>
-              {newName.trim() ? `Ahora somos ${newName.trim()}` : "Mantener el nombre"}
-            </Btn>
+            {ev.choices.map((c, i) => (
+              <button key={i} onClick={() => game.mutate((s) => resolveEvent(s, i))} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
+                <div className="text-sm font-black">{c.label}</div>
+                <div className="text-xs text-ink/60">{c.desc}</div>
+              </button>
+            ))}
           </div>
         </Modal>
       )}
@@ -305,15 +191,13 @@ export function GameShell() {
           <p className="mb-3 text-sm text-ink/70">
             {state.gameOver === "bankrupt"
               ? `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`
-              : `Cobraste ${money(state.exitAmount || (d.valuation * state.equity) / 100)} por tu ${state.equity}% de ${state.startupName}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
+              : `Tu ${state.equity}% de ${state.startupName} vale ${money((d.valuation * state.equity) / 100)}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
           </p>
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup
           </Btn>
         </Modal>
       )}
-
-      {showTour && !state.gameOver && <Tour onClose={() => setTour(false)} setTab={(t) => setTab(t as Tab)} />}
 
       {/* toasts */}
       <div className="pointer-events-none fixed inset-x-0 top-2 z-40 flex flex-col items-center gap-1.5 px-3">

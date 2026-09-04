@@ -27,7 +27,6 @@ export function useGame(forceLocal: boolean) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [offlineDays, setOfflineDays] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [paused, setPaused] = useState(false); // pausa externa (tutorial)
   const ref = useRef<GameState | null>(null);
   const dirty = useRef(false);
   const toastId = useRef(1);
@@ -136,7 +135,7 @@ export function useGame(forceLocal: boolean) {
   useEffect(() => {
     if (!state || state.gameOver) return;
     const speed = state.speed;
-    if (speed === 0 || paused) return;
+    if (speed === 0 || state.pendingEvent) return;
     const id = setInterval(() => {
       const cur = ref.current;
       if (!cur) return;
@@ -146,7 +145,7 @@ export function useGame(forceLocal: boolean) {
       commit(copy);
     }, TICK_MS / speed);
     return () => clearInterval(id);
-  }, [state?.speed, state?.gameOver, commit, state, paused]);
+  }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state]);
 
   // guardado local (siempre) + nube (cada 12s)
   useEffect(() => {
@@ -249,7 +248,7 @@ export function useGame(forceLocal: boolean) {
     router.push("/");
   }, [sb, router]);
 
-  return { sb, mode, user, userId, state, derived, loaded, mutate, notify, toasts, startNew, reset, setSpeed, saveNow, saving, offlineDays, signOut, setPaused };
+  return { sb, mode, user, userId, state, derived, loaded, mutate, notify, toasts, startNew, reset, setSpeed, saveNow, saving, offlineDays, signOut };
 }
 
 export type Game = ReturnType<typeof useGame>;

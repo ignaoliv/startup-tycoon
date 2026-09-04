@@ -2,25 +2,16 @@
 import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
 import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
-import { explainGrowth, getFeature, unlocks } from "@/lib/game/engine";
-import { EXECS } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
 export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) => void }) {
   const s = game.state!;
   const d = game.derived!;
-  const feat = s.currentFeature ? getFeature(s, s.currentFeature) : null;
-  const u = unlocks(s, d);
-  const why = explainGrowth(s, d);
+  const feat = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
   const nextStage = STAGES[s.stage + 1];
   const tips: { text: string; tab: string }[] = [];
-  if (s.events.length > 0) tips.push({ text: `Tenés ${s.events.length} decisión${s.events.length > 1 ? "es" : ""} pendiente${s.events.length > 1 ? "s" : ""}. Si no decidís, pasa lo pasivo.`, tab: "office" });
-  if (s.burnout > 70) tips.push({ text: "Estás al borde del burnout. Cortá el crunch o comé algo.", tab: "team" });
-  if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). Recortá gente, apagá ads o levantá una ronda.`, tab: "money" });
-  for (const ex of d.execs) if (!ex.hired && ex.neededWhy) tips.push({ text: `Necesitás un ${EXECS.find((x) => x.role === ex.role)!.name}: ${ex.neededWhy}`, tab: "team" });
   if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
-  if (s.done.includes("mvp") && !s.done.includes("prd")) tips.push({ text: "Sin PRD el equipo construye a ciegas: -35% crecimiento. Escribilo, es barato.", tab: "product" });
   if (s.employees.length >= OFFICES[s.office].capacity && OFFICES[s.office + 1]) tips.push({ text: "La oficina está llena. Mudate para poder contratar.", tab: "money" });
   if (nextStage && nextStage.raise > 0 && d.valuation >= nextStage.minValuation) tips.push({ text: `Podés levantar la ronda ${nextStage.name}.`, tab: "money" });
   if (s.bugs > 8) tips.push({ text: "Demasiada deuda técnica. Un QA o un dev humano la bajan rápido.", tab: "team" });
@@ -75,7 +66,6 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
               <span>Features</span>
               <Pill>
                 {s.done.length}/{FEATURES.length}
-                {s.customFeatures > 0 && ` +${s.customFeatures}`}
               </Pill>
             </div>
           </div>
@@ -91,19 +81,6 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
           </div>
         </Card>
       </div>
-
-      <Card title="Por qué crecés así">
-        <ul className="space-y-1 text-xs">
-          {why.map((f, i) => (
-            <li key={i} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
-              <span>{f.icon}</span>
-              <span className="flex-1">{f.text}</span>
-              <Pill tone={f.tone === "good" ? "good" : f.tone === "bad" ? "bad" : "ink"}>{f.effect}</Pill>
-            </li>
-          ))}
-        </ul>
-        <div className="mt-1 text-[10px] text-ink/50">Los factores que más pesan hoy en los usuarios nuevos. Atacá el rojo más grande.</div>
-      </Card>
 
       <Card title="Estado">
         <div className="space-y-2 text-xs">
@@ -121,21 +98,6 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
             </div>
             <Bar value={s.morale} color="bg-green" />
           </div>
-          {u.burnout && (
-          <div>
-            <div className="mb-1 flex justify-between">
-              <span>🫠 Tu burnout {s.crunch && <Pill tone="bad">crunch</Pill>}</span>
-              <span className="font-bold">{Math.round(s.burnout)}</span>
-            </div>
-            <Bar value={s.burnout} color={s.burnout > 70 ? "bg-red" : s.burnout > 40 ? "bg-amber" : "bg-indigo"} />
-            <div className="mt-0.5 text-[10px] text-ink/50">A 85 te quemás. Sube con crunch y caja en rojo, baja con moral alta.</div>
-          </div>
-          )}
-          {d.incidentChance > 0.005 && (
-            <div className="rounded-lg bg-red/10 px-2 py-1 text-[11px] text-red">
-              🐛 Con {Math.round(s.bugs)} de deuda técnica hay {(d.incidentChance * 100).toFixed(1)}% por día de incidente en producción.
-            </div>
-          )}
         </div>
       </Card>
 

@@ -1,7 +1,6 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
-import { useState } from "react";
-import { ACHIEVEMENT_DEFS, ipo, raiseRound, sellCompany, unlocks, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
 import { IPO_VALUATION, OFFICES, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -14,9 +13,7 @@ export function MoneyPanel({ game }: { game: Game }) {
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
-  const [confirmSell, setConfirmSell] = useState(false);
-  const u = unlocks(s, d);
-  const myExit = (d.sellOffer * s.equity) / 100;
+  const mktCost = Math.round(2000 + s.users * 0.5);
 
   return (
     <div className="space-y-3">
@@ -25,19 +22,18 @@ export function MoneyPanel({ game }: { game: Game }) {
           <div className={`text-2xl font-black tabular-nums ${s.cash < 0 ? "text-red" : ""}`}>{money(s.cash)}</div>
           {runway !== null && <Pill tone={runway < 30 ? "bad" : "amber"}>{runway} días de runway</Pill>}
         </div>
-        {s.cash < 0 && (
-          <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">
-            Estás en rojo hace {s.bankruptDays} días. A los 12 cerrás. Recortá gente, apagá los ads, vendé o levantá una ronda.
-          </div>
-        )}
         <ul className="space-y-1 text-xs">
           <Li l="Ingresos (MRR)" v={money(d.mrr, { sign: true }) + "/mes"} tone="good" />
           <Li l="Sueldos" v={money(-d.salariesMonth) + "/mes"} tone="bad" />
           <Li l="Alquiler" v={money(-d.rentMonth) + "/mes"} tone="bad" />
           <Li l="Servidores" v={money(-d.serverMonth) + "/mes"} tone="bad" />
-          {d.adsCostDay > 0 && <Li l="Ads" v={money(-d.adsCostDay * 30) + "/mes"} tone="bad" />}
           <Li l="Neto" v={money(d.netDay * 30, { sign: d.netDay >= 0 }) + "/mes"} tone={d.netDay >= 0 ? "good" : "bad"} bold />
         </ul>
+        <div className="mt-3 flex gap-2">
+          <Btn variant="amber" size="sm" className="flex-1" disabled={s.cash < mktCost} onClick={() => game.mutate((st) => marketingPush(st))}>
+            📣 Campaña +15 hype · {money(mktCost)}
+          </Btn>
+        </div>
       </Card>
 
       <Card title="Inversores">
@@ -80,34 +76,6 @@ export function MoneyPanel({ game }: { game: Game }) {
           Levantado hasta ahora: <b>{money(s.stats.raised)}</b>. Tu parte vale <b>{money((d.valuation * s.equity) / 100)}</b>.
         </div>
       </Card>
-
-      {u.sell && (
-      <Card title="Vender la empresa">
-        {d.sellOffer > 0 ? (
-          <>
-            <div className="mb-2 text-xs text-ink/60">
-              Hay compradores. Ofrecen <b>{money(d.sellOffer)}</b> por el 100% ({Math.round((0.7 + s.hype / 500) * 100)}% de la valuación; con más hype pagan más). Tu {s.equity}% serían <b>{money(myExit)}</b>. Se termina el juego.
-            </div>
-            {confirmSell ? (
-              <div className="flex gap-2">
-                <Btn size="sm" variant="danger" className="flex-1" onClick={() => { game.mutate((st) => sellCompany(st)); setConfirmSell(false); }}>
-                  Sí, vender por {money(myExit)}
-                </Btn>
-                <Btn size="sm" variant="ghost" className="flex-1" onClick={() => setConfirmSell(false)}>
-                  No, seguimos
-                </Btn>
-              </div>
-            ) : (
-              <Btn size="sm" variant="ghost" className="w-full" onClick={() => setConfirmSell(true)}>
-                🏷️ Escuchar ofertas
-              </Btn>
-            )}
-          </>
-        ) : (
-          <div className="text-xs text-ink/50">Nadie compra una startup sin producto. Terminá el MVP.</div>
-        )}
-      </Card>
-      )}
 
       <Card title="Oficina">
         <div className="mb-2 text-sm">
