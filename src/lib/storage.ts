@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
 import { FEATURES, IDEAS, ROLES } from "./game/data";
+import { SUPABASE_KEY, SUPABASE_URL } from "./supabase/env";
 
 /** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
 export function sanitize(s: GameState): GameState {
@@ -228,6 +229,35 @@ export function borrarRunPendiente() {
   try {
     localStorage.removeItem(PENDING_KEY);
   } catch {}
+}
+
+/** Mientras va y vuelve de Google no hay que mandar la partida como anónima. */
+let yendoALoguearse = false;
+export function marcarLoginEnCurso() {
+  yendoALoguearse = true;
+}
+
+/**
+ * El jugador cierra la pestaña con una partida esperando: se manda anónima ahí
+ * mismo. `keepalive` hace que el navegador la termine de enviar aunque la
+ * página ya no exista, así no perdemos la estadística de los que no vuelven.
+ */
+export function enviarRunPendienteAlSalir(anonId: string) {
+  if (yendoALoguearse) return;
+  const row = leerRunPendiente();
+  if (!row || !SUPABASE_URL || !SUPABASE_KEY) return;
+  borrarRunPendiente();
+  fetch(`${SUPABASE_URL}/rest/v1/runs`, {
+    method: "POST",
+    headers: {
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify({ ...row, user_id: null, anon_id: anonId }),
+    keepalive: true,
+  }).catch(() => guardarRunPendiente(row));
 }
 
 export async function ensureProfile(sb: SupabaseClient, userId: string, name: string) {

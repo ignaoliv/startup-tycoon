@@ -16,7 +16,7 @@ import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
-import { createPost } from "@/lib/storage";
+import { createPost, marcarLoginEnCurso } from "@/lib/storage";
 
 type Tab = "office" | "team" | "product" | "money" | "social";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -214,7 +214,7 @@ export function GameShell() {
               <p className="mb-2 text-xs font-bold">
                 Entrá con Google y esta partida queda guardada en tu historial, con tus logros y tu puesto en el ranking.
               </p>
-              <Btn variant="ghost" className="w-full" onClick={() => signInWithGoogle("/play")}>
+              <Btn variant="ghost" className="w-full" onClick={() => { marcarLoginEnCurso(); signInWithGoogle("/play"); }}>
                 Guardar esta partida
               </Btn>
             </div>

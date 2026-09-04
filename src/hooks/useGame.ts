@@ -6,7 +6,7 @@ import { dayMs } from "@/lib/game/data";
 import { applyIncoming, applyOffline, derive, newGame, tick } from "@/lib/game/engine";
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
-import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, type IncomingAction } from "@/lib/storage";
+import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, enviarRunPendienteAlSalir, type IncomingAction } from "@/lib/storage";
 import { closeStaleRuns, playerId, trackRun, trackValuation } from "@/lib/analytics";
 import { loadTuning } from "@/lib/game/tuning";
 
@@ -169,6 +169,19 @@ export function useGame(forceLocal: boolean) {
     if (userId) saveRun(sb, row, userId, playerId()).catch(console.error);
     else guardarRunPendiente(row);
   }, [state?.gameOver, sb, userId]);
+
+  // si cierra la pestaña con una partida esperando, se manda anónima antes de irse
+  useEffect(() => {
+    const salir = () => {
+      if (document.visibilityState === "hidden") enviarRunPendienteAlSalir(playerId());
+    };
+    document.addEventListener("visibilitychange", salir);
+    window.addEventListener("pagehide", salir);
+    return () => {
+      document.removeEventListener("visibilitychange", salir);
+      window.removeEventListener("pagehide", salir);
+    };
+  }, []);
 
   // partida que quedó esperando: se guarda a nombre del jugador si entró, o anónima
   useEffect(() => {
