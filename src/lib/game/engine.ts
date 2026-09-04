@@ -1,4 +1,4 @@
-import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, EVENTS, FEATURES, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
+import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
 import type { Candidate, Derived, Employee, GameState, Level, LogEntry, ReactiveCtx, Role } from "./types";
 import { tuning } from "./tuning";
 
@@ -8,6 +8,10 @@ const pick = <T,>(arr: T[]): T => arr[Math.floor(Math.random() * arr.length)];
 
 export function randomStartupName() {
   return pick(STARTUP_NAME_PARTS.a) + pick(STARTUP_NAME_PARTS.b);
+}
+
+export function randomIdea() {
+  return pick(IDEAS);
 }
 
 export function makeCandidate(s: GameState, role?: Role): Candidate {
@@ -38,12 +42,13 @@ export function refreshCandidates(s: GameState) {
   s.candidatesDay = s.day;
 }
 
-export function newGame(opts: { startupName: string; founderName: string; sector: string; restarts?: number }): GameState {
+export function newGame(opts: { startupName: string; founderName: string; idea?: string; sector: string; restarts?: number }): GameState {
   const s: GameState = {
     version: 1,
     id: `g${Date.now().toString(36)}`,
     startupName: opts.startupName || randomStartupName(),
     founderName: opts.founderName || "Fundador/a",
+    idea: opts.idea?.trim() || randomIdea(),
     sector: opts.sector,
     day: 1,
     cash: START_CASH + (opts.restarts ?? 0) * 10000,
@@ -452,12 +457,17 @@ export function applyIncoming(s: GameState, a: { kind: string; from_name: string
 
 export function applyOffline(s: GameState, now = Date.now()): number {
   const elapsed = now - s.lastTickAt;
-  const days = Math.min(OFFLINE_MAX_DAYS, Math.floor(elapsed / TICK_MS));
-  if (days <= 0) return 0;
   const before = s.cash;
   const beforeDay = s.day;
-  for (let i = 0; i < days; i++) {
+  // los días duran distinto según la etapa, así que se descuentan de a uno
+  let restante = elapsed;
+  let días = 0;
+  while (días < OFFLINE_MAX_DAYS) {
+    const costo = dayMs(s.day);
+    if (restante < costo) break;
+    restante -= costo;
     tick(s, true);
+    días += 1;
     if (s.gameOver || s.pendingEvent) break; // un evento pendiente frena el tiempo
   }
   s.lastTickAt = now;

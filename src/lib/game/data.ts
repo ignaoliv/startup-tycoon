@@ -1,6 +1,43 @@
 import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 
-export const TICK_MS = 3000; // 1 día de juego
+/** Duración de un día: arranca tranquilo y se acelera a medida que crece la empresa. */
+export const TICK_MS_START = 5500;
+export const TICK_MS_MIN = 2500;
+export const TICK_RAMP_DAYS = 110;
+export const TICK_MS = TICK_MS_START; // referencia para textos
+
+export function dayMs(day: number) {
+  const t = Math.min(1, Math.max(0, (day - 1) / TICK_RAMP_DAYS));
+  return Math.round(TICK_MS_START + (TICK_MS_MIN - TICK_MS_START) * t);
+}
+
+/** Ideas para arrancar la startup. */
+export const IDEAS = [
+  "Un Uber para paseadores de perros",
+  "Un ChatGPT para contadores",
+  "Netflix pero de recetas",
+  "Mercado Libre para plantas",
+  "Un CRM para kioscos",
+  "Tinder para encontrar cofundador",
+  "Rappi para trámites",
+  "Un agente IA que contesta mails",
+  "Notion para clubes de barrio",
+  "Duolingo para aprender a programar",
+  "Un marketplace de mate",
+  "IA que corrige exámenes",
+  "Un Excel que se explica solo",
+  "Turnos médicos por WhatsApp",
+  "Un banco para adolescentes",
+  "IA que arma la lista del súper",
+  "Airbnb para cocheras",
+  "Un Trello para obras en construcción",
+  "Facturación automática para monotributistas",
+  "Un asistente que negocia tus cuentas",
+  "Fotos de producto hechas con IA",
+  "Un buscador de becas",
+  "Sueldos en cripto para nómades",
+  "Un GPS para colectivos del interior",
+];
 export const OFFLINE_MAX_DAYS = 240;
 export const START_CASH = 30000;
 

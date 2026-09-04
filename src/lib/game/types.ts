@@ -122,6 +122,7 @@ export interface GameState {
   id: string;
   startupName: string;
   founderName: string;
+  idea: string;
   sector: string;
   day: number;
   cash: number;

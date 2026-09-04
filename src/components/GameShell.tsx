@@ -11,7 +11,7 @@ import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { createPost } from "@/lib/storage";
@@ -33,6 +33,7 @@ export function GameShell() {
   const [menu, setMenu] = useState(false);
   const [offlineDismissed, setOfflineDismissed] = useState(false);
   const [tour, setTour] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
   const tourChecked = useRef(false);
   const gs = game.state;
   const setPaused = game.setPaused;
@@ -128,7 +129,7 @@ export function GameShell() {
                     🔐 Entrar con Google
                   </Link>
                 )}
-                <MenuItem onClick={() => { if (confirm("¿Borrar la partida y empezar de cero?")) game.reset(); setMenu(false); }}>🗑️ Empezar de nuevo</MenuItem>
+                <MenuItem onClick={() => { setMenu(false); setConfirmReset(true); }}>🗑️ Empezar de nuevo</MenuItem>
               </div>
             )}
           </div>
@@ -226,6 +227,24 @@ export function GameShell() {
         </Modal>
       )}
 
+      {confirmReset && (
+        <Modal>
+          <div className="mb-1 text-4xl">🗑️</div>
+          <h2 className="mb-1 text-xl font-black">¿Empezar de nuevo?</h2>
+          <p className="mb-4 text-sm text-ink/70">
+            Se borra <b>{state.startupName}</b> con sus {state.day} días de historia y arrancás una startup nueva. No se puede deshacer.
+          </p>
+          <div className="flex gap-2">
+            <Btn variant="danger" className="flex-1" onClick={() => { setConfirmReset(false); game.reset(); }}>
+              Sí, borrar y empezar
+            </Btn>
+            <Btn variant="ghost" className="flex-1" onClick={() => setConfirmReset(false)}>
+              Cancelar
+            </Btn>
+          </div>
+        </Modal>
+      )}
+
       {tour && !state.gameOver && <Tour onClose={() => setTour(false)} setTab={(t) => setTab(t as Tab)} />}
 
       {/* toasts */}
@@ -256,8 +275,9 @@ function Modal({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: string; sector: string }) => void }) {
+function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: string; idea: string; sector: string }) => void }) {
   const [name, setName] = useState(() => randomStartupName());
+  const [idea, setIdea] = useState(() => randomIdea());
   const [founder, setFounder] = useState("");
   const [sector, setSector] = useState("saas");
   return (
@@ -271,6 +291,15 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
           <div className="mt-1 flex gap-2">
             <input value={name} onChange={(e) => setName(e.target.value.slice(0, 24))} className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-base font-bold normal-case outline-none focus:border-indigo" />
             <Btn variant="ghost" onClick={() => setName(randomStartupName())} aria-label="Nombre al azar">
+              🎲
+            </Btn>
+          </div>
+        </label>
+        <label className="mb-3 block text-xs font-bold uppercase text-ink/50">
+          Tu idea
+          <div className="mt-1 flex gap-2">
+            <input value={idea} onChange={(e) => setIdea(e.target.value.slice(0, 60))} placeholder="¿Qué vas a construir?" className="w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+            <Btn variant="ghost" onClick={() => setIdea(randomIdea())} aria-label="Idea al azar">
               🎲
             </Btn>
           </div>
@@ -290,7 +319,7 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
             </button>
           ))}
         </div>
-        <Btn size="lg" className="w-full" disabled={!name.trim()} onClick={() => onStart({ startupName: name.trim(), founderName: founder.trim() || "Fundador/a", sector })}>
+        <Btn size="lg" className="w-full" disabled={!name.trim()} onClick={() => onStart({ startupName: name.trim(), founderName: founder.trim() || "Fundador/a", idea: idea.trim(), sector })}>
           Empezar 🚀
         </Btn>
       </Card>

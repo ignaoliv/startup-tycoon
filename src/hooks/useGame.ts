@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
-import { TICK_MS } from "@/lib/game/data";
+import { dayMs } from "@/lib/game/data";
 import { applyIncoming, applyOffline, derive, newGame, tick } from "@/lib/game/engine";
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
@@ -153,7 +153,7 @@ export function useGame(forceLocal: boolean) {
       tick(copy);
       copy.lastTickAt = Date.now();
       commit(copy);
-    }, TICK_MS / speed);
+    }, dayMs(state.day) / speed);
     return () => clearInterval(id);
   }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state, paused]);
 
@@ -243,6 +243,7 @@ export function useGame(forceLocal: boolean) {
     (opts: { startupName: string; founderName: string; sector: string }) => {
       const prev = ref.current;
       const s = newGame({ ...opts, restarts: prev ? prev.restarts + (prev.gameOver ? 1 : 0) : 0 });
+      setOfflineDays(0); // la partida nueva no arrastra el aviso de la anterior
       commit(s);
       saveLocal(s, userId);
       if (sb && userId) saveCloud(sb, userId, s, derive(s)).catch(console.error);
@@ -252,6 +253,7 @@ export function useGame(forceLocal: boolean) {
 
   const reset = useCallback(() => {
     clearLocal(userId);
+    setOfflineDays(0);
     ref.current = null;
     setStateRaw(null);
   }, [userId]);

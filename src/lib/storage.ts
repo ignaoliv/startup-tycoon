@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
-import { FEATURES, ROLES } from "./game/data";
+import { FEATURES, IDEAS, ROLES } from "./game/data";
 
 /** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
 export function sanitize(s: GameState): GameState {
@@ -14,6 +14,7 @@ export function sanitize(s: GameState): GameState {
     s.currentFeature = null;
     s.featureProgress = 0;
   }
+  s.idea ||= IDEAS[0];
   s.pendingEvent ??= null;
   // planificador de eventos (partidas de versiones anteriores)
   s.pace ??= 1;

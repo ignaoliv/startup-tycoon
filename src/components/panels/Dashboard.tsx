@@ -33,6 +33,9 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
 
       <div className="grid grid-cols-2 gap-2">
         <Card title="Producto">
+          <div className="mb-2 rounded-lg bg-ink/5 px-2 py-1 text-[11px] leading-snug text-ink/60">
+            <b className="text-ink/70">Idea:</b> {s.idea}
+          </div>
           {feat ? (
             <>
               <div className="mb-1 flex items-center justify-between text-sm font-bold">

@@ -44,7 +44,7 @@ Cargá las dos variables de entorno en el proyecto de Vercel y listo. La app es 
 
 ## Cómo funciona el juego
 
-- **1 día de juego = 3 s** (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
+- **1 día de juego**: arranca en 5,5 s y baja hasta 2,5 s hacia el día 110 (pausa, 1x y 2x). Si cerrás la app, al volver se simulan hasta 240 días offline (sin eventos).
 - **Equipo**: 🤖 agentes IA (rápidos, baratos, mucha deuda técnica), 👩‍💻 devs humanos (contienen la deuda), 🎨 diseño (calidad, churn), 📣 growth (usuarios, hype), 🤝 ventas (ARPU), 🧪 QA (bugs), 🛠️ DevOps (servidores/tokens, moral). La oficina limita cuánta gente entra.
 - **Producto**: árbol de 16 features con dependencias. Cada una cambia crecimiento, ARPU, churn, calidad o hype.
 - **Plata**: MRR − sueldos − alquiler − servidores/tokens. Si estás en rojo 12 días, cerrás. Rondas Pre-seed → Serie C según valuación; a $1B podés hacer IPO.
