@@ -51,10 +51,15 @@ export function Tour({ onClose, setTab }: { onClose: () => void; setTab: (t: str
   useLayoutEffect(() => {
     const measure = () => {
       if (!step.target) return setRect(null);
-      const el = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)).find((x) => x.offsetParent !== null);
+      // el visible es el que tiene tamaño (display:none mide 0); sirve también para la nav fija de mobile
+      const el = Array.from(document.querySelectorAll<HTMLElement>(`[data-tour="${step.target}"]`)).find((x) => {
+        const r = x.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+      });
       if (!el) return setRect(null);
       el.scrollIntoView({ block: "nearest", inline: "nearest" });
-      setRect(el.getBoundingClientRect());
+      const r = el.getBoundingClientRect();
+      setRect(r.width > 0 ? r : null);
     };
     const t = setTimeout(measure, 120);
     window.addEventListener("resize", measure);
