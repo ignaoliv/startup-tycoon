@@ -11,7 +11,7 @@ export function addEffect(s: GameState, e: Omit<TempEffect, "until"> & { days: n
   s.effects.push({ ...rest, until: s.day + days });
 }
 
-export const TICK_MS = 4000; // 1 día de juego
+export const TICK_MS = 5000; // 1 día de juego
 export const OFFLINE_MAX_DAYS = 240;
 export const START_CASH = 30000;
 
@@ -79,11 +79,11 @@ export const OFFICES: OfficeDef[] = [
 
 export const STAGES: StageDef[] = [
   { id: "bootstrap", name: "Bootstrap", minValuation: 0, raise: 0, equity: 0, multiple: 3 },
-  { id: "preseed", name: "Pre-seed", minValuation: 120000, raise: 100000, equity: 10, multiple: 4 },
-  { id: "seed", name: "Seed", minValuation: 1200000, raise: 800000, equity: 15, multiple: 5 },
-  { id: "a", name: "Serie A", minValuation: 12000000, raise: 6000000, equity: 20, multiple: 6 },
-  { id: "b", name: "Serie B", minValuation: 70000000, raise: 30000000, equity: 15, multiple: 8 },
-  { id: "c", name: "Serie C", minValuation: 300000000, raise: 100000000, equity: 10, multiple: 10 },
+  { id: "preseed", name: "Pre-seed", minValuation: 150000, raise: 100000, equity: 10, multiple: 4 },
+  { id: "seed", name: "Seed", minValuation: 1500000, raise: 800000, equity: 15, multiple: 5 },
+  { id: "a", name: "Serie A", minValuation: 15000000, raise: 6000000, equity: 20, multiple: 6 },
+  { id: "b", name: "Serie B", minValuation: 80000000, raise: 30000000, equity: 15, multiple: 8 },
+  { id: "c", name: "Serie C", minValuation: 350000000, raise: 100000000, equity: 10, multiple: 10 },
   { id: "unicorn", name: "Unicornio 🦄", minValuation: 1000000000, raise: 0, equity: 0, multiple: 10 },
 ];
 

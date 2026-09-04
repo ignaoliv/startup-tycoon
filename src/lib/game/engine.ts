@@ -177,10 +177,10 @@ export function derive(s: GameState): Derived {
   const cmoMul = has("cmo") ? 1.15 : needs("cmo") ? 0.65 : 1;
   const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7) * (hasPrd ? 1 : 0.65) * cmoMul * fx0.growth;
   const saturation = Math.max(0, 1 - s.users / sector.tam); // el mercado se agota
-  const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
-  const viral = hasMvp ? s.users * 0.002 * (quality / 100) * (0.4 + s.hype / 100) : 0;
-  const organicUsersDay = hasMvp ? Math.min(s.followers * 0.002, 2000 + s.followers * 0.0005) * (0.5 + quality / 200) * saturation : 0;
-  const cac = 15 + s.users * 0.002; // cada usuario pago sale más caro a medida que crecés
+  const base = hasMvp ? 1.5 + mktPts * 2.5 + s.hype * 0.15 : 0;
+  const viral = hasMvp ? s.users * 0.0016 * (quality / 100) * (0.4 + s.hype / 100) : 0;
+  const organicUsersDay = hasMvp ? Math.min(s.followers * 0.0012, 1500 + s.followers * 0.0004) * (0.5 + quality / 200) * saturation : 0;
+  const cac = 25 + s.users * 0.003; // cada usuario pago sale más caro a medida que crecés
   const adsUsersDay = hasMvp ? (adsCostDay / cac) * (0.5 + quality / 200) * saturation : 0;
   const newUsersDay = (base + viral) * growthMul * saturation + organicUsersDay + adsUsersDay;
   const bip = s.buildInPublic;
@@ -462,7 +462,7 @@ export function unlocks(s: GameState, d: Derived) {
     ads: s.done.includes("landing"),
     community: s.employees.some((e) => e.role === "social") || s.followers >= 2000,
     sponsors: s.stage >= 1,
-    execs: s.office >= 1 || d.execs.some((e) => e.neededWhy),
+    execs: s.office >= 2 || d.execs.some((e) => e.neededWhy || e.hired),
     crunch: s.crunch || s.employees.length >= 3,
     repeatables: s.done.length >= 8 || !FEATURES.some((f) => featureAvailable(s, f.id)) || s.customFeatures > 0 || s.rebrands > 0,
     sell: s.stage >= 1 || s.users >= 500,
@@ -635,7 +635,7 @@ export function runCampaign(s: GameState, id: string, by?: string): string | nul
   s.hype = clamp(s.hype + hype, 0, 100);
   const fol = Math.round(Math.min(c.followers(s), 20000 + s.followers * 0.01) * (flopped ? 0.3 : 1));
   s.followers += fol;
-  const users = c.users && !flopped ? Math.round(c.users(s)) : 0;
+  const users = c.users && !flopped ? Math.round(c.users(s) * 0.6) : 0;
   s.users += users;
   if (c.morale) s.morale = clamp(s.morale + c.morale, 0, 100);
   const parts = [`${hype >= 0 ? "+" : ""}${hype} hype`, `+${fol.toLocaleString("es-AR")} seguidores`];

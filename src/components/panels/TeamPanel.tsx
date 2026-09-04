@@ -12,6 +12,7 @@ export function TeamPanel({ game }: { game: Game }) {
   const s = game.state!;
   const d = game.derived!;
   const [confirmFire, setConfirmFire] = useState<string | null>(null);
+  const [showAllExecs, setShowAllExecs] = useState(false);
   const office = OFFICES[s.office];
   const full = s.employees.length >= office.capacity;
   const rerollCost = 500 + s.employees.length * 100;
@@ -48,50 +49,6 @@ export function TeamPanel({ game }: { game: Game }) {
         </ul>
         <p className="mt-2 text-[11px] text-ink/50">🤖 Los agentes IA vibecodean 60% más rápido y cuestan un cuarto, pero dejan deuda técnica. Los devs humanos la contienen. El fee es medio sueldo; los candidatos se renuevan cada 7 días.</p>
       </Card>
-
-      {u.execs && (
-      <Card title="C-level" className={missingNeeded.length ? "!border-red" : ""}>
-        {missingNeeded.length > 0 && (
-          <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">
-            Te falta {missingNeeded.map((e) => EXECS.find((x) => x.role === e.role)!.name).join(" y ")}. Estás pagando la penalización todos los días.
-          </div>
-        )}
-        <p className="mb-2 text-[11px] text-ink/50">
-          Cuando la empresa crece, los ejecutivos dejan de ser un lujo. Cobran según la valuación (sube solo), piden equity y el headhunter cobra dos sueldos. No trabajan en un garage.
-        </p>
-        <ul className="space-y-2">
-          {d.execs.map((ex) => {
-            const def = EXECS.find((x) => x.role === ex.role)!;
-            const needed = Boolean(ex.neededWhy);
-            return (
-              <li key={ex.role} className={`rounded-xl border-2 p-2.5 ${ex.hired ? "border-green/40 bg-green/10" : needed ? "border-red bg-red/5" : "border-ink/10 bg-white"}`}>
-                <div className="flex items-start gap-2">
-                  <span className="text-2xl leading-none">{def.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-1">
-                      <span className="text-sm font-black">{def.name}</span>
-                      {ex.hired ? <Pill tone="good">Contratado</Pill> : needed ? <Pill tone="bad">Hace falta</Pill> : <Pill>Todavía no hace falta</Pill>}
-                    </div>
-                    <div className="text-[11px] text-ink/60">{def.desc}</div>
-                    {needed && <div className="mt-0.5 text-[11px] font-semibold text-red">{ex.neededWhy} {def.penalty}.</div>}
-                    {ex.hired && <div className="mt-0.5 text-[11px] font-semibold text-green">{def.bonus}.</div>}
-                    {!ex.hired && !needed && <div className="mt-0.5 text-[11px] text-ink/50">{def.bonus}.</div>}
-                    <div className="mt-1 text-[11px] text-ink/60">
-                      {money(ex.salary)}/mes · {def.equity}% equity · fee {money(ex.fee)}
-                    </div>
-                  </div>
-                  {!ex.hired && (
-                    <Btn size="sm" variant={needed ? "danger" : "ghost"} disabled={s.cash < ex.fee || full || s.office < 1} onClick={() => game.mutate((st) => hireExec(st, ex.role))}>
-                      Contratar
-                    </Btn>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
-      )}
 
       <Card
         title={`Equipo ${s.employees.length}/${office.capacity}`}
@@ -169,6 +126,48 @@ export function TeamPanel({ game }: { game: Game }) {
         </ul>
         <p className="mt-2 text-[11px] text-ink/50">Los nuevos rinden la mitad durante {ONBOARDING_DAYS} días. Con moral baja, sueldo bajo mercado o crunch, la gente recibe ofertas y te toca contraofertar.</p>
       </Card>
+
+
+      {u.execs && (
+        <Card title="C-level" className={missingNeeded.length ? "!border-red" : ""} right={<Pill tone={missingNeeded.length ? "bad" : "ink"}>{d.execs.filter((e) => e.hired).length}/4</Pill>}>
+          {missingNeeded.length > 0 ? (
+            <div className="mb-2 text-xs font-bold text-red">La empresa creció y te falta {missingNeeded.map((e) => EXECS.find((x) => x.role === e.role)!.name).join(" y ")}. Hasta que contrates, pagás la penalización.</div>
+          ) : (
+            <p className="mb-2 text-[11px] text-ink/50">A medida que crecés vas a necesitar ejecutivos. Cobran según la valuación y piden equity. Acá te aviso cuándo.</p>
+          )}
+          <ul className="space-y-1.5">
+            {d.execs
+              .filter((ex) => showAllExecs || ex.hired || ex.neededWhy)
+              .map((ex) => {
+                const def = EXECS.find((x) => x.role === ex.role)!;
+                const needed = Boolean(ex.neededWhy);
+                return (
+                  <li key={ex.role} className={`flex items-center gap-2 rounded-xl px-2 py-1.5 ${ex.hired ? "bg-green/10" : needed ? "bg-red/5" : "bg-sand/60"}`}>
+                    <span className="text-xl">{def.icon}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1 text-sm font-bold">
+                        {def.name}
+                        {ex.hired ? <Pill tone="good">contratado</Pill> : needed ? <Pill tone="bad">hace falta</Pill> : null}
+                      </div>
+                      <div className="text-[11px] text-ink/60">{ex.hired ? def.bonus : needed ? `${ex.neededWhy} ${def.penalty}.` : def.desc}</div>
+                      {!ex.hired && <div className="text-[11px] text-ink/50">{money(ex.salary)}/mes · {def.equity}% equity · fee {money(ex.fee)}</div>}
+                    </div>
+                    {!ex.hired && (
+                      <Btn size="sm" variant={needed ? "danger" : "ghost"} disabled={s.cash < ex.fee || full || s.office < 1} onClick={() => game.mutate((st) => hireExec(st, ex.role))}>
+                        Contratar
+                      </Btn>
+                    )}
+                  </li>
+                );
+              })}
+          </ul>
+          {d.execs.some((ex) => !ex.hired && !ex.neededWhy) && (
+            <button onClick={() => setShowAllExecs((v) => !v)} className="mt-2 text-[11px] font-bold text-indigo underline">
+              {showAllExecs ? "Ocultar los que todavía no hacen falta" : "Ver los 4 puestos"}
+            </button>
+          )}
+        </Card>
+      )}
 
       <Card title="Roles">
         <ul className="grid grid-cols-2 gap-1.5 text-[11px]">

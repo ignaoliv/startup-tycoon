@@ -9,6 +9,7 @@ import { MoneyPanel } from "@/components/panels/MoneyPanel";
 import { HypePanel } from "@/components/panels/HypePanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Bar, Btn, Card, Stat } from "@/components/ui";
+import { Tour, isTourDone } from "@/components/Tour";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { applyRename, eventText, eventTitle, getFeature, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
@@ -35,6 +36,7 @@ export function GameShell() {
   const [newName, setNewName] = useState("");
   const [inboxOpen, setInboxOpen] = useState(true);
   const [seenEvents, setSeenEvents] = useState(0);
+  const [tour, setTour] = useState<boolean | null>(null); // null = no decidido todavía
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -73,6 +75,7 @@ export function GameShell() {
 
   if (!state) return <Setup onStart={game.startNew} />;
   const d = derived!;
+  const showTour = tour ?? (state.day <= 3 && !isTourDone());
   const pending = state.events;
   const first = pending[0];
   const ev = first ? EVENTS.find((e) => e.id === first.id) : null;
@@ -98,7 +101,7 @@ export function GameShell() {
               Día {state.day} · {STAGES[state.stage].name} · {game.mode === "cloud" ? (game.saving ? "guardando…" : "☁️ nube") : "💾 local"}
             </div>
           </div>
-          <div className="flex items-center gap-1 rounded-xl border-2 border-ink/15 bg-white p-0.5">
+          <div data-tour="speed" className="flex items-center gap-1 rounded-xl border-2 border-ink/15 bg-white p-0.5">
             {([0, 1, 2] as const).map((sp) => (
               <button key={sp} onClick={() => game.setSpeed(sp)} className={`rounded-lg px-2 py-1 text-sm font-black ${state.speed === sp ? "bg-ink text-white" : "text-ink/50"}`} aria-label={["Pausar", "Velocidad normal", "Velocidad rápida"][sp]}>
                 {["⏸", "▶", "⏩"][sp]}
@@ -112,6 +115,7 @@ export function GameShell() {
             {menu && (
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
+                <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
                 {game.mode === "cloud" && <MenuItem onClick={game.signOut}>🚪 Cerrar sesión</MenuItem>}
                 {game.mode === "local" && (
                   <Link href="/" className="block rounded-lg px-3 py-2 hover:bg-ink/5">
@@ -124,7 +128,7 @@ export function GameShell() {
           </div>
         </div>
         {/* stats */}
-        <div className="grid grid-cols-3 gap-1.5 px-3 pb-2 sm:grid-cols-6">
+        <div data-tour="stats" className="grid grid-cols-3 gap-1.5 px-3 pb-2 sm:grid-cols-6">
           <Stat icon="💵" label="Caja" value={money(state.cash)} sub={`${money(d.netDay * 30, { sign: d.netDay >= 0 })}/mes`} tone={d.netDay >= 0 ? "good" : "bad"} />
           <Stat icon="👥" label="Usuarios" value={num(state.users)} sub={`+${num(d.newUsersDay - d.churnDay)}/día`} tone={d.newUsersDay - d.churnDay >= 0 ? "good" : "bad"} />
           <Stat icon="📈" label="MRR" value={money(d.mrr)} sub={`${money(d.arpu)} ARPU`} />
@@ -197,7 +201,7 @@ export function GameShell() {
           <div className={tab === "office" ? "hidden lg:block" : ""}>
             <div className="mb-3 hidden gap-1 rounded-xl bg-ink/5 p-1 lg:flex">
               {TABS.filter((t) => t.id !== "office").map((t) => (
-                <button key={t.id} onClick={() => setTab(t.id)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === t.id || (tab === "office" && t.id === "team") ? "bg-white shadow" : "text-ink/50"}`}>
+                <button key={t.id} data-tour={`tab-${t.id}`} onClick={() => setTab(t.id)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === t.id || (tab === "office" && t.id === "team") ? "bg-white shadow" : "text-ink/50"}`}>
                   {t.icon} {t.label}
                 </button>
               ))}
@@ -215,7 +219,7 @@ export function GameShell() {
       <nav className="safe-bottom fixed inset-x-0 bottom-0 z-20 border-t-2 border-ink/10 bg-white lg:hidden">
         <div className="mx-auto grid max-w-6xl grid-cols-6">
           {TABS.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-black ${tab === t.id ? "text-indigo" : "text-ink/50"}`}>
+            <button key={t.id} data-tour={`tab-${t.id}`} onClick={() => setTab(t.id)} className={`flex flex-col items-center gap-0.5 py-2 text-[10px] font-black ${tab === t.id ? "text-indigo" : "text-ink/50"}`}>
               <span className="text-xl leading-none">{t.icon}</span>
               {t.label}
             </button>
@@ -289,6 +293,8 @@ export function GameShell() {
           </Btn>
         </Modal>
       )}
+
+      {showTour && !state.gameOver && <Tour onClose={() => setTour(false)} setTab={(t) => setTab(t as Tab)} />}
 
       {/* toasts */}
       <div className="pointer-events-none fixed inset-x-0 top-2 z-40 flex flex-col items-center gap-1.5 px-3">
