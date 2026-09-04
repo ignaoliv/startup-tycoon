@@ -425,6 +425,42 @@ export const EVENTS: GameEventDef[] = [
     ],
   },
   {
+    id: "h_diez", title: "Diez personas lo están usando", icon: "🌱",
+    text: "Diez desconocidos entraron y se quedaron. No es tu mamá ni tu amigo: gente de verdad usando lo que armaste.",
+    reactive: { test: (s) => s.users >= 10, cooldown: 0, once: true },
+    choices: [
+      { label: "Escribirles uno por uno", desc: "Se te va el día, pero te cuentan qué necesitan", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 2); s.bugs = Math.max(0, s.bugs - 2); s.hype = Math.min(100, s.hype + 6); return "Diez charlas y una lista de cosas obvias que no habías visto."; } },
+      { label: "Seguir shippeando", desc: "+progreso, no te enterás de nada", apply: (s) => { s.featureProgress += 3; return "Preferís que hable el producto. El roadmap avanza."; } },
+    ],
+  },
+  {
+    id: "h_verde", title: "Primer mes en verde", icon: "📗",
+    text: "Por primera vez entra más plata de la que sale. No es mucha, pero la cuenta cierra sola.",
+    reactive: { test: (s, ctx) => ctx.netDay > 0 && s.day > 12 && s.users > 20, cooldown: 0, once: true },
+    choices: [
+      { label: "Contarlo en redes", desc: "+hype, el equipo se envalentona", apply: (s) => { s.hype = Math.min(100, s.hype + 14); s.morale = Math.min(100, s.morale + 5); return "Publicaste la captura del número en verde. Le gustó a mucha gente."; } },
+      { label: "Guardarlo callado", desc: "Sumás caja para el próximo movimiento", apply: (s) => { s.cash += Math.round(500 + s.users * 2); return "Nada de festejos: la plata a la reserva."; } },
+    ],
+  },
+  {
+    id: "h_cien", title: "Cien usuarios", icon: "💯",
+    text: "Pasaste los cien. Ya no los conocés a todos por nombre y empiezan a aparecer pedidos repetidos.",
+    reactive: { test: (s) => s.users >= 100, cooldown: 0, once: true },
+    choices: [
+      { label: "Brindar con el equipo", desc: "-poca plata, +moral", apply: (s) => { const cost = Math.round(300 + s.employees.length * 150); s.cash -= cost; s.morale = Math.min(100, s.morale + 12); return `Un brindis de $${cost.toLocaleString("es-AR")}. Se lo merecían.`; } },
+      { label: "Ponerlo en la landing", desc: "+hype y entran algunos más", apply: (s) => { s.hype = Math.min(100, s.hype + 10); const n = Math.round(20 + s.users * 0.1); s.users += n; return `"Más de 100 personas ya lo usan" en la home. +${n} usuarios.`; } },
+    ],
+  },
+  {
+    id: "h_equipo", title: "Ya son varios", icon: "🧑‍🤝‍🧑",
+    text: "Con cuatro en el equipo, el garage empieza a parecer una empresa. Alguien propone hacer una reunión semanal.",
+    reactive: { test: (s) => s.employees.length >= 4, cooldown: 0, once: true },
+    choices: [
+      { label: "Sí, una por semana", desc: "+moral, un poco menos de tiempo para construir", apply: (s) => { s.morale = Math.min(100, s.morale + 10); s.featureProgress = Math.max(0, s.featureProgress - 2); return "Media hora los lunes. Todos saben qué está pasando."; } },
+      { label: "Que cada uno siga con lo suyo", desc: "+progreso, la comunicación sufre", apply: (s) => { s.featureProgress += 4; s.morale = Math.max(0, s.morale - 5); return "Nada de reuniones. Se avanza rápido y en paralelo, a veces de más."; } },
+    ],
+  },
+  {
     id: "r_hito", title: "¡Mil usuarios!", icon: "🎉",
     text: "Alguien lo gritó en el canal general: acabás de pasar los 1.000 usuarios. El equipo quiere festejar.",
     reactive: { test: (s) => s.users >= 1000, cooldown: 0, once: true },

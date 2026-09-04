@@ -287,7 +287,10 @@ export function setBoardGoal(s: GameState) {
 }
 
 export function reactiveCtx(s: GameState): ReactiveCtx {
+  const d = derive(s);
   return {
+    netDay: d.netDay,
+    mrr: d.mrr,
     lastShipDay: s.lastShipDay,
     hypeHighDays: s.hypeHighDays,
     officeFullDays: s.officeFullDays,

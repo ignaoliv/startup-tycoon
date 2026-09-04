@@ -150,6 +150,46 @@ function jugar(p: Perfil, sector: string, maxDias = 1200) {
   return s;
 }
 
+// ¿cuándo aparecen los hitos tempranos?
+if (process.argv[3] === "hitos") {
+  applyTuning({ ...DEFAULT_TUNING });
+  const secs = ["saas", "fintech", "devtools", "delivery", "crypto", "ai"];
+  const dias: Record<string, number[]> = {};
+  const N2 = 60;
+  for (let i = 0; i < N2; i++) {
+    const s = newGame({ startupName: "Sim", founderName: "Bot", sector: secs[i % 6] });
+    const p = { ...PERFILES[1], veRunway: true };
+    let ultimaMirada = 0;
+    const vistos = new Set<string>();
+    for (let k = 0; k < 400; k++) {
+      if (s.pendingEvent) {
+        const id = s.pendingEvent.id;
+        if (!vistos.has(id)) {
+          vistos.add(id);
+          (dias[id] ??= []).push(s.day);
+        }
+        resolveEvent(s, elegir(s, p));
+      }
+      if (s.day - ultimaMirada >= p.atencion) {
+        ultimaMirada = s.day;
+        pasoDeJuego(s, p);
+      }
+      tick(s);
+      if (s.gameOver) break;
+    }
+  }
+  const prog = (n: number) => { let ms = 0; for (let d = 1; d <= n; d++) ms += dayMs(d); return ms / 60000; };
+  console.log(`\n=== CUÁNDO APARECEN LOS HITOS (${N2} partidas, jugador intermedio) ===`);
+  for (const id of ["h_diez", "h_verde", "h_cien", "h_equipo", "r_hito"]) {
+    const v = dias[id] ?? [];
+    if (!v.length) { console.log(`  ${id.padEnd(10)} nunca`); continue; }
+    const prom = v.reduce((a, b) => a + b, 0) / v.length;
+    console.log(`  ${id.padEnd(10)} día ${prom.toFixed(0).padStart(4)} (${prog(Math.round(prom)).toFixed(1)} min) · en el ${Math.round((v.length / N2) * 100)}% de las partidas`);
+  }
+  console.log();
+  process.exit(0);
+}
+
 // ¿cuánto crece en 110 días una partida real? Sirve para calibrar la meta del board
 if (process.argv[3] === "crecimiento") {
   applyTuning({ ...DEFAULT_TUNING, boardEnabled: false });

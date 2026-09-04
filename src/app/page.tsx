@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AuthButton } from "@/components/AuthButton";
 import { SiteFooter } from "@/components/SiteFooter";
+import { DESCRIPCION, FAQ, NOMBRE, SITIO } from "@/lib/seo";
 
 // Se puede jugar con o sin cuenta: la sesión solo decide dónde se guarda la partida.
 const PLAY_HREF = "/play";
@@ -22,9 +23,34 @@ const CARDS = [
   { icon: "🌍", title: "Social", desc: "Competí, invertí o robá talento." },
 ];
 
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "VideoGame",
+      name: NOMBRE,
+      url: SITIO,
+      description: DESCRIPCION,
+      inLanguage: "es-AR",
+      genre: ["Simulación", "Tycoon", "Estrategia"],
+      gamePlatform: ["Navegador web", "Android", "iOS"],
+      playMode: "SinglePlayer",
+      applicationCategory: "GameApplication",
+      operatingSystem: "Cualquiera con navegador",
+      author: { "@type": "Person", name: "Ignacio Olivieri", url: "https://x.com/nacho_olivieri" },
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD", availability: "https://schema.org/InStock" },
+    },
+    {
+      "@type": "FAQPage",
+      mainEntity: FAQ.map((f) => ({ "@type": "Question", name: f.q, acceptedAnswer: { "@type": "Answer", text: f.a } })),
+    },
+  ],
+};
+
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-6xl px-3 py-3 sm:px-5 sm:py-5">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* barra superior */}
       <header className="flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm sm:px-6 sm:py-4">
         <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} priority className="h-8 w-auto sm:h-11" />

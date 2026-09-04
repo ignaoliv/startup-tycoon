@@ -73,6 +73,8 @@ export interface EventChoice {
 
 /** Contexto que mira el motor para disparar eventos reactivos. */
 export interface ReactiveCtx {
+  netDay: number;
+  mrr: number;
   lastShipDay: number;
   hypeHighDays: number;
   officeFullDays: number;

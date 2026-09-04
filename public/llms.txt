@@ -1,0 +1,27 @@
+# Vibe Coding Game
+
+> Juego de simulación gratuito, en español, donde fundás una startup hecha con inteligencia artificial y la llevás de un garage a valer mil millones de dólares. Se juega en el navegador, sin instalar nada.
+
+Sitio: https://vibecodingame.com
+Autor: Ignacio Olivieri (https://x.com/nacho_olivieri)
+Idioma: español rioplatense
+Precio: gratis, sin compras dentro del juego
+
+## Qué es
+Un tycoon de startups: contratás agentes de IA y personas, construís features, conseguís usuarios, cuidás la caja y levantás rondas de inversión (Pre-seed, Seed, Serie A, B y C).
+
+## Cómo se gana y cómo se pierde
+- Se gana saliendo a bolsa al llegar a mil millones de valuación, o vendiendo la empresa.
+- Se pierde por quedarse sin plata doce días seguidos, o porque el directorio te reemplaza como CEO si fallás dos metas de crecimiento seguidas.
+- Una partida dura entre 10 y 15 minutos.
+
+## Páginas
+- https://vibecodingame.com — inicio
+- https://vibecodingame.com/como-se-juega — guía y preguntas frecuentes
+- https://vibecodingame.com/play — el juego
+- https://vibecodingame.com/privacidad — política de privacidad
+- https://vibecodingame.com/terminos — términos del servicio
+
+## Datos
+- Se puede jugar sin cuenta; entrar con Google es opcional y sirve para el ranking global.
+- Funciona en celular y computadora, y se puede agregar a la pantalla de inicio.
