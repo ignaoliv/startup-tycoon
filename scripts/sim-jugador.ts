@@ -2,7 +2,7 @@
  * Simulación con jugadores REALES, no un bot óptimo.
  * Tres perfiles que se equivocan de distinta manera: novato, intermedio y experto.
  */
-import { derive, fire, hire, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { derive, fire, hire, hirePM, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, tienePM, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { dayMs, EVENTS, FEATURES, OFFICES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 import { applyTuning, DEFAULT_TUNING } from "../src/lib/game/tuning";
@@ -29,6 +29,8 @@ interface Perfil {
   sobrecontrata: boolean;
   /** ve el runway en pantalla al contratar: no contrata si le queda poca caja */
   veRunway?: boolean;
+  /** contrata un Project Manager apenas puede */
+  contrataPM?: boolean;
 }
 
 const PERFILES: Perfil[] = [
@@ -292,8 +294,9 @@ if (process.argv[3] === "diag") {
   process.exit(0);
 }
 
-const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean }[] = [
-  { nombre: "Estado actual", tuning: {}, runway: false },
+const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean }[] = [
+  { nombre: "Sin PM (eligen a mano)", tuning: {}, runway: false },
+  { nombre: "Contratan PM apenas pueden", tuning: {}, runway: false, pm: true },
 ];
 
 const N = Number(process.argv[2] ?? 100);
@@ -313,7 +316,7 @@ for (const esc of ESCENARIOS) {
   const res: string[] = [];
   let minutosInterm = 0;
   for (const base of PERFILES) {
-    const p = { ...base, veRunway: esc.runway };
+    const p = { ...base, veRunway: esc.runway, contrataPM: esc.pm };
     const finales: Record<string, number> = {};
     const dias: number[] = [];
     for (let i = 0; i < N; i++) {
