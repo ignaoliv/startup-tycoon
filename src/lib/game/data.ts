@@ -1,6 +1,6 @@
 import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 
-export const TICK_MS = 4000; // 1 día de juego
+export const TICK_MS = 3000; // 1 día de juego
 export const OFFLINE_MAX_DAYS = 240;
 export const START_CASH = 30000;
 

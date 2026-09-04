@@ -27,7 +27,7 @@ export const TOUR_STEPS: TourStep[] = [
     target: "speed",
     icon: "⏯️",
     title: "El tiempo corre",
-    text: "Cada 4 segundos pasa un día. Pausá para pensar tranquilo, acelerá cuando todo fluye. Aunque cierres la app, el tiempo sigue.",
+    text: "Cada 3 segundos pasa un día. Pausá para pensar tranquilo, acelerá cuando todo fluye. Aunque cierres la app, el tiempo sigue.",
   },
   {
     target: "stats",

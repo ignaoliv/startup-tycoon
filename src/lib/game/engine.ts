@@ -328,7 +328,7 @@ export function teamPerk(s: GameState): string | null {
   if (s.cash < cost) return "No te alcanza.";
   s.cash -= cost;
   s.morale = clamp(s.morale + 12, 0, 100);
-  addLog(s, `🍕 Asado de equipo: +12 moral por $${cost.toLocaleString("es-AR")}.`, "info");
+  addLog(s, `🥩 Asado de equipo: +12 moral por $${cost.toLocaleString("es-AR")}.`, "info");
   return null;
 }
 

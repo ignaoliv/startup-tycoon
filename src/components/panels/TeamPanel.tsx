@@ -50,7 +50,7 @@ export function TeamPanel({ game }: { game: Game }) {
         title={`Equipo ${s.employees.length}/${office.capacity}`}
         right={
           <Btn size="sm" variant="amber" onClick={() => game.mutate((st) => teamPerk(st))} disabled={s.cash < 300 * s.employees.length}>
-            🍕 Asado · {money(300 * s.employees.length)}
+            🥩 Asado · {money(300 * s.employees.length)}
           </Btn>
         }
       >
