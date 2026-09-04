@@ -107,7 +107,12 @@ export default function Home() {
         </Link>
       </section>
 
-      <p className="mt-5 pb-4 text-center text-[11px] text-ink/40">Funciona en el celular y en la compu. Podés agregarlo a la pantalla de inicio.</p>
+      <footer className="mt-5 pb-4 text-center text-[11px] text-ink/40">
+        <p>Funciona en el celular y en la compu. Podés agregarlo a la pantalla de inicio.</p>
+        <p className="mt-1.5">
+          <Link href="/privacidad" className="underline">Privacidad</Link> · <Link href="/terminos" className="underline">Términos</Link>
+        </p>
+      </footer>
     </main>
   );
 }
