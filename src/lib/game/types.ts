@@ -1,4 +1,4 @@
-export type Role = "ai" | "dev" | "design" | "marketing" | "sales" | "qa" | "ops";
+export type Role = "ai" | "dev" | "design" | "marketing" | "sales" | "qa" | "ops" | "pm";
 export type Level = 1 | 2 | 3;
 export type Speed = 0 | 1 | 2;
 

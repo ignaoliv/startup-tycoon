@@ -49,7 +49,11 @@ export const ROLES: Record<Role, { name: string; plural: string; icon: string; b
   sales: { name: "Ventas", plural: "Vendedores", icon: "🤝", baseSalary: 3000, desc: "Convierte curiosos en clientes que pagan. Sube el ARPU.", payLabel: "/mes" },
   qa: { name: "QA", plural: "Testers", icon: "🧪", baseSalary: 2400, desc: "Encuentra lo que la IA alucinó antes que los usuarios.", payLabel: "/mes" },
   ops: { name: "DevOps", plural: "DevOps", icon: "🛠️", baseSalary: 2900, desc: "Baja la factura de servidores y tokens. Sube la moral.", payLabel: "/mes" },
+  pm: { name: "Project Manager", plural: "Project Managers", icon: "📋", baseSalary: 1500, desc: "Decide qué se construye después, sin que tengas que elegir vos.", payLabel: "/mes" },
 };
+
+/** Lo que sale contratar al PM por mes. */
+export const PM_SALARY = 1500;
 
 export const LEVEL_NAMES = ["", "Junior", "Semi", "Senior"] as const;
 export const AI_LEVEL_NAMES = ["", "Mini", "Pro", "Ultra"] as const;
@@ -114,6 +118,7 @@ export const AVATARS: Record<Role, string[]> = {
   sales: ["👩‍💼", "👨‍💼", "🧑‍💼"],
   qa: ["👩‍🔬", "👨‍🔬", "🧑‍🔬"],
   ops: ["👩‍🔧", "👨‍🔧", "🧑‍🔧"],
+  pm: ["🧑‍💼", "👩‍💼", "👨‍💼"],
 };
 
 export const STARTUP_NAME_PARTS = {

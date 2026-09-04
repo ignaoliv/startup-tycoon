@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { SiteFooter } from "@/components/SiteFooter";
-import { DESCRIPCION, FAQ, NOMBRE, SITIO } from "@/lib/seo";
+import { DESCRIPCION, FAQ, NOMBRE } from "@/lib/seo";
 
 export const metadata: Metadata = {
   title: "Cómo se juega",

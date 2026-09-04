@@ -1,4 +1,4 @@
-import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
+import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, PM_SALARY, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
 import type { Candidate, Derived, Employee, GameState, Level, LogEntry, ReactiveCtx, Role } from "./types";
 import { tuning } from "./tuning";
 
@@ -15,7 +15,7 @@ export function randomIdea() {
 }
 
 export function makeCandidate(s: GameState, role?: Role): Candidate {
-  const r = role ?? pick(Object.keys(ROLES) as Role[]);
+  const r = role ?? pick((Object.keys(ROLES) as Role[]).filter((x) => x !== "pm"));
   // niveles más altos aparecen a medida que crecés
   const roll = Math.random();
   const lvl: Level = roll < 0.55 ? 1 : roll < 0.85 ? 2 : 3;
@@ -193,9 +193,16 @@ export function tick(s: GameState, quiet = false) {
       s.currentFeature = null;
       if (f.effects.hype) s.hype = clamp(s.hype + f.effects.hype, 0, 100);
       addLog(s, `${f.icon} Lanzaste ${f.name}.`, "good");
-      // autoelegir la siguiente disponible más barata
-      const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
-      if (next) s.currentFeature = next.id;
+      // con Project Manager el roadmap sigue solo; sin PM, decidís vos
+      if (tienePM(s)) {
+        const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
+        if (next) {
+          s.currentFeature = next.id;
+          addLog(s, `📋 El PM puso a construir ${next.icon} ${next.name}.`, "info");
+        }
+      } else {
+        addLog(s, "El equipo quedó sin nada que construir. Elegí la próxima feature.", "bad");
+      }
     }
   }
   // bugs
@@ -374,6 +381,26 @@ export function hire(s: GameState, candId: string): string | null {
   s.candidates = s.candidates.filter((x) => x.id !== candId);
   s.stats.hires += 1;
   addLog(s, `${emp.avatar} ${emp.role === "ai" ? "Activaste" : "Contrataste"} a ${emp.name} (${ROLES[emp.role].name} ${(emp.role === "ai" ? AI_LEVEL_NAMES : LEVEL_NAMES)[emp.level]}).`, "good");
+  return null;
+}
+
+export function tienePM(s: GameState) {
+  return s.employees.some((e) => e.role === "pm");
+}
+
+/** Contrata un Project Manager: ocupa un lugar y deja el roadmap en automático. */
+export function hirePM(s: GameState): string | null {
+  if (tienePM(s)) return "Ya tenés un Project Manager.";
+  const cap = OFFICES[s.office].capacity;
+  if (s.employees.length >= cap) return `Tu ${OFFICES[s.office].name} está lleno (${cap}). Mudate a una oficina más grande.`;
+  if (s.cash < PM_SALARY) return "No te alcanza para el primer sueldo.";
+  s.employees.push({ id: `e${s.nextId++}`, name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`, role: "pm", level: 2, salary: PM_SALARY, avatar: pick(AVATARS.pm) });
+  s.stats.hires += 1;
+  addLog(s, "📋 Contrataste un Project Manager. Desde ahora el roadmap sigue solo.", "good");
+  if (!s.currentFeature) {
+    const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
+    if (next) s.currentFeature = next.id;
+  }
   return null;
 }
 
