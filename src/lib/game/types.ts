@@ -186,6 +186,7 @@ export interface GameState {
   pendingEvent: PendingEvent | null; // legado, se migra a `events`
   events: PendingEvent[]; // bandeja de decisiones pendientes
   nextEventDay: number;
+  lastEventDay: number; // para espaciar decisiones
   effects: TempEffect[];
   crunch: boolean;
   burnout: number; // 0..100 del fundador

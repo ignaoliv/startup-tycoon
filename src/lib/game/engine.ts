@@ -74,6 +74,7 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     pendingEvent: null,
     events: [],
     nextEventDay: 10,
+    lastEventDay: 0,
     effects: [],
     crunch: false,
     burnout: 0,
@@ -254,7 +255,7 @@ export function tick(s: GameState, quiet = false) {
   else s.burnout = clamp(s.burnout - (s.morale > 60 ? BURNOUT.recoverPerDay : BURNOUT.recoverPerDay * 0.5), 0, 100);
   if (s.cash < 0) s.burnout = clamp(s.burnout + BURNOUT.redPerDay, 0, 100);
   if (s.founderOffUntil === s.day) addLog(s, "🧘 Volviste de la licencia. Hay 400 mensajes sin leer.", "info");
-  if (!quiet && s.burnout >= BURNOUT.breakAt && s.founderOffUntil < s.day && !s.events.some((e) => e.id === "burnout_founder")) pushEvent(s, "burnout_founder");
+  if (!quiet && s.burnout >= BURNOUT.breakAt && s.founderOffUntil < s.day && !s.events.some((e) => e.id === "burnout_founder")) pushEvent(s, "burnout_founder", undefined, true);
 
   // desarrollo
   if (s.currentFeature) {
@@ -373,14 +374,15 @@ export function tick(s: GameState, quiet = false) {
   // incidentes técnicos: probabilidad diaria proporcional a la deuda técnica
   if (!quiet && s.done.includes("mvp") && Math.random() < d.incidentChance && !s.events.some((e) => EVENTS.find((x) => x.id === e.id)?.incident)) {
     const pool = EVENTS.filter((e) => e.incident && (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users);
-    if (pool.length) pushEvent(s, pick(pool).id);
+    // con la deuda disparada (>3%/día) el incidente no espera el espaciado
+    if (pool.length) pushEvent(s, pick(pool).id, undefined, d.incidentChance > 0.03);
   }
 
   // eventos generales
   if (!quiet && s.day >= s.nextEventDay) {
     const pool = EVENTS.filter((e) => !e.dynamic && !e.incident && (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users && !s.events.some((x) => x.id === e.id));
-    if (pool.length && s.events.length < 3) pushEvent(s, pick(pool).id);
-    s.nextEventDay = s.day + Math.round(rnd(9, 20));
+    if (pool.length && pushEvent(s, pick(pool).id)) s.nextEventDay = s.day + Math.round(rnd(10, 20));
+    else s.nextEventDay = s.day + 3; // reintenta en unos días
   } else if (quiet && s.day >= s.nextEventDay) {
     s.nextEventDay = s.day + Math.round(rnd(3, 8));
   }
@@ -393,11 +395,80 @@ export function tick(s: GameState, quiet = false) {
   checkAchievements(s, d);
 }
 
-export function pushEvent(s: GameState, id: string, payload?: EventPayload) {
+export const EVENT_MIN_GAP = 8; // días mínimos entre decisiones (salvo urgencias)
+
+/** Encola una decisión. Devuelve false si no había lugar (espaciado o bandeja llena). */
+export function pushEvent(s: GameState, id: string, payload?: EventPayload, urgent = false): boolean {
   const def = EVENTS.find((e) => e.id === id);
-  if (!def) return;
+  if (!def) return false;
+  if (!urgent) {
+    if (s.day - s.lastEventDay < EVENT_MIN_GAP) return false;
+    if (s.events.length >= 2) return false;
+  }
   const pe: PendingEvent = { id, day: s.day, expiresDay: s.day + (def.days ?? EVENT_DEFAULT_DAYS), payload };
   s.events.push(pe);
+  s.lastEventDay = s.day;
+  return true;
+}
+
+export interface GrowthFactor {
+  icon: string;
+  text: string;
+  effect: string; // ej. "×0.65" o "+30%"
+  tone: "good" | "bad" | "neutral";
+  weight: number; // para ordenar: cuánto se aleja de 1
+}
+
+/** Explica en palabras qué está empujando o frenando el crecimiento hoy. */
+export function explainGrowth(s: GameState, d: Derived): GrowthFactor[] {
+  const out: GrowthFactor[] = [];
+  const mul = (v: number) => `×${v.toFixed(2)}`;
+  const push = (icon: string, text: string, v: number, kind: "mul" | "pct" = "mul") => {
+    const eff = kind === "mul" ? mul(v) : `${v >= 0 ? "+" : ""}${Math.round(v * 100)}%`;
+    const w = kind === "mul" ? Math.abs(Math.log(Math.max(0.01, v))) : Math.abs(v);
+    out.push({ icon, text, effect: eff, tone: (kind === "mul" ? v < 0.98 : v < 0) ? "bad" : (kind === "mul" ? v > 1.02 : v > 0) ? "good" : "neutral", weight: w });
+  };
+  if (!s.done.includes("mvp")) return [{ icon: "🚀", text: "Sin MVP no entra nadie. Todo lo demás no importa todavía.", effect: "×0", tone: "bad", weight: 99 }];
+  const sector = SECTORS.find((x) => x.id === s.sector) ?? SECTORS[0];
+  push("⭐", `Calidad ${Math.round(d.quality)}`, 0.3 + (d.quality / 100) * 0.9);
+  push("🔥", `Hype ${Math.round(s.hype)}`, 0.5 + (s.hype / 100) * 0.7);
+  if (!s.done.includes("prd")) push("📝", "Sin PRD el equipo construye a ciegas", 0.65);
+  const cmo = d.execs.find((e) => e.role === "cmo");
+  if (cmo?.hired) push("🧑‍🎤", "Tenés CMO", 1.15);
+  else if (cmo?.neededWhy) push("🧑‍🎤", "Te falta un CMO", 0.65);
+  const feat = s.done.reduce((a, id) => a + (FEATURES.find((f) => f.id === id)?.effects.growth ?? 0), 0) + s.customFeatures * 0.08;
+  push("🛠️", `${s.done.length + s.customFeatures} features lanzadas`, feat, "pct");
+  if (sector.growth !== 0) push(sector.icon, `Sector ${sector.name}`, sector.growth, "pct");
+  const sat = Math.max(0, 1 - s.users / sector.tam);
+  if (sat < 0.95) push("🌍", "Mercado saturándose", sat);
+  if (d.effectPtsMul !== 1 || (d.overhead < 1 && d.overhead)) {
+    if (d.overhead < 0.98) push("🏢", "Burocracia por tamaño de equipo (productividad)", d.overhead);
+  }
+  for (const e of s.effects) if (e.until >= s.day && e.growthMul && e.growthMul !== 1) push(e.icon, e.label, e.growthMul);
+  if (d.mktPts > 0) push("📣", `Growth: ${d.mktPts.toFixed(1)} pts traen usuarios directos`, d.mktPts * 3 / Math.max(1, d.newUsersDay), "pct");
+  if (d.adsUsersDay > 0.5) push("📈", `Ads: +${Math.round(d.adsUsersDay)} usuarios/día`, d.adsUsersDay / Math.max(1, d.newUsersDay), "pct");
+  if (d.organicUsersDay > 0.5) push("📱", `Seguidores: +${Math.round(d.organicUsersDay)} usuarios/día orgánicos`, d.organicUsersDay / Math.max(1, d.newUsersDay), "pct");
+  if (s.bugs > 3) push("🐛", `Deuda técnica ${Math.round(s.bugs)}: más churn e incidentes`, -Math.min(0.9, s.bugs * 0.02), "pct");
+  return out.sort((a, b) => b.weight - a.weight).slice(0, 6);
+}
+
+/** Qué partes de la UI ya tienen sentido mostrar. Revelado progresivo. */
+export function unlocks(s: GameState, d: Derived) {
+  const mvp = s.done.includes("mvp");
+  return {
+    hype: mvp,
+    buildInPublic: mvp,
+    campaigns: mvp,
+    ads: s.done.includes("landing"),
+    community: s.employees.some((e) => e.role === "social") || s.followers >= 2000,
+    sponsors: s.stage >= 1,
+    execs: s.office >= 1 || d.execs.some((e) => e.neededWhy),
+    crunch: s.crunch || s.employees.length >= 3,
+    repeatables: s.done.length >= 8 || !FEATURES.some((f) => featureAvailable(s, f.id)) || s.customFeatures > 0 || s.rebrands > 0,
+    sell: s.stage >= 1 || s.users >= 500,
+    burnout: s.crunch || s.burnout > 10 || s.founderOffUntil > s.day,
+    social: mvp,
+  };
 }
 
 export function eventTitle(def: GameEventDef, s: GameState, p: EventPayload = {}) {
@@ -633,6 +704,7 @@ export function migrate(s: GameState): GameState {
   s.buildInPublic ??= false;
   s.lastRaiseDay ??= s.day;
   s.events ??= [];
+  s.lastEventDay ??= 0;
   s.effects ??= [];
   s.crunch ??= false;
   s.burnout ??= 0;

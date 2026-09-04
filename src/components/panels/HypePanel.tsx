@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { ADS_LEVELS, AUTO_CAMPAIGNS, BUILD_IN_PUBLIC, CAMPAIGNS, STAGES } from "@/lib/game/data";
-import { campaignStatus, runCampaign, setAdsLevel, toggleBuildInPublic } from "@/lib/game/engine";
+import { campaignStatus, runCampaign, setAdsLevel, toggleBuildInPublic, unlocks } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -9,6 +9,15 @@ export function HypePanel({ game }: { game: Game }) {
   const s = game.state!;
   const d = game.derived!;
   const decay = -d.hypeDecayDay;
+  const u = unlocks(s, d);
+  if (!u.hype)
+    return (
+      <Card title="Hype">
+        <div className="rounded-xl border-2 border-dashed border-amber bg-amber/10 p-3 text-sm">
+          <b>Primero shippeá el MVP.</b> Sin producto no hay nada que promocionar. Acá van a aparecer las campañas, las redes y los ads.
+        </div>
+      </Card>
+    );
 
   return (
     <div className="space-y-3">
@@ -38,6 +47,7 @@ export function HypePanel({ game }: { game: Game }) {
         </p>
       </Card>
 
+      {u.buildInPublic && (
       <Card title="#buildinpublic en el perfil" right={<Pill tone={s.buildInPublic ? "good" : "ink"}>{s.buildInPublic ? "Activo" : "Apagado"}</Pill>}>
         <p className="mb-2 text-[11px] text-ink/60">
           Contás todos los días qué construiste, cuánto facturaste y qué se rompió. Gratis, sin cooldown: suma fijo <b>+{BUILD_IN_PUBLIC.hypeDay} hype/día</b> y <b>+{BUILD_IN_PUBLIC.followersDay} seguidores/día</b> mientras esté activo.
@@ -46,7 +56,9 @@ export function HypePanel({ game }: { game: Game }) {
           🧵 {s.buildInPublic ? "Sacar del perfil" : "Poner #buildinpublic en el perfil"}
         </Btn>
       </Card>
+      )}
 
+      {u.community && (
       <Card title="Community (automático)">
         <p className="mb-2 text-[11px] text-ink/60">
           Tenés <b>{d.socialPts.toFixed(1)} pts</b> de Community 📱 (suma de niveles, ajustada por moral). Cada punto suma seguidores y frena la caída del hype. Cuanta más gente de redes, más campañas salen solas sin que las toques:
@@ -65,7 +77,9 @@ export function HypePanel({ game }: { game: Game }) {
           })}
         </ul>
       </Card>
+      )}
 
+      {u.ads && (
       <Card title="Publicidad paga" right={<Pill tone={s.adsLevel > 0 ? "amber" : "ink"}>{ADS_LEVELS[s.adsLevel].icon} {ADS_LEVELS[s.adsLevel].name}</Pill>}>
         <div className="mb-2 grid grid-cols-4 gap-1.5">
           {ADS_LEVELS.map((l, i) => (
@@ -85,8 +99,9 @@ export function HypePanel({ game }: { game: Game }) {
           )}
         </div>
       </Card>
+      )}
 
-      {(["campaign", "sponsor"] as const).map((group) => (
+      {(["campaign", "sponsor"] as const).filter((g) => g === "campaign" || u.sponsors).map((group) => (
       <Card key={group} title={group === "campaign" ? "Campañas" : "Sponsoreos grandes"}>
         {group === "sponsor" && <p className="mb-2 text-[11px] text-ink/60">Se desbloquean a medida que levantás rondas. Cuestan una fortuna y pueden salir mal: si salen mal, es puro gasto.</p>}
         <ul className="space-y-2">

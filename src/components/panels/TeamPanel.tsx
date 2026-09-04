@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Btn, Card, Pill } from "@/components/ui";
 import { AI_LEVEL_NAMES, EXECS, LEVEL_NAMES, OFFICES, ROLES } from "@/lib/game/data";
-import { asado, asadoCost, fire, hire, hireExec, isExec, marketSalary, pizza, pizzaCost, rerollCandidates, toggleCrunch } from "@/lib/game/engine";
+import { asado, asadoCost, fire, hire, hireExec, isExec, marketSalary, pizza, pizzaCost, rerollCandidates, toggleCrunch, unlocks } from "@/lib/game/engine";
 import { ONBOARDING_DAYS } from "@/lib/game/data";
 import { money } from "@/lib/game/format";
 import type { Role } from "@/lib/game/types";
@@ -17,6 +17,7 @@ export function TeamPanel({ game }: { game: Game }) {
   const rerollCost = 500 + s.employees.length * 100;
   const counts = (Object.keys(ROLES) as Role[]).map((r) => ({ r, n: s.employees.filter((e) => e.role === r).length }));
   const missingNeeded = d.execs.filter((e) => !e.hired && e.neededWhy);
+  const u = unlocks(s, d);
 
   return (
     <div className="space-y-3">
@@ -48,6 +49,7 @@ export function TeamPanel({ game }: { game: Game }) {
         <p className="mt-2 text-[11px] text-ink/50">🤖 Los agentes IA vibecodean 60% más rápido y cuestan un cuarto, pero dejan deuda técnica. Los devs humanos la contienen. El fee es medio sueldo; los candidatos se renuevan cada 7 días.</p>
       </Card>
 
+      {u.execs && (
       <Card title="C-level" className={missingNeeded.length ? "!border-red" : ""}>
         {missingNeeded.length > 0 && (
           <div className="mb-2 rounded-lg bg-red/10 px-2 py-1.5 text-xs font-bold text-red">
@@ -89,6 +91,7 @@ export function TeamPanel({ game }: { game: Game }) {
           })}
         </ul>
       </Card>
+      )}
 
       <Card
         title={`Equipo ${s.employees.length}/${office.capacity}`}
@@ -104,6 +107,7 @@ export function TeamPanel({ game }: { game: Game }) {
           Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad)
           {d.overhead < 1 && <> · Burocracia <b className="text-red">-{Math.round((1 - d.overhead) * 100)}%</b> por tamaño de equipo</>}. Los sueldos humanos suben 4% cada 60 días.
         </div>
+        {u.crunch && (
         <div className={`mb-3 rounded-xl border-2 p-2.5 ${s.crunch ? "border-red bg-red/5" : "border-ink/10 bg-white"}`}>
           <div className="flex items-center justify-between gap-2">
             <div className="text-xs">
@@ -115,6 +119,7 @@ export function TeamPanel({ game }: { game: Game }) {
             </Btn>
           </div>
         </div>
+        )}
         <div className="mb-3 grid grid-cols-2 gap-2">
           <Btn variant="ghost" className="flex-col !gap-0 py-2" onClick={() => game.mutate((st) => pizza(st))} disabled={s.cash < pizzaCost(s)}>
             <span>🍕 Pizza para el equipo</span>

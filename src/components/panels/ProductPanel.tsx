@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Card, Pill } from "@/components/ui";
 import { FEATURES, NEW_FEATURE_ID, REBRAND_ID } from "@/lib/game/data";
-import { featureAvailable, getFeature, setFeature } from "@/lib/game/engine";
+import { featureAvailable, getFeature, setFeature, unlocks } from "@/lib/game/engine";
 import type { Game } from "@/hooks/useGame";
 
 export function ProductPanel({ game }: { game: Game }) {
@@ -9,6 +9,7 @@ export function ProductPanel({ game }: { game: Game }) {
   const d = game.derived!;
   const cur = s.currentFeature ? getFeature(s, s.currentFeature) : null;
   const repeatables = [NEW_FEATURE_ID, REBRAND_ID].map((id) => getFeature(s, id));
+  const u = unlocks(s, d);
 
   return (
     <div className="space-y-3">
@@ -34,6 +35,7 @@ export function ProductPanel({ game }: { game: Game }) {
         )}
       </Card>
 
+      {u.repeatables && (
       <Card title="Siempre disponibles">
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {repeatables.map((f) => {
@@ -74,6 +76,7 @@ export function ProductPanel({ game }: { game: Game }) {
           })}
         </ul>
       </Card>
+      )}
 
       <Card title="Roadmap">
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">

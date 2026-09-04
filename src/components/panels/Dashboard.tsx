@@ -2,7 +2,7 @@
 import { OfficeView } from "@/components/OfficeView";
 import { Bar, Card, Pill } from "@/components/ui";
 import { FEATURES, OFFICES, STAGES } from "@/lib/game/data";
-import { getFeature } from "@/lib/game/engine";
+import { explainGrowth, getFeature, unlocks } from "@/lib/game/engine";
 import { EXECS } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -11,6 +11,8 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const s = game.state!;
   const d = game.derived!;
   const feat = s.currentFeature ? getFeature(s, s.currentFeature) : null;
+  const u = unlocks(s, d);
+  const why = explainGrowth(s, d);
   const nextStage = STAGES[s.stage + 1];
   const tips: { text: string; tab: string }[] = [];
   if (s.events.length > 0) tips.push({ text: `Tenés ${s.events.length} decisión${s.events.length > 1 ? "es" : ""} pendiente${s.events.length > 1 ? "s" : ""}. Si no decidís, pasa lo pasivo.`, tab: "office" });
@@ -90,6 +92,19 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
         </Card>
       </div>
 
+      <Card title="Por qué crecés así">
+        <ul className="space-y-1 text-xs">
+          {why.map((f, i) => (
+            <li key={i} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
+              <span>{f.icon}</span>
+              <span className="flex-1">{f.text}</span>
+              <Pill tone={f.tone === "good" ? "good" : f.tone === "bad" ? "bad" : "ink"}>{f.effect}</Pill>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-1 text-[10px] text-ink/50">Los factores que más pesan hoy en los usuarios nuevos. Atacá el rojo más grande.</div>
+      </Card>
+
       <Card title="Estado">
         <div className="space-y-2 text-xs">
           <div>
@@ -106,6 +121,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
             </div>
             <Bar value={s.morale} color="bg-green" />
           </div>
+          {u.burnout && (
           <div>
             <div className="mb-1 flex justify-between">
               <span>🫠 Tu burnout {s.crunch && <Pill tone="bad">crunch</Pill>}</span>
@@ -114,6 +130,7 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
             <Bar value={s.burnout} color={s.burnout > 70 ? "bg-red" : s.burnout > 40 ? "bg-amber" : "bg-indigo"} />
             <div className="mt-0.5 text-[10px] text-ink/50">A 85 te quemás. Sube con crunch y caja en rojo, baja con moral alta.</div>
           </div>
+          )}
           {d.incidentChance > 0.005 && (
             <div className="rounded-lg bg-red/10 px-2 py-1 text-[11px] text-red">
               🐛 Con {Math.round(s.bugs)} de deuda técnica hay {(d.incidentChance * 100).toFixed(1)}% por día de incidente en producción.

@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { useState } from "react";
-import { ACHIEVEMENT_DEFS, ipo, raiseRound, sellCompany, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, ipo, raiseRound, sellCompany, unlocks, upgradeOffice } from "@/lib/game/engine";
 import { IPO_VALUATION, OFFICES, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
@@ -15,6 +15,7 @@ export function MoneyPanel({ game }: { game: Game }) {
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
   const [confirmSell, setConfirmSell] = useState(false);
+  const u = unlocks(s, d);
   const myExit = (d.sellOffer * s.equity) / 100;
 
   return (
@@ -80,6 +81,7 @@ export function MoneyPanel({ game }: { game: Game }) {
         </div>
       </Card>
 
+      {u.sell && (
       <Card title="Vender la empresa">
         {d.sellOffer > 0 ? (
           <>
@@ -105,6 +107,7 @@ export function MoneyPanel({ game }: { game: Game }) {
           <div className="text-xs text-ink/50">Nadie compra una startup sin producto. Terminá el MVP.</div>
         )}
       </Card>
+      )}
 
       <Card title="Oficina">
         <div className="mb-2 text-sm">
