@@ -1,5 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
+import { FEATURES, ROLES } from "./game/data";
+
+/** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
+export function sanitize(s: GameState): GameState {
+  const known = (r: string) => r in ROLES;
+  s.employees = (s.employees ?? []).filter((e) => known(e.role));
+  if (!s.employees.some((e) => e.founder)) s.employees.unshift({ id: "founder", name: s.founderName || "Fundador/a", role: "dev", level: 2, salary: 0, avatar: "🧑‍🚀", founder: true });
+  s.candidates = (s.candidates ?? []).filter((c) => known(c.role));
+  const feat = (id: string) => FEATURES.some((f) => f.id === id);
+  s.done = (s.done ?? []).filter(feat);
+  if (s.currentFeature && !feat(s.currentFeature)) {
+    s.currentFeature = null;
+    s.featureProgress = 0;
+  }
+  s.pendingEvent ??= null;
+  s.portfolio ??= [];
+  s.achievements ??= [];
+  s.log ??= [];
+  return s;
+}
 
 export const LOCAL_KEY = "startup-tycoon:save";
 
@@ -13,7 +33,7 @@ export function loadLocal(userId?: string | null): GameState | null {
     if (!raw) return null;
     const s = JSON.parse(raw) as GameState;
     if (s.version !== 1) return null;
-    return s;
+    return sanitize(s);
   } catch {
     return null;
   }
@@ -74,7 +94,7 @@ export async function loadCloud(sb: SupabaseClient, userId: string): Promise<Gam
   if (error) throw error;
   if (!data) return null;
   const s = data.state as GameState;
-  return s?.version === 1 ? s : null;
+  return s?.version === 1 ? sanitize(s) : null;
 }
 
 export async function saveCloud(sb: SupabaseClient, userId: string, s: GameState, d: Derived) {
