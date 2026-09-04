@@ -11,6 +11,7 @@ export interface Employee {
   salary: number; // mensual
   avatar: string;
   founder?: boolean;
+  hiredDay?: number; // para el onboarding
 }
 
 export interface Candidate extends Employee {
@@ -64,20 +65,40 @@ export interface SectorDef {
   tam: number; // mercado total (usuarios)
 }
 
+export type EventPayload = Record<string, unknown>;
+
 export interface EventChoice {
   label: string;
   desc: string;
-  apply: (s: GameState) => string; // devuelve texto de resultado
+  apply: (s: GameState, p: EventPayload) => string; // devuelve texto de resultado
 }
 
 export interface GameEventDef {
   id: string;
-  title: string;
+  title: string | ((s: GameState, p: EventPayload) => string);
   icon: string;
-  text: string;
+  text: string | ((s: GameState, p: EventPayload) => string);
   minDay?: number;
   minUsers?: number;
   choices: EventChoice[];
+  /** Opción que se aplica sola si no decidís a tiempo (default: la última). */
+  defaultChoice?: number;
+  /** Días para decidir (default 6). */
+  days?: number;
+  ar?: boolean; // sabor argentino
+  incident?: boolean; // incidente técnico: más probable con deuda técnica
+  dynamic?: boolean; // no entra en el sorteo normal, lo dispara el motor
+}
+
+export interface TempEffect {
+  id: string;
+  label: string;
+  icon: string;
+  until: number;
+  costMul?: number;
+  revenueMul?: number;
+  growthMul?: number;
+  ptsMul?: number;
 }
 
 export interface CampaignDef {
@@ -121,6 +142,8 @@ export interface ExecStatus {
 export interface PendingEvent {
   id: string;
   day: number;
+  expiresDay: number;
+  payload?: EventPayload;
 }
 
 export interface LogEntry {
@@ -160,8 +183,13 @@ export interface GameState {
   featureProgress: number;
   done: string[];
   log: LogEntry[];
-  pendingEvent: PendingEvent | null;
+  pendingEvent: PendingEvent | null; // legado, se migra a `events`
+  events: PendingEvent[]; // bandeja de decisiones pendientes
   nextEventDay: number;
+  effects: TempEffect[];
+  crunch: boolean;
+  burnout: number; // 0..100 del fundador
+  founderOffUntil: number; // día hasta el que el fundador está de licencia
   bankruptDays: number;
   lastRaiseDay: number; // último ajuste de sueldos por inflación
   gameOver: "bankrupt" | "ipo" | "acquired" | null;
@@ -217,4 +245,8 @@ export interface Derived {
   adsUsersDay: number;
   execs: ExecStatus[];
   overhead: number; // multiplicador de productividad por burocracia (1 = sin pérdida)
+  incidentChance: number; // prob. diaria de incidente por deuda técnica
+  effectCostMul: number;
+  effectRevenueMul: number;
+  effectPtsMul: number;
 }

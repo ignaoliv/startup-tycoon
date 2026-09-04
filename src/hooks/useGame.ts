@@ -135,7 +135,7 @@ export function useGame(forceLocal: boolean) {
   useEffect(() => {
     if (!state || state.gameOver) return;
     const speed = state.speed;
-    if (speed === 0 || state.pendingEvent) return;
+    if (speed === 0) return;
     const id = setInterval(() => {
       const cur = ref.current;
       if (!cur) return;
@@ -145,7 +145,7 @@ export function useGame(forceLocal: boolean) {
       commit(copy);
     }, TICK_MS / speed);
     return () => clearInterval(id);
-  }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state]);
+  }, [state?.speed, state?.gameOver, commit, state]);
 
   // guardado local (siempre) + nube (cada 12s)
   useEffect(() => {

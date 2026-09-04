@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { Btn, Card, Pill } from "@/components/ui";
 import { AI_LEVEL_NAMES, EXECS, LEVEL_NAMES, OFFICES, ROLES } from "@/lib/game/data";
-import { asado, asadoCost, fire, hire, hireExec, isExec, pizza, pizzaCost, rerollCandidates } from "@/lib/game/engine";
+import { asado, asadoCost, fire, hire, hireExec, isExec, marketSalary, pizza, pizzaCost, rerollCandidates, toggleCrunch } from "@/lib/game/engine";
+import { ONBOARDING_DAYS } from "@/lib/game/data";
 import { money } from "@/lib/game/format";
 import type { Role } from "@/lib/game/types";
 import type { Game } from "@/hooks/useGame";
@@ -103,6 +104,17 @@ export function TeamPanel({ game }: { game: Game }) {
           Sueldos: <b>{money(d.salariesMonth)}/mes</b> · Moral <b>{Math.round(s.morale)}</b> (multiplica la productividad)
           {d.overhead < 1 && <> · Burocracia <b className="text-red">-{Math.round((1 - d.overhead) * 100)}%</b> por tamaño de equipo</>}. Los sueldos humanos suben 4% cada 60 días.
         </div>
+        <div className={`mb-3 rounded-xl border-2 p-2.5 ${s.crunch ? "border-red bg-red/5" : "border-ink/10 bg-white"}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs">
+              <b>🔥 Modo crunch</b> {s.crunch ? <Pill tone="bad">activo</Pill> : null}
+              <div className="text-ink/60">+30% productividad. La moral cae, tu burnout sube {1.6}/día y la gente empieza a mirar ofertas.</div>
+            </div>
+            <Btn size="sm" variant={s.crunch ? "ghost" : "danger"} onClick={() => game.mutate((st) => toggleCrunch(st))}>
+              {s.crunch ? "Parar" : "Activar"}
+            </Btn>
+          </div>
+        </div>
         <div className="mb-3 grid grid-cols-2 gap-2">
           <Btn variant="ghost" className="flex-col !gap-0 py-2" onClick={() => game.mutate((st) => pizza(st))} disabled={s.cash < pizzaCost(s)}>
             <span>🍕 Pizza para el equipo</span>
@@ -114,12 +126,18 @@ export function TeamPanel({ game }: { game: Game }) {
           </Btn>
         </div>
         <ul className="space-y-1.5">
-          {s.employees.map((e) => (
+          {s.employees.map((e) => {
+            const onboarding = !e.founder && e.role !== "ai" && s.day - (e.hiredDay ?? -999) < ONBOARDING_DAYS;
+            const underpaid = !e.founder && e.role !== "ai" && !isExec(e.role) && e.salary < marketSalary(s, e) * 0.85;
+            return (
             <li key={e.id} className="flex items-center gap-2 rounded-xl bg-sand/60 px-2 py-1.5">
               <span className="text-xl">{e.avatar}</span>
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-bold">
-                  {e.name} {e.founder && "👑"}
+                <div className="flex flex-wrap items-center gap-1 text-sm font-bold">
+                  <span className="truncate">{e.name} {e.founder && "👑"}</span>
+                  {e.founder && s.founderOffUntil > s.day && <Pill tone="indigo">de licencia</Pill>}
+                  {onboarding && <Pill tone="amber">🆕 onboarding {ONBOARDING_DAYS - (s.day - (e.hiredDay ?? 0))}d</Pill>}
+                  {underpaid && <Pill tone="bad">cobra bajo mercado</Pill>}
                 </div>
                 <div className="text-[11px] text-ink/60">
                   {ROLES[e.role].icon} {e.founder ? "Vibecoder fundador" : isExec(e.role) ? ROLES[e.role].name : `${ROLES[e.role].name} ${(e.role === "ai" ? AI_LEVEL_NAMES : LEVEL_NAMES)[e.level]}`} · {e.founder ? "sin sueldo" : `${money(isExec(e.role) ? (d.execs.find((x) => x.role === e.role)?.salary ?? e.salary) : e.salary)} ${ROLES[e.role].payLabel}`}
@@ -141,8 +159,10 @@ export function TeamPanel({ game }: { game: Game }) {
                   </Btn>
                 ))}
             </li>
-          ))}
+            );
+          })}
         </ul>
+        <p className="mt-2 text-[11px] text-ink/50">Los nuevos rinden la mitad durante {ONBOARDING_DAYS} días. Con moral baja, sueldo bajo mercado o crunch, la gente recibe ofertas y te toca contraofertar.</p>
       </Card>
 
       <Card title="Roles">

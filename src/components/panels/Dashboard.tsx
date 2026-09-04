@@ -13,6 +13,8 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
   const feat = s.currentFeature ? getFeature(s, s.currentFeature) : null;
   const nextStage = STAGES[s.stage + 1];
   const tips: { text: string; tab: string }[] = [];
+  if (s.events.length > 0) tips.push({ text: `Tenés ${s.events.length} decisión${s.events.length > 1 ? "es" : ""} pendiente${s.events.length > 1 ? "s" : ""}. Si no decidís, pasa lo pasivo.`, tab: "office" });
+  if (s.burnout > 70) tips.push({ text: "Estás al borde del burnout. Cortá el crunch o comé algo.", tab: "team" });
   if (s.cash < 0) tips.push({ text: `Estás en rojo (${s.bankruptDays}/12 días). El banco te presta hasta ${moneyShort(d.loanCapacity)}.`, tab: "money" });
   for (const ex of d.execs) if (!ex.hired && ex.neededWhy) tips.push({ text: `Necesitás un ${EXECS.find((x) => x.role === ex.role)!.name}: ${ex.neededWhy}`, tab: "team" });
   if (!s.done.includes("mvp")) tips.push({ text: "Sin MVP no entran usuarios. Activá otro agente IA para vibecodear más rápido.", tab: "team" });
@@ -104,6 +106,19 @@ export function Dashboard({ game, onGoTo }: { game: Game; onGoTo: (tab: string) 
             </div>
             <Bar value={s.morale} color="bg-green" />
           </div>
+          <div>
+            <div className="mb-1 flex justify-between">
+              <span>🫠 Tu burnout {s.crunch && <Pill tone="bad">crunch</Pill>}</span>
+              <span className="font-bold">{Math.round(s.burnout)}</span>
+            </div>
+            <Bar value={s.burnout} color={s.burnout > 70 ? "bg-red" : s.burnout > 40 ? "bg-amber" : "bg-indigo"} />
+            <div className="mt-0.5 text-[10px] text-ink/50">A 85 te quemás. Sube con crunch y caja en rojo, baja con moral alta.</div>
+          </div>
+          {d.incidentChance > 0.005 && (
+            <div className="rounded-lg bg-red/10 px-2 py-1 text-[11px] text-red">
+              🐛 Con {Math.round(s.bugs)} de deuda técnica hay {(d.incidentChance * 100).toFixed(1)}% por día de incidente en producción.
+            </div>
+          )}
         </div>
       </Card>
 

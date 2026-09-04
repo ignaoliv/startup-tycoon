@@ -10,7 +10,7 @@ import { HypePanel } from "@/components/panels/HypePanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Bar, Btn, Card, Stat } from "@/components/ui";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { applyRename, getFeature, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { applyRename, eventText, eventTitle, getFeature, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { createPost } from "@/lib/storage";
@@ -33,6 +33,8 @@ export function GameShell() {
   const [menu, setMenu] = useState(false);
   const [offlineDismissed, setOfflineDismissed] = useState(false);
   const [newName, setNewName] = useState("");
+  const [inboxOpen, setInboxOpen] = useState(true);
+  const [seenEvents, setSeenEvents] = useState(0);
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -71,7 +73,15 @@ export function GameShell() {
 
   if (!state) return <Setup onStart={game.startNew} />;
   const d = derived!;
-  const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;
+  const pending = state.events;
+  const first = pending[0];
+  const ev = first ? EVENTS.find((e) => e.id === first.id) : null;
+  // cada evento nuevo reabre la bandeja
+  if (pending.length > seenEvents) {
+    setSeenEvents(pending.length);
+    if (!inboxOpen) setInboxOpen(true);
+  } else if (pending.length < seenEvents) setSeenEvents(pending.length);
+  const activeEffects = state.effects.filter((e) => e.until >= state.day);
   const sector = SECTORS.find((s) => s.id === state.sector);
   const building = state.currentFeature ? getFeature(state, state.currentFeature) : null;
 
@@ -136,6 +146,22 @@ export function GameShell() {
             <span className="font-bold">⚠️ Nada en desarrollo. Tocá para elegir qué construir ›</span>
           )}
         </button>
+        {(pending.length > 0 || activeEffects.length > 0 || state.crunch || state.founderOffUntil > state.day) && (
+          <div className="flex flex-wrap items-center gap-1.5 border-t border-ink/10 px-3 py-1.5">
+            {pending.length > 0 && (
+              <button onClick={() => setInboxOpen(true)} className="btn animate-pulse bg-amber border-ink px-2.5 py-1 text-xs">
+                📬 {pending.length} decisión{pending.length > 1 ? "es" : ""} pendiente{pending.length > 1 ? "s" : ""}
+              </button>
+            )}
+            {state.crunch && <span className="rounded-full bg-red/15 px-2 py-0.5 text-[11px] font-bold text-red">🔥 Crunch · burnout {Math.round(state.burnout)}</span>}
+            {state.founderOffUntil > state.day && <span className="rounded-full bg-indigo/15 px-2 py-0.5 text-[11px] font-bold text-indigo">🧘 Fundador de licencia · {state.founderOffUntil - state.day} días</span>}
+            {activeEffects.map((e) => (
+              <span key={e.id} className="rounded-full bg-ink/10 px-2 py-0.5 text-[11px] font-bold" title={`${e.until - state.day} días`}>
+                {e.icon} {e.label} · {e.until - state.day}d
+              </span>
+            ))}
+          </div>
+        )}
       </header>
 
       {game.offlineDays > 0 && !offlineDismissed && (
@@ -198,19 +224,33 @@ export function GameShell() {
       </nav>
 
       {/* evento */}
-      {ev && (
+      {ev && first && inboxOpen && !state.gameOver && !state.pendingRename && (
         <Modal>
-          <div className="mb-1 text-4xl">{ev.icon}</div>
-          <h2 className="mb-1 text-xl font-black">{ev.title}</h2>
-          <p className="mb-4 text-sm text-ink/70">{ev.text}</p>
-          <div className="space-y-2">
-            {ev.choices.map((c, i) => (
-              <button key={i} onClick={() => game.mutate((s) => resolveEvent(s, i))} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
-                <div className="text-sm font-black">{c.label}</div>
-                <div className="text-xs text-ink/60">{c.desc}</div>
-              </button>
-            ))}
+          <div className="mb-1 flex items-start justify-between">
+            <div className="text-4xl">{ev.icon}</div>
+            <div className="text-right text-[11px] font-bold text-ink/50">
+              {pending.length > 1 && <div>1 de {pending.length}</div>}
+              <div className={first.expiresDay - state.day <= 2 ? "text-red" : ""}>⏳ se resuelve sola en {Math.max(0, first.expiresDay - state.day)} días</div>
+            </div>
           </div>
+          <h2 className="mb-1 text-xl font-black">{eventTitle(ev, state, first.payload)}</h2>
+          <p className="mb-4 text-sm text-ink/70">{eventText(ev, state, first.payload)}</p>
+          <div className="space-y-2">
+            {ev.choices.map((c, i) => {
+              const isDefault = (ev.defaultChoice ?? ev.choices.length - 1) === i;
+              return (
+                <button key={i} onClick={() => game.mutate((s) => resolveEvent(s, 0, i))} className="w-full rounded-xl border-2 border-ink/20 bg-white p-3 text-left hover:border-indigo hover:bg-indigo/5">
+                  <div className="text-sm font-black">
+                    {c.label} {isDefault && <span className="text-[10px] font-semibold text-ink/40">(pasa solo si no decidís)</span>}
+                  </div>
+                  <div className="text-xs text-ink/60">{c.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+          <button onClick={() => setInboxOpen(false)} className="mt-3 w-full text-center text-xs font-bold text-ink/50 underline">
+            Decidir después (el juego sigue)
+          </button>
         </Modal>
       )}
 

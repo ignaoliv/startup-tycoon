@@ -1,5 +1,5 @@
-import { ADS_LEVELS, AI_LEVEL_NAMES, AI_NAMES, AUTO_CAMPAIGNS, AVATARS, BUILD_IN_PUBLIC, CAMPAIGNS, CUSTOM_FEATURE_NAMES, EVENTS, EXECS, SALARY_INFLATION, FEATURES, NEW_FEATURE_ID, REBRAND_ID, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
-import type { Candidate, Derived, Employee, ExecRole, ExecStatus, FeatureDef, GameState, Level, LogEntry, Role } from "./types";
+import { ADS_LEVELS, AI_LEVEL_NAMES, AI_NAMES, AUTO_CAMPAIGNS, AVATARS, BUILD_IN_PUBLIC, BURNOUT, CAMPAIGNS, CUSTOM_FEATURE_NAMES, EVENTS, EVENT_DEFAULT_DAYS, EXECS, ONBOARDING_DAYS, SALARY_INFLATION, FEATURES, NEW_FEATURE_ID, REBRAND_ID, FIRST_NAMES, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS, TICK_MS } from "./data";
+import type { Candidate, Derived, Employee, EventPayload, ExecRole, ExecStatus, FeatureDef, GameEventDef, GameState, Level, LogEntry, PendingEvent, Role } from "./types";
 
 const EXEC_SET = new Set<string>(["cto", "cmo", "cfo", "coo"]);
 export function isExec(role: Role) {
@@ -72,7 +72,12 @@ export function newGame(opts: { startupName: string; founderName: string; sector
     done: [],
     log: [],
     pendingEvent: null,
-    nextEventDay: 12,
+    events: [],
+    nextEventDay: 10,
+    effects: [],
+    crunch: false,
+    burnout: 0,
+    founderOffUntil: 0,
     bankruptDays: 0,
     lastRaiseDay: 1,
     gameOver: null,
@@ -113,8 +118,24 @@ export function derive(s: GameState): Derived {
   // burocracia: cada persona por encima de 10 resta productividad; el COO la reduce a la mitha
   const overheadRaw = Math.min(0.4, Math.max(0, s.employees.length - 10) * 0.012);
   const overhead = 1 - overheadRaw * (has("coo") ? 0.5 : 1) - (needs("coo") ? 0.15 : 0);
-  const moraleMul = (0.5 + s.morale / 200) * overhead; // 0.5..1, menos burocracia
-  const pts = (role: Role) => s.employees.filter((e) => e.role === role).reduce((a, e) => a + e.level * (e.founder ? 1.5 : 1), 0) * moraleMul;
+  const fx0 = { cost: 1, revenue: 1, growth: 1, pts: 1 };
+  for (const e of s.effects ?? []) {
+    if (e.until < s.day) continue;
+    fx0.cost *= e.costMul ?? 1;
+    fx0.revenue *= e.revenueMul ?? 1;
+    fx0.growth *= e.growthMul ?? 1;
+    fx0.pts *= e.ptsMul ?? 1;
+  }
+  const crunchMul = s.crunch ? 1.3 : 1;
+  const moraleMul = (0.5 + s.morale / 200) * overhead * crunchMul * fx0.pts; // 0.5..1, menos burocracia
+  const founderOff = s.founderOffUntil > s.day;
+  const personFactor = (e: Employee) => {
+    if (e.founder) return founderOff ? 0 : 1.5 * (1 - s.burnout / 200);
+    if (e.role === "ai") return 1;
+    const days = s.day - (e.hiredDay ?? -999);
+    return days < ONBOARDING_DAYS ? 0.5 + (0.5 * days) / ONBOARDING_DAYS : 1;
+  };
+  const pts = (role: Role) => s.employees.filter((e) => e.role === role).reduce((a, e) => a + e.level * personFactor(e), 0) * moraleMul;
   const aiPts = pts("ai") * 1.6; // la IA vibecodea rápido
   const humanDev = pts("dev");
   const devMul = has("cto") ? 1.1 : needs("cto") ? 0.7 : 1;
@@ -143,7 +164,7 @@ export function derive(s: GameState): Derived {
   const quality = clamp(fx.quality + designPts * 4 - s.bugs * 0.6, 0, 100);
   const arpu = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) : 0;
   const mrr = s.users * arpu;
-  const revenueDay = mrr / 30;
+  const revenueDay = (mrr / 30) * fx0.revenue;
   // valuación bruta preliminar para el sueldo de los ejecutivos (sin cash ni deuda, evita circularidad)
   const arpuPre = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) : 0;
   const prelimValuation = s.users * arpuPre * 12 * STAGES[s.stage].multiple + s.users * 8;
@@ -152,9 +173,9 @@ export function derive(s: GameState): Derived {
   const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - Math.min(0.6, opsPts * 0.08));
   const adsCostDay = ADS_LEVELS[s.adsLevel]?.spendDay ?? 0;
   const costMul = has("cfo") ? 0.92 : needs("cfo") ? 1.15 : 1;
-  const costDay = ((salariesMonth + rentMonth + serverMonth) / 30 + adsCostDay) * costMul;
+  const costDay = ((salariesMonth + rentMonth + serverMonth) / 30 + adsCostDay) * costMul * fx0.cost;
   const cmoMul = has("cmo") ? 1.15 : needs("cmo") ? 0.65 : 1;
-  const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7) * (hasPrd ? 1 : 0.65) * cmoMul;
+  const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7) * (hasPrd ? 1 : 0.65) * cmoMul * fx0.growth;
   const saturation = Math.max(0, 1 - s.users / sector.tam); // el mercado se agota
   const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
   const viral = hasMvp ? s.users * 0.002 * (quality / 100) * (0.4 + s.hype / 100) : 0;
@@ -187,6 +208,7 @@ export function derive(s: GameState): Derived {
     salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay - debtInterestDay, newUsersDay, churnDay, valuation,
     capacity: office.capacity, featureDaysLeft, loanRate, loanCapacity, debtInterestDay, debtPaymentDay, sellOffer,
     hypeDecayDay, followersDay, organicUsersDay, adsCostDay, adsUsersDay, execs, overhead,
+    incidentChance: Math.min(0.06, s.bugs * 0.0015), effectCostMul: fx0.cost, effectRevenueMul: fx0.revenue, effectPtsMul: fx0.pts,
   };
 }
 
@@ -215,9 +237,30 @@ export function featureAvailable(s: GameState, id: string) {
 
 /** Un día de juego. `quiet` = sin eventos (para progreso offline). */
 export function tick(s: GameState, quiet = false) {
-  if (s.gameOver || s.pendingEvent) return;
+  if (s.gameOver) return;
   const d = derive(s);
   s.day += 1;
+
+  // efectos temporales vencidos
+  s.effects = s.effects.filter((e) => e.until >= s.day);
+
+  // decisiones que se vencen: se resuelven solas con la opción pasiva
+  if (!quiet) {
+    for (let i = s.events.length - 1; i >= 0; i--) {
+      if (s.events[i].expiresDay <= s.day) {
+        const def = EVENTS.find((e) => e.id === s.events[i].id);
+        const idx = def?.defaultChoice ?? (def ? def.choices.length - 1 : 0);
+        resolveEvent(s, i, idx, true);
+      }
+    }
+  }
+
+  // crunch y burnout del fundador
+  if (s.crunch) s.burnout = clamp(s.burnout + BURNOUT.crunchPerDay, 0, 100);
+  else s.burnout = clamp(s.burnout - (s.morale > 60 ? BURNOUT.recoverPerDay : BURNOUT.recoverPerDay * 0.5), 0, 100);
+  if (s.cash < 0) s.burnout = clamp(s.burnout + BURNOUT.redPerDay, 0, 100);
+  if (s.founderOffUntil === s.day) addLog(s, "🧘 Volviste de la licencia. Hay 400 mensajes sin leer.", "info");
+  if (!quiet && s.burnout >= BURNOUT.breakAt && s.founderOffUntil < s.day && !s.events.some((e) => e.id === "burnout_founder")) pushEvent(s, "burnout_founder");
 
   // desarrollo
   if (s.currentFeature) {
@@ -301,7 +344,7 @@ export function tick(s: GameState, quiet = false) {
   }
   const hasCoo = s.employees.some((e) => e.role === "coo");
   const needsCoo = !hasCoo && Boolean(EXECS[3].needed(s));
-  const targetMorale = OFFICES[s.office].morale + d.opsPts * 2 - (s.cash < 0 ? 25 : 0) - (s.employees.length > d.capacity ? 15 : 0) + (hasCoo ? 8 : 0) - (needsCoo ? 15 : 0);
+  const targetMorale = OFFICES[s.office].morale + d.opsPts * 2 - (s.cash < 0 ? 25 : 0) - (s.employees.length > d.capacity ? 15 : 0) + (hasCoo ? 8 : 0) - (needsCoo ? 15 : 0) - (s.crunch ? 22 : 0);
   s.morale = clamp(s.morale + (targetMorale - s.morale) * 0.05, 0, 100);
 
   // quiebra
@@ -326,12 +369,35 @@ export function tick(s: GameState, quiet = false) {
   // candidatos
   if (s.day - s.candidatesDay >= 7) refreshCandidates(s);
 
-  // eventos
+  // renuncias: humanos con moral baja, sueldo atrasado o crunch
+  if (!quiet && !s.events.some((e) => e.id === "quit_dyn")) {
+    for (const e of s.employees) {
+      if (e.founder || e.role === "ai" || isExec(e.role)) continue;
+      if ((s.day - (e.hiredDay ?? 0)) < 20) continue;
+      const market = marketSalary(s, e);
+      let p = s.morale < 35 ? 0.004 : s.morale < 55 ? 0.0015 : 0.0003;
+      if (s.crunch) p += 0.002;
+      if (e.salary < market * 0.85) p += 0.003;
+      if (Math.random() < p) {
+        const offer = Math.round((Math.max(market, e.salary) * 1.25) / 50) * 50;
+        const reason = s.morale < 55 ? "Dice que el clima está pesado" : e.salary < market * 0.85 ? "Dice que acá cobra menos que el mercado" : s.crunch ? "Está cansado del crunch" : "";
+        pushEvent(s, "quit_dyn", { employeeId: e.id, name: e.name, roleName: ROLES[e.role].name, offer, reason });
+        break;
+      }
+    }
+  }
+
+  // incidentes técnicos: probabilidad diaria proporcional a la deuda técnica
+  if (!quiet && s.done.includes("mvp") && Math.random() < d.incidentChance && !s.events.some((e) => EVENTS.find((x) => x.id === e.id)?.incident)) {
+    const pool = EVENTS.filter((e) => e.incident && (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users);
+    if (pool.length) pushEvent(s, pick(pool).id);
+  }
+
+  // eventos generales
   if (!quiet && s.day >= s.nextEventDay) {
-    const pool = EVENTS.filter((e) => (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users);
-    const ev = pick(pool);
-    s.pendingEvent = { id: ev.id, day: s.day };
-    s.nextEventDay = s.day + Math.round(rnd(14, 30));
+    const pool = EVENTS.filter((e) => !e.dynamic && !e.incident && (e.minDay ?? 0) <= s.day && (e.minUsers ?? 0) <= s.users && !s.events.some((x) => x.id === e.id));
+    if (pool.length && s.events.length < 3) pushEvent(s, pick(pool).id);
+    s.nextEventDay = s.day + Math.round(rnd(9, 20));
   } else if (quiet && s.day >= s.nextEventDay) {
     s.nextEventDay = s.day + Math.round(rnd(3, 8));
   }
@@ -344,14 +410,42 @@ export function tick(s: GameState, quiet = false) {
   checkAchievements(s, d);
 }
 
-export function resolveEvent(s: GameState, choiceIdx: number) {
-  if (!s.pendingEvent) return;
-  const ev = EVENTS.find((e) => e.id === s.pendingEvent!.id);
-  s.pendingEvent = null;
+export function pushEvent(s: GameState, id: string, payload?: EventPayload) {
+  const def = EVENTS.find((e) => e.id === id);
+  if (!def) return;
+  const pe: PendingEvent = { id, day: s.day, expiresDay: s.day + (def.days ?? EVENT_DEFAULT_DAYS), payload };
+  s.events.push(pe);
+}
+
+export function eventTitle(def: GameEventDef, s: GameState, p: EventPayload = {}) {
+  return typeof def.title === "function" ? def.title(s, p) : def.title;
+}
+export function eventText(def: GameEventDef, s: GameState, p: EventPayload = {}) {
+  return typeof def.text === "function" ? def.text(s, p) : def.text;
+}
+
+/** Resuelve la decisión `eventIdx` de la bandeja con la opción `choiceIdx`. */
+export function resolveEvent(s: GameState, eventIdx: number, choiceIdx: number, auto = false) {
+  const pe = s.events[eventIdx];
+  if (!pe) return;
+  s.events.splice(eventIdx, 1);
+  const ev = EVENTS.find((e) => e.id === pe.id);
   if (!ev) return;
   const c = ev.choices[choiceIdx] ?? ev.choices[0];
-  const result = c.apply(s);
-  addLog(s, `${ev.icon} ${ev.title}: ${result}`, "info");
+  const result = c.apply(s, pe.payload ?? {});
+  addLog(s, `${ev.icon} ${eventTitle(ev, s, pe.payload)}${auto ? ` (se resolvió solo: ${c.label})` : ""}: ${result}`, auto ? "bad" : "info");
+}
+
+export function marketSalary(s: GameState, e: Employee) {
+  const infl = 1 + SALARY_INFLATION.pct * Math.floor(s.day / SALARY_INFLATION.everyDays);
+  return ROLES[e.role].baseSalary * [0, 1, 1.9, 3.6][e.level] * infl;
+}
+
+export function toggleCrunch(s: GameState): string | null {
+  if (!s.crunch && s.founderOffUntil > s.day) return "Estás de licencia. Nada de crunch.";
+  s.crunch = !s.crunch;
+  addLog(s, s.crunch ? "🔥 Modo crunch: +30% productividad. La moral y tu salud lo van a pagar." : "🧘 Fin del crunch. El equipo respira.", s.crunch ? "bad" : "good");
+  return null;
 }
 
 export function hire(s: GameState, candId: string): string | null {
@@ -363,7 +457,7 @@ export function hire(s: GameState, candId: string): string | null {
   s.cash -= c.fee;
   const { fee: _fee, ...emp } = c;
   void _fee;
-  s.employees.push(emp);
+  s.employees.push({ ...emp, hiredDay: s.day });
   s.candidates = s.candidates.filter((x) => x.id !== candId);
   s.stats.hires += 1;
   addLog(s, `${emp.avatar} ${emp.role === "ai" ? "Activaste" : "Contrataste"} a ${emp.name} (${ROLES[emp.role].name} ${(emp.role === "ai" ? AI_LEVEL_NAMES : LEVEL_NAMES)[emp.level]}).`, "good");
@@ -381,7 +475,7 @@ export function hireExec(s: GameState, role: ExecRole): string | null {
   if (s.equity - def.equity < 1) return "No te queda equity para ofrecer.";
   s.cash -= st.fee;
   s.equity -= def.equity;
-  s.employees.push({ id: `e${s.nextId++}`, name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)} (${def.name})`, role, level: 3, salary: st.salary, avatar: def.icon });
+  s.employees.push({ id: `e${s.nextId++}`, name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)} (${def.name})`, role, level: 3, salary: st.salary, avatar: def.icon, hiredDay: s.day });
   s.stats.hires += 1;
   addLog(s, `${def.icon} Contrataste un ${def.name}: $${st.salary.toLocaleString("es-AR")}/mes (escala con la valuación) y ${def.equity}% de equity.`, "good");
   return null;
@@ -576,6 +670,15 @@ export function migrate(s: GameState): GameState {
   s.adsLevel ??= 0;
   s.buildInPublic ??= false;
   s.lastRaiseDay ??= s.day;
+  s.events ??= [];
+  s.effects ??= [];
+  s.crunch ??= false;
+  s.burnout ??= 0;
+  s.founderOffUntil ??= 0;
+  if (s.pendingEvent) {
+    s.events.push({ id: s.pendingEvent.id, day: s.pendingEvent.day, expiresDay: s.day + EVENT_DEFAULT_DAYS });
+    s.pendingEvent = null;
+  }
   s.customFeatures ??= 0;
   s.rebrands ??= 0;
   s.debt ??= 0;
@@ -632,7 +735,7 @@ export function applyOffline(s: GameState, now = Date.now()): number {
   const beforeDay = s.day;
   for (let i = 0; i < days; i++) {
     tick(s, true);
-    if (s.gameOver || s.pendingEvent) break; // un evento pendiente frena el tiempo
+    if (s.gameOver) break;
   }
   s.lastTickAt = now;
   const simulated = s.day - beforeDay;

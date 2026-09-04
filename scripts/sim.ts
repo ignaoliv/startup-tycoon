@@ -7,7 +7,8 @@ import type { GameState } from "../src/lib/game/types";
 function bot(s: GameState) {
   const d = derive(s);
   // resolver eventos: opción 0
-  if (s.pendingEvent) resolveEvent(s, 0);
+  while (s.events.length) resolveEvent(s, 0, 0);
+  if (s.burnout > 70 && s.crunch) s.crunch = false;
   // elegir feature
   if (!s.currentFeature) {
     const next = FEATURES.filter((f) => featureAvailable(s, f.id)).sort((a, b) => a.cost - b.cost)[0];
