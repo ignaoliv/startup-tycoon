@@ -24,6 +24,7 @@ export interface Tuning {
   boardDays: number; // en cuántos días
   boardFailsToFire: number; // cuántas metas seguidas podés fallar antes de que te echen
   tamMul: number; // tamaño del mercado (1 = como está definido por sector)
+  infraExtra: number; // costo de infraestructura que crece más rápido que los usuarios
   bankruptLimit: number; // días en rojo antes de cerrar
   startCash: number; // plata inicial
 }
@@ -47,10 +48,11 @@ export const DEFAULT_TUNING: Tuning = {
   acquireMinUsers: 120000,
   boardEnabled: true,
   boardFromStage: 3,
-  boardGrowth: 1.8,
+  boardGrowth: 4.5,
   boardDays: 75,
-  boardFailsToFire: 2,
+  boardFailsToFire: 1,
   tamMul: 0.5,
+  infraExtra: 0.005,
   bankruptLimit: 12,
   startCash: 30000,
 };

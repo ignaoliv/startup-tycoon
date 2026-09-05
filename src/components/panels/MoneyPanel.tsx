@@ -105,12 +105,24 @@ export function MoneyPanel({ game }: { game: Game }) {
             </div>
           )}
         </div>
-        {s.boardGoal && (
-          <div className={`mt-2 rounded-lg border-2 px-2 py-1.5 text-[11px] ${s.boardFails > 0 ? "border-red bg-red/10" : "border-ink/15 bg-sand/60"}`}>
-            <b>🪑 Meta del board:</b> llegar a {Math.round(s.boardGoal.users).toLocaleString("es-AR")} usuarios para el día {s.boardGoal.dueDay} (faltan {Math.max(0, s.boardGoal.dueDay - s.day)} días).
-            {s.boardFails > 0 && <span className="font-bold text-red"> Ya fallaste una: si volvés a fallar, te reemplazan.</span>}
-          </div>
-        )}
+        {s.boardGoal && (() => {
+          const faltanDias = Math.max(0, s.boardGoal.dueDay - s.day);
+          const faltanUsers = Math.max(0, Math.round(s.boardGoal.users - s.users));
+          const apretado = faltanDias <= 20 && faltanUsers > 0;
+          return (
+            <div className={`mt-2 rounded-lg border-2 px-2 py-1.5 text-[11px] ${apretado ? "border-red bg-red/10" : "border-ink/15 bg-sand/60"}`}>
+              <b>🪑 Meta del board:</b> llegar a {Math.round(s.boardGoal.users).toLocaleString("es-AR")} usuarios para el día {s.boardGoal.dueDay}.{" "}
+              {faltanUsers > 0 ? (
+                <>Faltan {faltanUsers.toLocaleString("es-AR")} usuarios y {faltanDias} días.</>
+              ) : (
+                <span className="font-bold text-green">Ya la cumpliste.</span>
+              )}
+              {faltanUsers > 0 && (
+                <span className={apretado ? "font-bold text-red" : "text-ink/60"}> Si no llegás, ponen otro CEO en tu silla.</span>
+              )}
+            </div>
+          );
+        })()}
         <div className="mt-2 text-[11px] text-ink/50">
           Levantado hasta ahora: <b>{money(s.stats.raised)}</b>. Tu parte vale <b>{money((d.valuation * s.equity) / 100)}</b>.
         </div>

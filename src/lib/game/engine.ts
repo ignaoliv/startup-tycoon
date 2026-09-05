@@ -143,7 +143,11 @@ export function derive(s: GameState): Derived {
   const salariesMonth = s.employees.reduce((a, e) => a + e.salary, 0) * overheadCosto;
   const rentMonth = office.rent;
   const recorteInfra = Math.min(0.75, opsPts * 0.08 + fx.serverCost);
-  const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - recorteInfra);
+  // atender a un millón de usuarios no cuesta mil veces lo que atender a mil:
+  // cuesta más. Es lo que hace que una empresa grande no sea una máquina de
+  // imprimir plata, y le da sentido a las features que recortan infraestructura.
+  const infraEscala = tuning.infraExtra * Math.pow(Math.max(0, s.users), 1.6);
+  const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + infraEscala + aiPts * 120) * (1 - recorteInfra);
   const costDay = (salariesMonth + rentMonth + serverMonth) / 30;
   const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7);
   const saturation = Math.max(0, 1 - s.users / (sector.tam * tuning.tamMul)); // el mercado se agota
