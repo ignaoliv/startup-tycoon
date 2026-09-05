@@ -5,7 +5,7 @@ import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { DEFAULT_TUNING, loadTuning, resetTuning, saveTuning, tuning, type Tuning } from "@/lib/game/tuning";
 import { clearRuns, getRuns, playerId, type RunRecord } from "@/lib/analytics";
 import { getSupabase } from "@/lib/supabase/client";
-import { fetchRunsGlobales } from "@/lib/storage";
+import { fetchStatsGlobales, type RunsResumen, type RunsSector } from "@/lib/storage";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 
@@ -25,7 +25,8 @@ export default function AdminPage() {
   const [me, setMe] = useState("");
   const [tab, setTab] = useState<"metricas" | "drivers" | "eventos" | "feedback">("metricas");
   const [feedback, setFeedback] = useState<FeedbackRow[] | null>(null);
-  const [globales, setGlobales] = useState<RunGlobal[] | null>(null);
+  const [globales, setGlobales] = useState<{ resumen: RunsResumen; sectores: RunsSector[] } | null>(null);
+  const [errorGlobal, setErrorGlobal] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -43,12 +44,12 @@ export default function AdminPage() {
   useEffect(() => {
     const sb = getSupabase();
     if (!sb) {
-      setGlobales([]);
+      setErrorGlobal(true);
       return;
     }
-    fetchRunsGlobales(sb).then((d) => setGlobales(d as RunGlobal[])).catch((e) => {
+    fetchStatsGlobales(sb).then(setGlobales).catch((e) => {
       console.error(e);
-      setGlobales([]);
+      setErrorGlobal(true);
     });
   }, []);
 
@@ -102,52 +103,54 @@ export default function AdminPage() {
       {tab === "metricas" && (
         <div className="space-y-3">
           <Card title="🌍 Todas las partidas · todos los jugadores">
-            {globales === null ? (
+            {errorGlobal ? (
+              <p className="text-sm text-ink/60">No pude leer las métricas globales. ¿Corriste <code>supabase/runs-stats.sql</code>?</p>
+            ) : globales === null ? (
               <p className="text-sm text-ink/60">Cargando…</p>
-            ) : globales.length === 0 ? (
+            ) : globales.resumen.partidas === 0 ? (
               <p className="text-sm text-ink/60">Todavía no hay partidas guardadas.</p>
             ) : (
               (() => {
-                const g = globales;
-                const n = g.length;
-                const cuenta = (f: (r: RunGlobal) => boolean) => g.filter(f).length;
-                const gana = cuenta((r) => r.ended_as === "ipo" || r.ended_as === "acquired");
-                const jugadores = new Set(g.map((r) => r.user_id ?? r.anon_id ?? "?")).size;
-                const conCuenta = cuenta((r) => !!r.user_id);
-                const prom = (f: (r: RunGlobal) => number) => g.reduce((a, r) => a + f(r), 0) / n;
-                const finales: [string, string][] = [["ipo", "IPO"], ["acquired", "Exit"], ["bankrupt", "Quiebra"], ["fired", "Te echaron"], ["abandoned", "Abandonada"]];
+                const r = globales.resumen;
+                const n = r.partidas;
+                const finales: [string, number, string][] = [
+                  ["IPO", r.ipo, "bg-green"],
+                  ["Exit", r.acquired, "bg-green"],
+                  ["Quiebra", r.bankrupt, "bg-red"],
+                  ["Te echaron", r.fired, "bg-amber"],
+                  ["Abandonada", r.abandoned, "bg-ink/40"],
+                ];
                 return (
                   <>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                      <KPI label="Partidas" value={String(n)} sub={`${jugadores} jugadores`} />
-                      <KPI label="Ganadas" value={`${Math.round((gana / n) * 100)}%`} sub={`${gana} de ${n}`} />
-                      <KPI label="Días por partida" value={prom((r) => r.day).toFixed(0)} sub={`${prom((r) => r.features).toFixed(1)} features`} />
-                      <KPI label="Con cuenta" value={`${Math.round((conCuenta / n) * 100)}%`} sub={`${conCuenta} partidas`} />
+                      <KPI label="Partidas" value={num(n)} sub={`${num(r.ultimas_24h)} en las últimas 24h`} />
+                      <KPI label="Ganadas" value={`${Math.round((r.ganadas / n) * 100)}%`} sub={`${num(r.ganadas)} de ${num(n)}`} />
+                      <KPI label="Jugadores" value={num(r.jugadores)} sub={`${Math.round((r.con_cuenta / n) * 100)}% con cuenta`} />
+                      <KPI label="Días por partida" value={String(r.dias_prom)} sub={`${r.features_prom} features`} />
                     </div>
                     <div className="mt-3 space-y-1">
-                      {finales.map(([id, label]) => {
-                        const c = cuenta((r) => r.ended_as === id);
-                        if (!c) return null;
-                        return (
-                          <div key={id}>
-                            <div className="flex justify-between text-[11px]"><span>{label}</span><span className="tabular-nums">{c} ({Math.round((c / n) * 100)}%)</span></div>
-                            <Bar value={c} max={n} color={id === "ipo" || id === "acquired" ? "bg-green" : id === "bankrupt" ? "bg-red" : "bg-ink/40"} />
+                      {finales.map(([label, c, color]) =>
+                        c === 0 ? null : (
+                          <div key={label}>
+                            <div className="flex justify-between text-[11px]">
+                              <span>{label}</span>
+                              <span className="tabular-nums">{num(c)} ({Math.round((c / n) * 100)}%)</span>
+                            </div>
+                            <Bar value={c} max={n} color={color} />
                           </div>
-                        );
-                      })}
+                        ),
+                      )}
                     </div>
                     <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-ink/40">Por sector</div>
                     <ul className="mt-1 space-y-1 text-[11px]">
-                      {SECTORS.map((sec) => {
-                        const del = g.filter((r) => r.sector === sec.id);
-                        if (!del.length) return null;
-                        const w = del.filter((r) => r.ended_as === "ipo" || r.ended_as === "acquired").length;
+                      {[...globales.sectores].sort((a, b) => b.partidas - a.partidas).map((sec) => {
+                        const def = SECTORS.find((x) => x.id === sec.sector);
                         return (
-                          <li key={sec.id} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
-                            <span>{sec.icon}</span>
-                            <span className="flex-1 truncate font-bold">{sec.name}</span>
-                            <span className="text-ink/50">{del.length} partidas</span>
-                            <span className="w-12 shrink-0 text-right font-black tabular-nums">{Math.round((w / del.length) * 100)}%</span>
+                          <li key={sec.sector} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
+                            <span>{def?.icon ?? "🏢"}</span>
+                            <span className="flex-1 truncate font-bold">{def?.name ?? sec.sector}</span>
+                            <span className="text-ink/50">{num(sec.partidas)} · día {sec.dias_prom}</span>
+                            <span className="w-10 shrink-0 text-right font-black tabular-nums">{Math.round((sec.ganadas / sec.partidas) * 100)}%</span>
                           </li>
                         );
                       })}
@@ -378,20 +381,6 @@ function promedioNota(rows: FeedbackRow[]) {
   const notas = rows.map((r) => r.rating).filter((n): n is number => !!n);
   return notas.length ? (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1) : "—";
 }
-
-type RunGlobal = {
-  sector: string;
-  ended_as: string;
-  day: number;
-  valuation: number;
-  peak_users: number;
-  equity: number;
-  team_size: number;
-  features: number;
-  user_id: string | null;
-  anon_id: string | null;
-  created_at: string;
-};
 
 function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

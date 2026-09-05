@@ -306,15 +306,41 @@ export async function fetchRankingRuns(sb: SupabaseClient, desdeDias?: number, l
   return (data as RunRanking[]) ?? [];
 }
 
-/** Todas las partidas terminadas, para las métricas globales del panel. */
-export async function fetchRunsGlobales(sb: SupabaseClient, limit = 2000) {
-  const { data, error } = await sb
-    .from("runs")
-    .select("sector, ended_as, day, valuation, peak_users, equity, team_size, features, user_id, anon_id, created_at")
-    .order("created_at", { ascending: false })
-    .limit(limit);
-  if (error) throw error;
-  return data ?? [];
+export interface RunsResumen {
+  partidas: number;
+  ganadas: number;
+  jugadores: number;
+  con_cuenta: number;
+  dias_prom: number;
+  features_prom: number;
+  ipo: number;
+  acquired: number;
+  bankrupt: number;
+  fired: number;
+  abandoned: number;
+  ultimas_24h: number;
+}
+
+export interface RunsSector {
+  sector: string;
+  partidas: number;
+  ganadas: number;
+  dias_prom: number;
+}
+
+/**
+ * Métricas globales. Las cuentas las hace Postgres porque PostgREST devuelve
+ * como máximo 1000 filas: contando del lado del cliente, el panel se quedaría
+ * clavado en 1000 partidas para siempre.
+ */
+export async function fetchStatsGlobales(sb: SupabaseClient) {
+  const [resumen, sectores] = await Promise.all([
+    sb.from("runs_resumen").select("*").single(),
+    sb.from("runs_por_sector").select("*"),
+  ]);
+  if (resumen.error) throw resumen.error;
+  if (sectores.error) throw sectores.error;
+  return { resumen: resumen.data as RunsResumen, sectores: (sectores.data ?? []) as RunsSector[] };
 }
 
 export async function ensureProfile(sb: SupabaseClient, userId: string, name: string) {
