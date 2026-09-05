@@ -185,6 +185,15 @@ export function tick(s: GameState, quiet = false) {
   s.day += 1;
 
   // desarrollo
+  // el equipo nunca se queda sin nada que hacer: si no hay feature en curso,
+  // agarra la más barata que tenga disponible
+  if (!s.currentFeature) {
+    const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
+    if (next) {
+      s.currentFeature = next.id;
+      s.featureProgress = 0;
+    }
+  }
   if (s.currentFeature) {
     s.featureProgress += d.devPts;
     // la IA deja deuda técnica; los devs humanos la contienen
@@ -199,9 +208,7 @@ export function tick(s: GameState, quiet = false) {
       s.currentFeature = null;
       if (f.effects.hype) s.hype = clamp(s.hype + f.effects.hype, 0, 100);
       addLog(s, `${f.icon} Lanzaste ${f.name}.`, "good");
-      // autoelegir la siguiente disponible más barata
-      const next = FEATURES.filter((x) => featureAvailable(s, x.id)).sort((a, b) => a.cost - b.cost)[0];
-      if (next) s.currentFeature = next.id;
+      // la siguiente la agarra el bloque de arriba en el próximo día
     }
   }
   // bugs
