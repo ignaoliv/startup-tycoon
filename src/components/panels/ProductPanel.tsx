@@ -9,6 +9,14 @@ export function ProductPanel({ game }: { game: Game }) {
   const d = game.derived!;
   const cur = s.currentFeature ? FEATURES.find((f) => f.id === s.currentFeature) : null;
 
+  // el roadmap es largo y se va abriendo solo: mostramos lo lanzado, lo que se
+  // puede elegir ahora y apenas un par de las que vienen, no las 50
+  const lanzadas = FEATURES.filter((f) => s.done.includes(f.id));
+  const disponibles = FEATURES.filter((f) => featureAvailable(s, f.id));
+  const proximas = FEATURES.filter((f) => !s.done.includes(f.id) && !featureAvailable(s, f.id)).slice(0, 3);
+  const visibles = [...lanzadas, ...disponibles, ...proximas];
+  const restantes = FEATURES.length - visibles.length;
+
   return (
     <div className="space-y-3">
       <Card title="En desarrollo">
@@ -33,7 +41,7 @@ export function ProductPanel({ game }: { game: Game }) {
 
       <Card title="Roadmap">
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {FEATURES.map((f) => {
+          {visibles.map((f) => {
             const done = s.done.includes(f.id);
             const active = s.currentFeature === f.id;
             const avail = featureAvailable(s, f.id);
@@ -65,6 +73,11 @@ export function ProductPanel({ game }: { game: Game }) {
             );
           })}
         </ul>
+        {restantes > 0 && (
+          <p className="mt-2 text-center text-[11px] text-ink/50">
+            Quedan {restantes} por descubrir. Se abren con lo que vas lanzando.
+          </p>
+        )}
       </Card>
     </div>
   );

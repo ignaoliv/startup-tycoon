@@ -29,6 +29,7 @@ export interface FeatureDef {
     churn?: number; // reducción absoluta de churn diario (0.005)
     quality?: number; // puntos de calidad
     hype?: number; // hype instantáneo
+    serverCost?: number; // recorte de la factura de servidores (0.2 = -20%)
   };
 }
 
@@ -150,6 +151,7 @@ export interface GameState {
   eventCount: number; // cuántos popups van (tope)
   lastEventDay: number;
   reactiveCd: Record<string, number>;
+  campaignCd: Record<string, number>; // último día que corriste cada campaña
   lastShipDay: number;
   idleDays: number;
   hypeHighDays: number;

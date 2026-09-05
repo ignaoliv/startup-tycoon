@@ -1,6 +1,6 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
-import { ACHIEVEMENT_DEFS, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignAvailable, campaignCooldown, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
 import { OFFICES, STAGES } from "@/lib/game/data";
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
@@ -14,7 +14,6 @@ export function MoneyPanel({ game }: { game: Game }) {
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
-  const mktCost = Math.round(2000 + s.users * 0.5);
 
   return (
     <div className="space-y-3">
@@ -30,10 +29,27 @@ export function MoneyPanel({ game }: { game: Game }) {
           <Li l="Servidores" v={money(-d.serverMonth) + "/mes"} tone="bad" />
           <Li l="Neto" v={money(d.netDay * 30, { sign: d.netDay >= 0 }) + "/mes"} tone={d.netDay >= 0 ? "good" : "bad"} bold />
         </ul>
-        <div className="mt-3 flex gap-2">
-          <Btn variant="amber" size="sm" className="flex-1" disabled={s.cash < mktCost} onClick={() => game.mutate((st) => marketingPush(st))}>
-            📣 Campaña +15 hype · {money(mktCost)}
-          </Btn>
+        <div className="mt-3 space-y-1.5">
+          {CAMPAIGNS.filter((c) => s.users >= c.minUsers).map((c) => {
+            const costo = c.cost(s);
+            const espera = campaignCooldown(s, c.id);
+            return (
+              <Btn
+                key={c.id}
+                variant="amber"
+                size="sm"
+                className="w-full justify-between"
+                disabled={espera > 0 || s.cash < costo}
+                onClick={() => game.mutate((st) => marketingPush(st, c.id))}
+              >
+                <span>
+                  {c.icon} {c.name} · +{c.hype} hype
+                  {c.usersPct > 0 && ` y +${Math.round(c.usersPct * 100)}% usuarios`}
+                </span>
+                <span className="tabular-nums">{espera > 0 ? `en ${espera} días` : money(costo)}</span>
+              </Btn>
+            );
+          })}
         </div>
       </Card>
 

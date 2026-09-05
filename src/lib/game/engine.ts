@@ -77,6 +77,7 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     eventCount: 0,
     lastEventDay: -99,
     reactiveCd: {},
+    campaignCd: {},
     lastShipDay: 1,
     idleDays: 0,
     hypeHighDays: 0,
@@ -124,7 +125,7 @@ export function derive(s: GameState): Derived {
   const designPts = pts("design");
   const opsPts = pts("ops");
 
-  const fx = { growth: 0, arpu: 0, churn: 0, quality: 0 };
+  const fx = { growth: 0, arpu: 0, churn: 0, quality: 0, serverCost: 0 };
   for (const id of s.done) {
     const f = FEATURES.find((x) => x.id === id);
     if (!f) continue;
@@ -132,6 +133,7 @@ export function derive(s: GameState): Derived {
     fx.arpu += f.effects.arpu ?? 0;
     fx.churn += f.effects.churn ?? 0;
     fx.quality += f.effects.quality ?? 0;
+    fx.serverCost += f.effects.serverCost ?? 0;
   }
   const hasMvp = s.done.includes("mvp");
   const quality = clamp(fx.quality + designPts * 4 - s.bugs * 0.6, 0, 100);
@@ -140,7 +142,8 @@ export function derive(s: GameState): Derived {
   const revenueDay = mrr / 30;
   const salariesMonth = s.employees.reduce((a, e) => a + e.salary, 0) * overheadCosto;
   const rentMonth = office.rent;
-  const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - Math.min(0.6, opsPts * 0.08));
+  const recorteInfra = Math.min(0.75, opsPts * 0.08 + fx.serverCost);
+  const serverMonth = (s.users * (s.sector === "ai" ? 0.35 : 0.15) + aiPts * 120) * (1 - recorteInfra);
   const costDay = (salariesMonth + rentMonth + serverMonth) / 30;
   const growthMul = (1 + fx.growth + sector.growth) * (0.3 + (quality / 100) * 0.9) * (0.5 + (s.hype / 100) * 0.7);
   const saturation = Math.max(0, 1 - s.users / (sector.tam * tuning.tamMul)); // el mercado se agota
@@ -458,12 +461,80 @@ export function ipo(s: GameState): string | null {
   return null;
 }
 
-export function marketingPush(s: GameState): string | null {
-  const cost = Math.round(2000 + s.users * 0.5);
+/**
+ * Campañas de marketing. Las grandes se abren con el tamaño y meten usuarios
+ * de una, proporcionales a los que ya tenés: es la forma de convertir la caja
+ * del final de la partida en crecimiento en vez de mirarla acumularse.
+ */
+export const CAMPAIGNS = [
+  {
+    id: "push",
+    name: "Campaña",
+    icon: "📣",
+    desc: "Threads, posteos y un video hecho con IA.",
+    minUsers: 0,
+    espera: 8,
+    cost: (s: GameState) => Math.round(2000 + s.users * 0.5),
+    hype: 15,
+    usersPct: 0,
+  },
+  {
+    id: "marca",
+    name: "Campaña de marca",
+    icon: "🎬",
+    desc: "Producción en serio, con gente de verdad actuando.",
+    minUsers: 8000,
+    espera: 30,
+    cost: (s: GameState) => Math.round(30000 + s.users * 2.5),
+    hype: 25,
+    usersPct: 0.05,
+  },
+  {
+    id: "sponsor",
+    name: "Sponsorear un equipo",
+    icon: "🏟️",
+    desc: "Tu logo en la camiseta. Carísimo y te ve todo el mundo.",
+    minUsers: 150000,
+    espera: 55,
+    cost: (s: GameState) => Math.round(600000 + s.users * 9),
+    hype: 40,
+    usersPct: 0.10,
+  },
+] as const;
+
+/** Días que faltan para poder repetir la campaña. 0 = lista. */
+export function campaignCooldown(s: GameState, id: string) {
+  const c = CAMPAIGNS.find((x) => x.id === id);
+  if (!c) return 0;
+  const ultima = s.campaignCd?.[id];
+  if (ultima === undefined) return 0;
+  return Math.max(0, c.espera - (s.day - ultima));
+}
+
+export function campaignAvailable(s: GameState, id: string) {
+  const c = CAMPAIGNS.find((x) => x.id === id);
+  return !!c && s.users >= c.minUsers && campaignCooldown(s, id) === 0;
+}
+
+export function marketingPush(s: GameState, id = "push"): string | null {
+  const c = CAMPAIGNS.find((x) => x.id === id);
+  if (!c) return "Esa campaña no existe.";
+  if (s.users < c.minUsers) return `Necesitás ${c.minUsers.toLocaleString("es-AR")} usuarios para que te den bola.`;
+  const faltan = campaignCooldown(s, c.id);
+  if (faltan > 0) return `La campaña anterior sigue corriendo. Faltan ${faltan} días.`;
+  const cost = c.cost(s);
   if (s.cash < cost) return "No te alcanza.";
   s.cash -= cost;
-  s.hype = clamp(s.hype + 15, 0, 100);
-  addLog(s, `📣 Campaña de marketing: +15 hype por $${cost.toLocaleString("es-AR")}.`, "info");
+  s.campaignCd = { ...(s.campaignCd ?? {}), [c.id]: s.day };
+  s.hype = clamp(s.hype + c.hype, 0, 100);
+  const nuevos = Math.round(s.users * c.usersPct);
+  if (nuevos > 0) {
+    s.users += nuevos;
+    s.stats.peakUsers = Math.max(s.stats.peakUsers, s.users);
+    addLog(s, `${c.icon} ${c.name}: +${nuevos.toLocaleString("es-AR")} usuarios y +${c.hype} hype por $${cost.toLocaleString("es-AR")}.`, "good");
+  } else {
+    addLog(s, `${c.icon} ${c.name}: +${c.hype} hype por $${cost.toLocaleString("es-AR")}.`, "info");
+  }
   return null;
 }
 

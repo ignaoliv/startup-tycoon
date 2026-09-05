@@ -217,7 +217,45 @@ export const FEATURES: FeatureDef[] = [
   { id: "i18n", name: "Internacional", icon: "🌎", desc: "LATAM, después el mundo.", cost: 360, requires: ["mobile", "soporte"], effects: { growth: 1.2 } },
   { id: "enterprise", name: "Enterprise (SOC2)", icon: "🏛️", desc: "Contratos con bancos. Auditorías de seguridad. Dolor.", cost: 600, requires: ["api", "soporte"], effects: { arpu: 4, churn: 0.004 } },
   { id: "marketplace", name: "Marketplace de agentes", icon: "🏪", desc: "Un ecosistema. La palabra favorita de los VCs.", cost: 780, requires: ["i18n", "enterprise"], effects: { growth: 1, arpu: 2, hype: 30 } },
+
+  // --- Segundo tramo: se abre cuando la empresa ya es grande. Varias bajan
+  // costos en vez de sumar crecimiento, que es lo que el final necesitaba.
+  { id: "abtesting", name: "A/B testing en serio", icon: "🧪", desc: "Dejás de discutir el color del botón y lo medís.", cost: 300, requires: ["analytics"], effects: { growth: 0.2, churn: 0.006 } },
+  { id: "buscador", name: "Buscador con IA", icon: "🔎", desc: "Encontrar algo adentro del producto deja de ser una odisea.", cost: 340, requires: ["api"], effects: { quality: 8, churn: 0.005 } },
+  { id: "bounty", name: "Bug bounty", icon: "🛡️", desc: "Le pagás a desconocidos por romper lo que hizo la IA.", cost: 420, requires: ["enterprise"], effects: { quality: 14 } },
+  { id: "partners", name: "Programa de partners", icon: "🤝", desc: "Otros venden por vos a cambio de una comisión.", cost: 480, requires: ["marketplace"], effects: { growth: 0.25, arpu: 1.4 } },
+  { id: "nube", name: "Salir de la nube", icon: "⚡", desc: "Servidores propios. La factura mensual deja de doler.", cost: 520, requires: ["enterprise"], effects: { serverCost: 0.3 } },
+  { id: "modelo", name: "Modelo propio", icon: "🤖", desc: "Entrenás el tuyo y dejás de pagarle a otros por cada token.", cost: 700, requires: ["agente", "nube"], effects: { serverCost: 0.25, quality: 10 } },
+  { id: "whitelabel", name: "White label", icon: "📦", desc: "Otras empresas venden tu producto con su logo.", cost: 640, requires: ["enterprise"], effects: { arpu: 2.5 } },
+  { id: "academia", name: "Academia y certificación", icon: "🎓", desc: "La gente paga por aprender a usar lo que hiciste.", cost: 560, requires: ["partners"], effects: { arpu: 1.2, churn: 0.008 } },
+  { id: "adquisicion", name: "Comprar una startup chica", icon: "🏢", desc: "Más barato que construirlo. Y te llevás su gente.", cost: 900, requires: ["marketplace"], effects: { growth: 0.3, arpu: 1.2, quality: 8 } },
+  { id: "datacenter", name: "Data centers propios", icon: "🏗️", desc: "Tres galpones con aire acondicionado y mucha deuda.", cost: 1100, requires: ["modelo"], effects: { serverCost: 0.2, arpu: 0.5 } },
+  { id: "consumer", name: "Versión para consumidores", icon: "📺", desc: "Salís del mundo empresa y vas por todos.", cost: 1250, requires: ["academia", "adquisicion"], effects: { growth: 0.55, arpu: 0.6, hype: 25 } },
+  { id: "plataforma", name: "Plataforma abierta", icon: "🌐", desc: "Cualquiera construye arriba tuyo. Ya no sos un producto.", cost: 1500, requires: ["consumer", "datacenter"], effects: { growth: 0.4, arpu: 3, hype: 30 } },
 ];
+
+/**
+ * Cola infinita: cuando el roadmap con nombre se termina, el equipo sigue
+ * sacando versiones nuevas. Cada una cuesta más que la anterior y rinde un
+ * poco menos, así que nunca se acaba pero tampoco es una máquina de ganar.
+ */
+const VERSIONES = 40;
+for (let v = 2; v <= VERSIONES + 1; v++) {
+  const i = v - 2;
+  FEATURES.push({
+    id: `v${v}`,
+    name: `Producto v${v}`,
+    desc: i === 0 ? "Rehacer lo que ya funciona, pero mejor." : "Otra vuelta de tuerca. El equipo ya le perdió el miedo.",
+    icon: "🔁",
+    cost: Math.round(1400 * Math.pow(1.10, i)),
+    requires: v === 2 ? ["plataforma"] : [`v${v - 1}`],
+    effects: {
+      growth: 0.18 * Math.pow(0.92, i),
+      arpu: 1.1 * Math.pow(0.94, i),
+      quality: 3,
+    },
+  });
+}
 
 export const FIRST_NAMES = ["Sofi", "Nico", "Juli", "Mati", "Cami", "Lucas", "Vale", "Fede", "Agus", "Flor", "Tomi", "Male", "Santi", "Cata", "Facu", "Pili", "Gonza", "Meli", "Nacho", "Lu", "Rodri", "Caro", "Manu", "Ro", "Franco", "Juana", "Ivo", "Guada", "Bruno", "Abril"];
 export const LAST_NAMES = ["Pérez", "Gómez", "López", "Fernández", "Díaz", "Romero", "Suárez", "Molina", "Castro", "Ortiz", "Silva", "Rojas", "Acosta", "Benítez", "Medina", "Herrera", "Aguirre", "Giménez", "Flores", "Vega", "Cabrera", "Ríos", "Sosa", "Ledesma"];

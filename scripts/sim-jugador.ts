@@ -2,7 +2,7 @@
  * Simulación con jugadores REALES, no un bot óptimo.
  * Tres perfiles que se equivocan de distinta manera: novato, intermedio y experto.
  */
-import { derive, fire, hire, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { CAMPAIGNS, campaignAvailable, derive, fire, hire, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { dayMs, EVENTS, FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
 import { applyTuning, DEFAULT_TUNING, tuning } from "../src/lib/game/tuning";
@@ -137,7 +137,12 @@ function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
 
   // moral y marketing
   if (p.cuidaMoral && s.morale < 55 && s.cash > 20000) teamPerk(s);
-  if (p.haceMarketing && s.hype < 25 && s.cash > 30000) marketingPush(s);
+  if (p.haceMarketing) {
+    // usa la campaña más grande que pueda pagar sin comerse la caja
+    const posibles = CAMPAIGNS.filter((c) => campaignAvailable(s, c.id) && s.cash > c.cost(s) * 4);
+    const elegida = posibles[posibles.length - 1];
+    if (elegida && (s.hype < 25 || (elegida.usersPct > 0 && s.cash > elegida.cost(s) * 8))) marketingPush(s, elegida.id);
+  }
     
   return sinFeatureDesde;
 }
@@ -310,7 +315,6 @@ if (process.argv[3] === "diag") {
 
 const PRESEED = STAGES[1].minValuation;
 const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; avisos?: boolean; preseed?: number }[] = [
-  { nombre: "Config anterior", tuning: { ipoValuation: 1e9, tamMul: 1, boardFromStage: 2, acquireMinUsers: 3000 }, runway: true, avisos: true },
   { nombre: "Config actual", tuning: {}, runway: true, avisos: true },
 ];
 
