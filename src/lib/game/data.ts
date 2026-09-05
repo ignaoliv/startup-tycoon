@@ -194,7 +194,7 @@ export const IPO_VALUATION = 1_000_000_000;
 export const SECTORS: SectorDef[] = [
   { id: "saas", name: "SaaS con IA", icon: "☁️", desc: "Un ChatGPT para X. Equilibrado, el clásico.", growth: 0, arpu: 0.8, tam: 3_000_000 },
   { id: "fintech", name: "Fintech", icon: "💳", desc: "Cobrás bien por usuario, pero crecer cuesta.", growth: -0.1, arpu: 1.5, tam: 6_000_000 },
-  { id: "devtools", name: "Dev tools", icon: "🧰", desc: "Herramientas para otros vibecoders. Usuarios fieles.", growth: -0.1, arpu: 1.0, tam: 1_500_000 },
+  { id: "devtools", name: "Dev tools", icon: "🧰", desc: "Herramientas para otros vibecoders. Usuarios fieles.", growth: -0.3, arpu: 1.0, tam: 2_100_000 },
   { id: "delivery", name: "Marketplace", icon: "🛵", desc: "Crecés rápido, márgenes finitos.", growth: 0.35, arpu: -0.6, tam: 25_000_000 },
   { id: "crypto", name: "Cripto", icon: "🪙", desc: "Hype volátil, eventos locos.", growth: 0.2, arpu: 0.3, tam: 8_000_000 },
   { id: "ai", name: "Agentes IA", icon: "🤖", desc: "Todos quieren invertir. Los tokens salen carísimos.", growth: 0.25, arpu: 0.5, tam: 12_000_000 },

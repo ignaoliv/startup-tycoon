@@ -83,7 +83,9 @@ export function calcularCarrera(runs: RunResumen[]): Carrera {
     sectores: sectores.size,
     sectoresGanados: sectoresGanados.size,
     ganoConCripto: runs.some((r) => GANA(r) && r.sector === "crypto"),
-    ganoSinRonda: runs.some((r) => GANA(r) && r.stage === 0),
+    // la etapa se pisa al llegar a la valuación de IPO, así que el que no se
+    // diluyó se reconoce por el equity que conservó, no por la etapa
+    ganoSinRonda: runs.some((r) => GANA(r) && r.equity >= 90),
     quiebraExpres: runs.some((r) => r.ended_as === "bankrupt" && r.day < 30),
     mejorRacha,
     fechasDistintas: fechas.size,
