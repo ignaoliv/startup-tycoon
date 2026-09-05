@@ -12,6 +12,8 @@ export function MoneyPanel({ game }: { game: Game }) {
   const stage = STAGES[s.stage];
   const next = STAGES[s.stage + 1];
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
+  const puedeIpo = d.valuation >= tuning.ipoValuation;
+  const porcentajeIpo = Math.floor((d.valuation / tuning.ipoValuation) * 100);
   const nextOffice = OFFICES[s.office + 1];
   const runway = d.netDay < 0 ? Math.floor(s.cash / -d.netDay) : null;
 
@@ -81,14 +83,28 @@ export function MoneyPanel({ game }: { game: Game }) {
             </Btn>
           </>
         )}
-        {s.stage >= STAGES.length - 2 && (
-          <>
-            <Bar value={d.valuation} max={tuning.ipoValuation} color="bg-amber" className="mt-2" />
-            <Btn className="mt-2 w-full" variant="amber" disabled={d.valuation < tuning.ipoValuation} onClick={() => game.mutate((st) => ipo(st))}>
+        {/* el camino a la bolsa se ve desde el día 1: no hace falta haber
+            levantado rondas, y el que no quiere diluirse necesita ver su meta */}
+        <div className="mt-3 border-t-2 border-ink/10 pt-2">
+          <div className="mb-1 flex items-baseline justify-between text-xs">
+            <span className="font-bold">🔔 Salir a bolsa</span>
+            <span className="tabular-nums text-ink/50">
+              {money(d.valuation)} de {money(tuning.ipoValuation)}
+            </span>
+          </div>
+          <Bar value={d.valuation} max={tuning.ipoValuation} color="bg-amber" />
+          {puedeIpo ? (
+            <Btn className="mt-2 w-full" variant="amber" onClick={() => game.mutate((st) => ipo(st))}>
               🔔 Salir a bolsa (IPO)
             </Btn>
-          </>
-        )}
+          ) : (
+            <div className="mt-1 text-[11px] text-ink/50">
+              {porcentajeIpo < 1
+                ? "El final grande. No hace falta levantar rondas: se abre por valuación."
+                : `Vas por el ${porcentajeIpo}% del camino. No hace falta levantar rondas.`}
+            </div>
+          )}
+        </div>
         {s.boardGoal && (
           <div className={`mt-2 rounded-lg border-2 px-2 py-1.5 text-[11px] ${s.boardFails > 0 ? "border-red bg-red/10" : "border-ink/15 bg-sand/60"}`}>
             <b>🪑 Meta del board:</b> llegar a {Math.round(s.boardGoal.users).toLocaleString("es-AR")} usuarios para el día {s.boardGoal.dueDay} (faltan {Math.max(0, s.boardGoal.dueDay - s.day)} días).
