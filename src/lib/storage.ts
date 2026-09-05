@@ -26,6 +26,7 @@ export function sanitize(s: GameState): GameState {
   s.lastEventDay ??= -99;
   s.reactiveCd ??= {};
   s.campaignCd ??= {};
+  s.runSaved ??= false;
   s.lastShipDay ??= s.day;
   s.idleDays ??= 0;
   s.hypeHighDays ??= 0;
@@ -174,6 +175,7 @@ export async function saveCloud(sb: SupabaseClient, userId: string, s: GameState
 }
 
 export type RunRow = {
+  game_id: string;
   name: string; sector: string; idea: string; ended_as: string; day: number;
   valuation: number; peak_users: number; mrr: number; equity: number;
   team_size: number; stage: number; raised: number; features: number;
@@ -182,6 +184,7 @@ export type RunRow = {
 /** Resumen de una partida terminada, listo para guardar. */
 export function buildRun(s: GameState, d: Derived, endedAs: string): RunRow {
   return {
+    game_id: s.id,
     name: s.startupName,
     sector: s.sector,
     idea: s.idea,
@@ -201,7 +204,8 @@ export function buildRun(s: GameState, d: Derived, endedAs: string): RunRow {
 /** Guarda la partida terminada en el historial. Una sola vez por partida. */
 export async function saveRun(sb: SupabaseClient, row: RunRow, userId: string | null, anonId: string) {
   const { error } = await sb.from("runs").insert({ ...row, user_id: userId, anon_id: anonId });
-  if (error) throw error;
+  // 23505 = ya estaba guardada; no es un error que haya que reintentar
+  if (error && error.code !== "23505") throw error;
 }
 
 /**
@@ -300,6 +304,17 @@ export async function fetchRankingRuns(sb: SupabaseClient, desdeDias?: number, l
   const { data, error } = await q.order("valuation", { ascending: false }).limit(limit);
   if (error) throw error;
   return (data as RunRanking[]) ?? [];
+}
+
+/** Todas las partidas terminadas, para las métricas globales del panel. */
+export async function fetchRunsGlobales(sb: SupabaseClient, limit = 2000) {
+  const { data, error } = await sb
+    .from("runs")
+    .select("sector, ended_as, day, valuation, peak_users, equity, team_size, features, user_id, anon_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw error;
+  return data ?? [];
 }
 
 export async function ensureProfile(sb: SupabaseClient, userId: string, name: string) {

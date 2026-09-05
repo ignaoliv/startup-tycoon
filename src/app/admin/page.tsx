@@ -5,6 +5,7 @@ import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { DEFAULT_TUNING, loadTuning, resetTuning, saveTuning, tuning, type Tuning } from "@/lib/game/tuning";
 import { clearRuns, getRuns, playerId, type RunRecord } from "@/lib/analytics";
 import { getSupabase } from "@/lib/supabase/client";
+import { fetchRunsGlobales } from "@/lib/storage";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 
@@ -24,6 +25,7 @@ export default function AdminPage() {
   const [me, setMe] = useState("");
   const [tab, setTab] = useState<"metricas" | "drivers" | "eventos" | "feedback">("metricas");
   const [feedback, setFeedback] = useState<FeedbackRow[] | null>(null);
+  const [globales, setGlobales] = useState<RunGlobal[] | null>(null);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -34,6 +36,20 @@ export default function AdminPage() {
       setReady(true);
     }, 0);
     return () => clearTimeout(id);
+  }, []);
+
+  // las partidas de todos los jugadores viven en Supabase; las de abajo son
+  // solo las de este navegador
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) {
+      setGlobales([]);
+      return;
+    }
+    fetchRunsGlobales(sb).then((d) => setGlobales(d as RunGlobal[])).catch((e) => {
+      console.error(e);
+      setGlobales([]);
+    });
   }, []);
 
   // el feedback vive en Supabase y solo lo puede leer el admin (RLS por mail)
@@ -85,7 +101,64 @@ export default function AdminPage() {
 
       {tab === "metricas" && (
         <div className="space-y-3">
-          <Card title="Resumen">
+          <Card title="🌍 Todas las partidas · todos los jugadores">
+            {globales === null ? (
+              <p className="text-sm text-ink/60">Cargando…</p>
+            ) : globales.length === 0 ? (
+              <p className="text-sm text-ink/60">Todavía no hay partidas guardadas.</p>
+            ) : (
+              (() => {
+                const g = globales;
+                const n = g.length;
+                const cuenta = (f: (r: RunGlobal) => boolean) => g.filter(f).length;
+                const gana = cuenta((r) => r.ended_as === "ipo" || r.ended_as === "acquired");
+                const jugadores = new Set(g.map((r) => r.user_id ?? r.anon_id ?? "?")).size;
+                const conCuenta = cuenta((r) => !!r.user_id);
+                const prom = (f: (r: RunGlobal) => number) => g.reduce((a, r) => a + f(r), 0) / n;
+                const finales: [string, string][] = [["ipo", "IPO"], ["acquired", "Exit"], ["bankrupt", "Quiebra"], ["fired", "Te echaron"], ["abandoned", "Abandonada"]];
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      <KPI label="Partidas" value={String(n)} sub={`${jugadores} jugadores`} />
+                      <KPI label="Ganadas" value={`${Math.round((gana / n) * 100)}%`} sub={`${gana} de ${n}`} />
+                      <KPI label="Días por partida" value={prom((r) => r.day).toFixed(0)} sub={`${prom((r) => r.features).toFixed(1)} features`} />
+                      <KPI label="Con cuenta" value={`${Math.round((conCuenta / n) * 100)}%`} sub={`${conCuenta} partidas`} />
+                    </div>
+                    <div className="mt-3 space-y-1">
+                      {finales.map(([id, label]) => {
+                        const c = cuenta((r) => r.ended_as === id);
+                        if (!c) return null;
+                        return (
+                          <div key={id}>
+                            <div className="flex justify-between text-[11px]"><span>{label}</span><span className="tabular-nums">{c} ({Math.round((c / n) * 100)}%)</span></div>
+                            <Bar value={c} max={n} color={id === "ipo" || id === "acquired" ? "bg-green" : id === "bankrupt" ? "bg-red" : "bg-ink/40"} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-ink/40">Por sector</div>
+                    <ul className="mt-1 space-y-1 text-[11px]">
+                      {SECTORS.map((sec) => {
+                        const del = g.filter((r) => r.sector === sec.id);
+                        if (!del.length) return null;
+                        const w = del.filter((r) => r.ended_as === "ipo" || r.ended_as === "acquired").length;
+                        return (
+                          <li key={sec.id} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
+                            <span>{sec.icon}</span>
+                            <span className="flex-1 truncate font-bold">{sec.name}</span>
+                            <span className="text-ink/50">{del.length} partidas</span>
+                            <span className="w-12 shrink-0 text-right font-black tabular-nums">{Math.round((w / del.length) * 100)}%</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                );
+              })()
+            )}
+          </Card>
+
+          <Card title="Solo este navegador">
             {runs.length === 0 ? (
               <p className="text-sm text-ink/60">Todavía no hay partidas registradas en este navegador. Jugá un rato y volvé.</p>
             ) : (
@@ -305,6 +378,20 @@ function promedioNota(rows: FeedbackRow[]) {
   const notas = rows.map((r) => r.rating).filter((n): n is number => !!n);
   return notas.length ? (notas.reduce((a, b) => a + b, 0) / notas.length).toFixed(1) : "—";
 }
+
+type RunGlobal = {
+  sector: string;
+  ended_as: string;
+  day: number;
+  valuation: number;
+  peak_users: number;
+  equity: number;
+  team_size: number;
+  features: number;
+  user_id: string | null;
+  anon_id: string | null;
+  created_at: string;
+};
 
 function KPI({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (

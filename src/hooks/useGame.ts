@@ -158,11 +158,13 @@ export function useGame(forceLocal: boolean) {
 
   // el historial se escribe una sola vez, cuando la partida termina.
   // Sin sesión también se guarda (user_id null): cuenta para las estadísticas.
-  const runGuardado = useRef<string | null>(null);
+  // el flag va en el estado guardado y no en un ref: una partida terminada sigue
+  // terminada al recargar, y con el ref se volvía a guardar en cada carga
   useEffect(() => {
     const s = ref.current;
-    if (!sb || !s || !s.gameOver || runGuardado.current === s.id) return;
-    runGuardado.current = s.id;
+    if (!sb || !s || !s.gameOver || s.runSaved) return;
+    s.runSaved = true;
+    saveLocal(s, userId);
     const row = buildRun(s, derive(s), s.gameOver);
     // con sesión va derecho al historial; sin sesión espera en el navegador por
     // si el jugador entra con Google desde el cartel del final
@@ -292,8 +294,8 @@ export function useGame(forceLocal: boolean) {
   const reset = useCallback(() => {
     // abandonar una partida con recorrido también es un dato
     const s = ref.current;
-    if (sb && s && !s.gameOver && s.day >= 10 && runGuardado.current !== s.id) {
-      runGuardado.current = s.id;
+    if (sb && s && !s.gameOver && s.day >= 10 && !s.runSaved) {
+      s.runSaved = true;
       const row = buildRun(s, derive(s), "abandoned");
       if (userId) saveRun(sb, row, userId, playerId()).catch(console.error);
       else guardarRunPendiente(row);

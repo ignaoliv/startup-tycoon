@@ -152,6 +152,7 @@ export interface GameState {
   lastEventDay: number;
   reactiveCd: Record<string, number>;
   campaignCd: Record<string, number>; // último día que corriste cada campaña
+  runSaved: boolean; // la partida terminada ya se mandó al historial
   lastShipDay: number;
   idleDays: number;
   hypeHighDays: number;

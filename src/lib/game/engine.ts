@@ -78,6 +78,7 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     lastEventDay: -99,
     reactiveCd: {},
     campaignCd: {},
+    runSaved: false,
     lastShipDay: 1,
     idleDays: 0,
     hypeHighDays: 0,
