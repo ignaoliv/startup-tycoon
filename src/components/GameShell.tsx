@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
 import { ProductPanel } from "@/components/panels/ProductPanel";
@@ -29,7 +30,6 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export function GameShell() {
   const params = useSearchParams();
-  const router = useRouter();
   const forceLocal = params.get("local") === "1";
   const game = useGame(forceLocal);
   const [tab, setTab] = useState<Tab>("office");
@@ -106,6 +106,14 @@ export function GameShell() {
               </button>
             ))}
           </div>
+          <Link
+            href="/home"
+            className="btn shrink-0 border-ink/25 bg-white px-2 py-1 text-lg"
+            aria-label="Mi carrera y el ranking"
+            title="Mi carrera y el ranking"
+          >
+            🏆
+          </Link>
           <AuthButton compact />
           <div className="relative">
             <button onClick={() => setMenu((m) => !m)} className="rounded-xl border-2 border-ink/15 bg-white px-2 py-1 text-lg" aria-label="Menú">
@@ -115,7 +123,6 @@ export function GameShell() {
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
                 <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
-                <MenuItem onClick={() => { setMenu(false); router.push("/home"); }}>🏆 Mi carrera y el ranking</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setFeedback(true); }}>💬 Mandar feedback</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setConfirmReset(true); }}>🗑️ Empezar de nuevo</MenuItem>
               </div>

@@ -73,9 +73,14 @@ export default function ComoSeJuega() {
         <Link href="/">
           <Image src="/logo.png" alt={NOMBRE} width={596} height={160} className="h-8 w-auto sm:h-10" />
         </Link>
-        <Link href="/play" className="btn shrink-0 border-ink bg-amber px-3 py-2 text-sm text-ink">
-          🚀 Jugar
-        </Link>
+        <div className="flex shrink-0 items-center gap-2">
+          <Link href="/home" className="btn border-ink/25 bg-white px-3 py-2 text-sm" title="Mi carrera y el ranking">
+            🏆 <span className="hidden sm:inline">Ranking</span>
+          </Link>
+          <Link href="/play" className="btn border-ink bg-amber px-3 py-2 text-sm text-ink">
+            🚀 Jugar
+          </Link>
+        </div>
       </header>
 
       <article className="rounded-2xl border border-ink/10 bg-white p-5 sm:p-7">

@@ -5,7 +5,7 @@ import type { User } from "@supabase/supabase-js";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
-import { fetchLeaderboard, fetchMisRuns, fetchRankingRuns, type LeaderRow, type RunRanking } from "@/lib/storage";
+import { fetchLeaderboard, fetchMisRuns, fetchProfile, fetchRankingRuns, limpiarHandle, saveProfileLinks, urlLinkedin, urlX, type LeaderRow, type Perfil, type RunRanking } from "@/lib/storage";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
 import { SECTORS } from "@/lib/game/data";
@@ -94,6 +94,8 @@ export default function HomePage() {
           <Btn className="w-full" onClick={() => signInWithGoogle("/home")}>Entrar con Google</Btn>
         </Card>
       )}
+
+      {user && <MiPerfil userId={user.id} nombre={user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Fundador/a"} avatar={user.user_metadata?.avatar_url ?? user.user_metadata?.picture} />}
 
       {user && (
         <>
@@ -193,6 +195,107 @@ export default function HomePage() {
 
       <SiteFooter />
     </main>
+  );
+}
+
+/** Perfil del jugador: sus redes quedan visibles en el ranking y en su startup. */
+function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; avatar?: string }) {
+  const [perfil, setPerfil] = useState<Perfil | null>(null);
+  const [tw, setTw] = useState("");
+  const [li, setLi] = useState("");
+  const [editando, setEditando] = useState(false);
+  const [guardando, setGuardando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) return;
+    fetchProfile(sb, userId)
+      .then((p) => {
+        setPerfil(p);
+        setTw(p?.twitter ?? "");
+        setLi(p?.linkedin ?? "");
+      })
+      .catch(console.error);
+  }, [userId]);
+
+  const guardar = async () => {
+    const sb = getSupabase();
+    if (!sb) return;
+    setGuardando(true);
+    setAviso(null);
+    try {
+      const twitter = limpiarHandle(tw, "x");
+      const linkedin = limpiarHandle(li, "linkedin");
+      await saveProfileLinks(sb, userId, { twitter, linkedin });
+      setTw(twitter);
+      setLi(linkedin);
+      setPerfil((p) => (p ? { ...p, twitter, linkedin } : p));
+      setEditando(false);
+      setAviso("Listo, ya se ven en el ranking.");
+    } catch (e) {
+      setAviso((e as Error).message);
+    } finally {
+      setGuardando(false);
+    }
+  };
+
+  const guardadas = perfil?.twitter || perfil?.linkedin;
+
+  return (
+    <Card className="mb-3" title="Mi perfil" right={!editando ? <Btn size="sm" variant="ghost" onClick={() => setEditando(true)}>{guardadas ? "Editar" : "Agregar redes"}</Btn> : null}>
+      <div className="mb-2 flex items-center gap-3">
+        {avatar ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatar} alt="" width={44} height={44} className="rounded-full" />
+        ) : (
+          <span className="text-3xl">👤</span>
+        )}
+        <div className="min-w-0">
+          <div className="truncate text-base font-black">{nombre}</div>
+          {!editando &&
+            (guardadas ? (
+              <div className="flex gap-3 text-xs font-bold">
+                {perfil?.twitter && (
+                  <a href={urlX(perfil.twitter)} target="_blank" rel="noreferrer" className="text-indigo underline">
+                    𝕏 @{perfil.twitter}
+                  </a>
+                )}
+                {perfil?.linkedin && (
+                  <a href={urlLinkedin(perfil.linkedin)} target="_blank" rel="noreferrer" className="text-indigo underline">
+                    in/{perfil.linkedin}
+                  </a>
+                )}
+              </div>
+            ) : (
+              <div className="text-xs text-ink/50">Sumá tus redes para que te encuentren desde el ranking.</div>
+            ))}
+        </div>
+      </div>
+
+      {editando && (
+        <>
+          <p className="mb-2 text-[11px] text-ink/60">Podés pegar el link completo o solo el usuario.</p>
+          <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
+            X (Twitter)
+            <input value={tw} onChange={(e) => setTw(e.target.value)} placeholder="nacho_olivieri" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+          </label>
+          <label className="mb-3 block text-[11px] font-bold uppercase text-ink/50">
+            LinkedIn
+            <input value={li} onChange={(e) => setLi(e.target.value)} placeholder="ignacio-olivieri" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
+          </label>
+          <div className="flex gap-2">
+            <Btn className="flex-1" disabled={guardando} onClick={guardar}>
+              {guardando ? "Guardando…" : "Guardar"}
+            </Btn>
+            <Btn variant="ghost" onClick={() => setEditando(false)}>
+              Cancelar
+            </Btn>
+          </div>
+        </>
+      )}
+      {aviso && <p className="mt-2 text-[11px] font-bold text-green">{aviso}</p>}
+    </Card>
   );
 }
 
