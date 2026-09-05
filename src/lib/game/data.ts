@@ -1,10 +1,13 @@
 import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 import { tuning } from "./tuning";
 
-/** Duración de un día: arranca tranquilo y se acelera a medida que crece la empresa. */
-export const TICK_MS_START = 5500;
-export const TICK_MS_MIN = 2500;
-export const TICK_RAMP_DAYS = 110;
+/**
+ * Duración de un día. El arranque es la parte con menos cosas para hacer, así
+ * que pasa rápido; después se estabiliza para que se pueda seguir el ritmo.
+ */
+export const TICK_MS_START = 2600;
+export const TICK_MS_MIN = 1500;
+export const TICK_RAMP_DAYS = 60;
 export const TICK_MS = TICK_MS_START; // referencia para textos
 
 export function dayMs(day: number) {

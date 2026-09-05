@@ -48,7 +48,7 @@ export const DEFAULT_TUNING: Tuning = {
   acquireMinUsers: 120000,
   boardEnabled: true,
   boardFromStage: 3,
-  boardGrowth: 4.5,
+  boardGrowth: 6,
   boardDays: 75,
   boardFailsToFire: 1,
   tamMul: 0.5,

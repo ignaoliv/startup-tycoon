@@ -59,7 +59,9 @@ function jugar(p: Perfil, sector: string) {
     if (s.done.length > antes) { huecoLanzar = Math.max(huecoLanzar, s.day - ultimoLanzamiento); ultimoLanzamiento = s.day; }
     if (s.gameOver) break;
   }
-  const min = msJugados / 60000;
+  // los popups frenan el juego: el tiempo de leer y decidir es parte de la partida
+  const SEG_POR_POPUP = 20;
+  const min = msJugados / 60000 + (popupsVistos * SEG_POR_POPUP) / 60;
   return { fin: s.gameOver ?? "sigue", dia: s.day, min, acciones, popupsVistos, miradas, huecoLanzar, huecoPopup,
     features: s.done.length, equity: s.equity, usuarios: s.stats.peakUsers, decisionesPorMin: acciones / Math.max(1, min) };
 }
