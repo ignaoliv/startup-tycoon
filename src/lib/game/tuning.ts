@@ -16,6 +16,7 @@ export interface Tuning {
   costOverhead: number; // extra de costo por persona de más (0.015 = +1,5% por persona)
   productivityOverhead: number; // productividad perdida por persona de más
   ipoValuation: number; // valuación necesaria para salir a bolsa
+  acquireMinUsers: number; // tamaño desde el que una corporación se fija en vos
   // --- board: después de levantar, los inversores piden crecimiento
   boardEnabled: boolean;
   boardFromStage: number; // desde qué ronda empieza a exigir
@@ -42,13 +43,14 @@ export const DEFAULT_TUNING: Tuning = {
   overheadFrom: 10,
   costOverhead: 0,
   productivityOverhead: 0,
-  ipoValuation: 1_000_000_000,
+  ipoValuation: 2_000_000_000,
+  acquireMinUsers: 120000,
   boardEnabled: true,
-  boardFromStage: 2,
+  boardFromStage: 3,
   boardGrowth: 1.8,
   boardDays: 110,
   boardFailsToFire: 2,
-  tamMul: 1,
+  tamMul: 0.5,
   bankruptLimit: 12,
   startCash: 30000,
 };

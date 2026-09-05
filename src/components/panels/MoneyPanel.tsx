@@ -1,7 +1,8 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { ACHIEVEMENT_DEFS, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
-import { IPO_VALUATION, OFFICES, STAGES } from "@/lib/game/data";
+import { OFFICES, STAGES } from "@/lib/game/data";
+import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
 import type { Game } from "@/hooks/useGame";
 
@@ -66,8 +67,8 @@ export function MoneyPanel({ game }: { game: Game }) {
         )}
         {s.stage >= STAGES.length - 2 && (
           <>
-            <Bar value={d.valuation} max={IPO_VALUATION} color="bg-amber" className="mt-2" />
-            <Btn className="mt-2 w-full" variant="amber" disabled={d.valuation < IPO_VALUATION} onClick={() => game.mutate((st) => ipo(st))}>
+            <Bar value={d.valuation} max={tuning.ipoValuation} color="bg-amber" className="mt-2" />
+            <Btn className="mt-2 w-full" variant="amber" disabled={d.valuation < tuning.ipoValuation} onClick={() => game.mutate((st) => ipo(st))}>
               🔔 Salir a bolsa (IPO)
             </Btn>
           </>

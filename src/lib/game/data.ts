@@ -1,4 +1,5 @@
 import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
+import { tuning } from "./tuning";
 
 /** Duración de un día: arranca tranquilo y se acelera a medida que crece la empresa. */
 export const TICK_MS_START = 5500;
@@ -164,11 +165,7 @@ export const ROLES: Record<Role, { name: string; plural: string; icon: string; b
   sales: { name: "Ventas", plural: "Vendedores", icon: "🤝", baseSalary: 3000, desc: "Convierte curiosos en clientes que pagan. Sube el ARPU.", payLabel: "/mes" },
   qa: { name: "QA", plural: "Testers", icon: "🧪", baseSalary: 2400, desc: "Encuentra lo que la IA alucinó antes que los usuarios.", payLabel: "/mes" },
   ops: { name: "DevOps", plural: "DevOps", icon: "🛠️", baseSalary: 2900, desc: "Baja la factura de servidores y tokens. Sube la moral.", payLabel: "/mes" },
-  pm: { name: "Project Manager", plural: "Project Managers", icon: "📋", baseSalary: 1500, desc: "Decide qué se construye después, sin que tengas que elegir vos.", payLabel: "/mes" },
 };
-
-/** Lo que sale contratar al PM por mes. */
-export const PM_SALARY = 1500;
 
 export const LEVEL_NAMES = ["", "Junior", "Semi", "Senior"] as const;
 export const AI_LEVEL_NAMES = ["", "Mini", "Pro", "Ultra"] as const;
@@ -233,7 +230,6 @@ export const AVATARS: Record<Role, string[]> = {
   sales: ["👩‍💼", "👨‍💼", "🧑‍💼"],
   qa: ["👩‍🔬", "👨‍🔬", "🧑‍🔬"],
   ops: ["👩‍🔧", "👨‍🔧", "🧑‍🔧"],
-  pm: ["🧑‍💼", "👩‍💼", "👨‍💼"],
 };
 
 /** Partes para armar el nombre, por sector: cada uno suena a lo suyo. */
@@ -391,11 +387,25 @@ export const EVENTS: GameEventDef[] = [
     title: "Oferta de adquisición",
     icon: "🏦",
     text: "Una corporación quiere comprar tu startup. Ofrecen un múltiplo generoso... pero se termina el juego.",
-    minDay: 120,
-    minUsers: 3000,
+    minDay: 150,
+    // solo cuando la empresa es grande de verdad: la gracia es elegir entre
+    // cobrar hoy o ir por la salida grande, no un premio por haber llegado
+    get minUsers() {
+      return tuning.acquireMinUsers;
+    },
     choices: [
-      { label: "Vender y retirarse", desc: "Fin del juego (exit)", apply: (s) => { s.gameOver = "acquired"; return "¡Exit! Te compraron. A la playa."; } },
-      { label: "Seguir construyendo", desc: "+hype por la noticia", apply: (s) => { s.hype = Math.min(100, s.hype + 20); return "Rechazaste la oferta. Los inversores aplauden (y sudan)."; } },
+      { label: "Vender y retirarse", desc: "Cerrás acá, con la valuación que tenés hoy", apply: (s) => { s.gameOver = "acquired"; return "¡Exit! Te compraron. A la playa."; } },
+      {
+        label: "Seguir construyendo",
+        desc: "Van por tu mercado igual",
+        apply: (s) => {
+          // si no te compran a vos, compran a tu competidor y te sacan clientes
+          const perdidos = Math.round(s.users * 0.25);
+          s.users = Math.max(0, s.users - perdidos);
+          s.hype = Math.min(100, s.hype + 15);
+          return `Rechazaste la oferta. Compraron a tu competidor y se llevaron ${perdidos.toLocaleString("es-AR")} de tus usuarios.`;
+        },
+      },
     ],
   },
   {

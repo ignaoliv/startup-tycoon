@@ -2,10 +2,10 @@
  * Simulación con jugadores REALES, no un bot óptimo.
  * Tres perfiles que se equivocan de distinta manera: novato, intermedio y experto.
  */
-import { derive, fire, hire, hirePM, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, tienePM, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
+import { derive, fire, hire, ipo, marketingPush, newGame, raiseRound, resolveEvent, setFeature, teamPerk, tick, upgradeOffice, featureAvailable } from "../src/lib/game/engine";
 import { dayMs, EVENTS, FEATURES, OFFICES, STAGES } from "../src/lib/game/data";
 import type { GameState } from "../src/lib/game/types";
-import { applyTuning, DEFAULT_TUNING } from "../src/lib/game/tuning";
+import { applyTuning, DEFAULT_TUNING, tuning } from "../src/lib/game/tuning";
 
 interface Perfil {
   nombre: string;
@@ -29,8 +29,6 @@ interface Perfil {
   sobrecontrata: boolean;
   /** ve el runway en pantalla al contratar: no contrata si le queda poca caja */
   veRunway?: boolean;
-  /** contrata un Project Manager apenas puede */
-  contrataPM?: boolean;
   /** el juego le avisa a los 3 días que el equipo está parado, así que reacciona antes */
   veAvisos?: boolean;
 }
@@ -45,6 +43,11 @@ const PERFILES: Perfil[] = [
 function elegir(s: GameState, p: Perfil): number {
   const ev = EVENTS.find((e) => e.id === s.pendingEvent!.id);
   if (!ev) return 0;
+  // la oferta de compra no es "elegir la primera": el que juega bien la toma
+  // solo si ve la IPO lejos
+  if (ev.id === "acquire" && p.decision !== "azar") {
+    return derive(s).valuation >= tuning.ipoValuation * 0.4 ? 1 : 0;
+  }
   if (p.decision === "azar") return Math.floor(Math.random() * ev.choices.length);
   if (p.decision === "cauto") {
     // evita lo que suene a gastar plata si está corto de caja, si no elige la primera
@@ -103,9 +106,6 @@ function pasoDeJuego(s: GameState, p: Perfil, sinFeatureDesde = -1): number {
     }
     return sinFeatureDesde; // en modo pánico no contrata
   }
-
-  // contratar un PM para que el roadmap vaya solo
-  if (p.contrataPM && !tienePM(s) && s.done.includes("mvp") && s.cash > 20000) hirePM(s);
 
   // contratar
   for (const c of s.candidates) {
@@ -309,10 +309,9 @@ if (process.argv[3] === "diag") {
 }
 
 const PRESEED = STAGES[1].minValuation;
-const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; pm?: boolean; avisos?: boolean; preseed?: number }[] = [
-  { nombre: "Sin avisos (antes)", tuning: {}, runway: false, avisos: false },
-  { nombre: "Hoy", tuning: {}, runway: true, avisos: true },
-  { nombre: "Hoy + contrata PM", tuning: {}, runway: true, avisos: true, pm: true },
+const ESCENARIOS: { nombre: string; tuning: Partial<import("../src/lib/game/tuning").Tuning>; runway: boolean; avisos?: boolean; preseed?: number }[] = [
+  { nombre: "Config anterior", tuning: { ipoValuation: 1e9, tamMul: 1, boardFromStage: 2, acquireMinUsers: 3000 }, runway: true, avisos: true },
+  { nombre: "Config actual", tuning: {}, runway: true, avisos: true },
 ];
 
 const N = Number(process.argv[2] ?? 100);
@@ -333,7 +332,7 @@ for (const esc of ESCENARIOS) {
   const res: string[] = [];
   let minutosInterm = 0;
   for (const base of PERFILES) {
-    const p = { ...base, veRunway: esc.runway, contrataPM: esc.pm, veAvisos: esc.avisos };
+    const p = { ...base, veRunway: esc.runway, veAvisos: esc.avisos };
     const finales: Record<string, number> = {};
     const dias: number[] = [];
     for (let i = 0; i < N; i++) {
@@ -342,6 +341,7 @@ for (const esc of ESCENARIOS) {
       dias.push(s.day);
     }
     const gana = (finales.ipo ?? 0) + (finales.acquired ?? 0);
+    if (base.nombre === "Intermedio") console.log(`   [intermedio ${esc.nombre}] ` + Object.entries(finales).map(([k, v]) => `${k}:${Math.round((v / N) * 100)}%`).join(" "));
     res.push(`${Math.round((gana / N) * 100)}%${finales.fired ? `/${Math.round(((finales.fired ?? 0) / N) * 100)}e` : ""}`);
     if (base.nombre === "Intermedio") minutosInterm = minsProg(Math.round(avg(dias)));
   }
