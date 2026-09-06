@@ -8,7 +8,7 @@ import type { Employee, GameState } from "@/lib/game/types";
  */
 
 const W = 800;
-const H = 340;
+const H = 420; // más piso: los escritorios entran grandes y en grilla
 const FLOOR_Y = 196; // línea donde termina la pared y empieza el piso
 
 interface Scene {
@@ -349,6 +349,32 @@ const ROLE_SCREEN: Record<string, string> = {
   ops: "#60a5fa",
 };
 
+/** Lugar libre: se ve el escritorio pero sin nadie, para que se note lo que falta. */
+function EscritorioLibre({ x, y, s, scene }: { x: number; y: number; s: number; scene: Scene }) {
+  const w = 104 * s;
+  const h = 26 * s;
+  return (
+    <g transform={`translate(${x},${y})`} opacity={0.42}>
+      <rect x={-w / 2} y={0} width={w} height={h} rx={4 * s} fill={scene.desk} />
+      <rect x={-w / 2} y={h - 5 * s} width={w} height={5 * s} rx={2 * s} fill={scene.deskDark} />
+      <rect
+        x={-w / 2 + 3 * s}
+        y={-26 * s}
+        width={w - 6 * s}
+        height={24 * s}
+        rx={6 * s}
+        fill="none"
+        stroke="rgba(31,27,22,0.35)"
+        strokeWidth={2 * s}
+        strokeDasharray={`${6 * s} ${5 * s}`}
+      />
+      <text x={0} y={-8 * s} textAnchor="middle" fontSize={13 * s} fontWeight={800} fill="rgba(31,27,22,0.5)">
+        libre
+      </text>
+    </g>
+  );
+}
+
 function Desk({ e, x, y, s, scene, showName }: { e: Employee; x: number; y: number; s: number; scene: Scene; showName: boolean }) {
   const w = 104 * s;
   const h = 26 * s;
@@ -371,7 +397,7 @@ function Desk({ e, x, y, s, scene, showName }: { e: Employee; x: number; y: numb
         <rect x={-18 * s} y={5 * s} width={36 * s} height={3 * s} rx={1.5 * s} fill="#3c4046" />
       </g>
       {showName && (
-        <text x={0} y={h + 15 * s} textAnchor="middle" fontSize={11 * s} fontWeight={800} fill="rgba(0,0,0,0.55)">
+        <text x={0} y={h + 15 * s} textAnchor="middle" fontSize={12.5 * s} fontWeight={800} fill="rgba(0,0,0,0.62)">
           {e.name.split(" ")[0]}
         </text>
       )}
@@ -383,35 +409,40 @@ export function OfficeView({ state, compact = false }: { state: GameState; compa
   const office = OFFICES[state.office];
   const scene = SCENES[state.office] ?? SCENES[0];
   const emps = state.employees;
-  const MAX = 15;
-  const shown = emps.slice(0, MAX);
+
+  // la sala dibuja los lugares de la oficina, ocupados y vacíos, en su grilla.
+  // Se topean las columnas y las filas para que los escritorios no se achiquen
+  // hasta ser ilegibles en las oficinas grandes.
+  const cols = Math.min(office.cols, 5);
+  const cupos = Math.min(office.capacity, cols * 3);
+  const filas = Math.ceil(cupos / cols);
+  const shown = emps.slice(0, cupos);
   const extra = emps.length - shown.length;
 
-  // filas con perspectiva: con poca gente se ven grandes; al crecer, se achican
-  const n = shown.length;
-  const ROWS =
-    n <= 3
-      ? [{ y: 278, s: 1.35, n: 3 }]
-      : n <= 5
-        ? [{ y: 280, s: 1.12, n: 5 }]
-        : n <= 10
-          ? [
-              { y: 250, s: 0.92, n: 5 },
-              { y: 308, s: 1.08, n: 5 },
-            ]
-          : [
-              { y: 236, s: 0.74, n: 5 },
-              { y: 278, s: 0.88, n: 5 },
-              { y: 320, s: 1.02, n: 5 },
-            ];
-  const placed: { e: Employee; x: number; y: number; s: number }[] = [];
-  let i = 0;
-  for (const row of ROWS) {
-    const inRow = Math.min(row.n, shown.length - i);
-    if (inRow <= 0) break;
-    const gap = W / (inRow + 1);
-    for (let k = 0; k < inRow; k++) placed.push({ e: shown[i + k], x: gap * (k + 1), y: row.y, s: row.s });
-    i += inRow;
+  // perspectiva: las filas de atrás quedan más arriba y más chicas
+  // cada lugar necesita alto para el personaje, el escritorio y el nombre; las
+  // filas se separan lo suficiente para que la de adelante no tape los nombres
+  const GEOM: Record<number, { y: number; s: number }[]> = {
+    1: [{ y: 322, s: 1.6 }],
+    2: [
+      { y: 252, s: 1.12 },
+      { y: 360, s: 1.24 },
+    ],
+    3: [
+      { y: 236, s: 0.76 },
+      { y: 304, s: 0.84 },
+      { y: 376, s: 0.96 },
+    ],
+  };
+  const geom = GEOM[filas] ?? GEOM[3];
+
+  const placed: { e: Employee | null; x: number; y: number; s: number; key: string }[] = [];
+  for (let idx = 0; idx < cupos; idx++) {
+    const fila = Math.floor(idx / cols);
+    const enFila = Math.min(cols, cupos - fila * cols);
+    const col = idx - fila * cols;
+    const gap = W / (enFila + 1);
+    placed.push({ e: shown[idx] ?? null, x: gap * (col + 1), y: geom[fila].y, s: geom[fila].s, key: shown[idx]?.id ?? `libre-${idx}` });
   }
 
   return (
@@ -441,9 +472,13 @@ export function OfficeView({ state, compact = false }: { state: GameState; compa
           <path d={`M120 ${H} L${W - 120} ${H} L${W - 190} ${FLOOR_Y + 18} L190 ${FLOOR_Y + 18} Z`} fill={scene.rug} opacity={0.75} />
 
           {/* gente */}
-          {placed.map((p) => (
-            <Desk key={p.e.id} e={p.e} x={p.x} y={p.y} s={p.s} scene={scene} showName={shown.length <= 10} />
-          ))}
+          {placed.map((p) =>
+            p.e ? (
+              <Desk key={p.key} e={p.e} x={p.x} y={p.y} s={p.s} scene={scene} showName />
+            ) : (
+              <EscritorioLibre key={p.key} x={p.x} y={p.y} s={p.s} scene={scene} />
+            ),
+          )}
 
           {/* deuda técnica volando */}
           {state.bugs > 3 &&
