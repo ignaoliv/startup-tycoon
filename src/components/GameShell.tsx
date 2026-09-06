@@ -14,10 +14,12 @@ import { signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import FeedbackModal from "@/components/FeedbackModal";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { derive, randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
-import { createPost, marcarLoginEnCurso } from "@/lib/storage";
+import { asegurarRunGuardada, buildRun, createPost, marcarLoginEnCurso } from "@/lib/storage";
+import { textoParaCompartir } from "@/lib/compartir";
+import { playerId } from "@/lib/analytics";
 
 type Tab = "office" | "team" | "product" | "money" | "social";
 const TABS: { id: Tab; label: string; icon: string }[] = [
@@ -37,7 +39,17 @@ export function GameShell() {
   const [offlineDismissed, setOfflineDismissed] = useState(false);
   const [tour, setTour] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  // el link de la partida solo sirve si la fila ya está en la base: si el
+  // jugador no tiene sesión puede estar esperando en el navegador
+  const prepararLink = async () => {
+    const s = game.state;
+    if (!s || !game.sb) return null;
+    const ok = await asegurarRunGuardada(game.sb, buildRun(s, derive(s), s.gameOver ?? "abandoned"), game.userId, playerId());
+    return ok ? `${window.location.origin}/p/${s.id}` : null;
+  };
   const [feedback, setFeedback] = useState(false);
+  const [compartiendo, setCompartiendo] = useState(false);
+  const [linkCopiado, setLinkCopiado] = useState(false);
   const tourChecked = useRef(false);
   const gs = game.state;
   const setPaused = game.setPaused;
@@ -228,6 +240,46 @@ export function GameShell() {
               </Btn>
             </div>
           )}
+          <div className="mb-2 flex gap-2">
+            <Btn
+              variant="amber"
+              className="flex-1"
+              disabled={compartiendo}
+              onClick={async () => {
+                setCompartiendo(true);
+                const link = await prepararLink();
+                setCompartiendo(false);
+                if (!link) return;
+                const s = state;
+                const texto = textoParaCompartir({
+                  game_id: s.id, name: s.startupName, sector: s.sector, idea: s.idea,
+                  ended_as: s.gameOver ?? "abandoned", day: s.day, valuation: Math.round(d.valuation),
+                  peak_users: Math.round(s.stats.peakUsers), equity: s.equity,
+                  team_size: s.employees.length, features: s.done.length, display_name: null,
+                });
+                window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${encodeURIComponent(link)}`, "_blank", "noopener");
+              }}
+            >
+              {compartiendo ? "Preparando…" : "𝕏 Compartir"}
+            </Btn>
+            <Btn
+              variant="ghost"
+              className="flex-1"
+              onClick={async () => {
+                const link = await prepararLink();
+                if (!link) return;
+                try {
+                  await navigator.clipboard.writeText(link);
+                  setLinkCopiado(true);
+                  setTimeout(() => setLinkCopiado(false), 2000);
+                } catch {
+                  window.open(link, "_blank", "noopener");
+                }
+              }}
+            >
+              {linkCopiado ? "¡Copiado!" : "🔗 Copiar link"}
+            </Btn>
+          </div>
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup
           </Btn>

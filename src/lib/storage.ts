@@ -209,6 +209,21 @@ export async function saveRun(sb: SupabaseClient, row: RunRow, userId: string | 
 }
 
 /**
+ * Sube la partida que estaba esperando y devuelve si quedó guardada. Se usa al
+ * compartir: el link solo funciona si la fila ya existe.
+ */
+export async function asegurarRunGuardada(sb: SupabaseClient, row: RunRow, userId: string | null, anonId: string) {
+  if (!leerRunPendiente()) return true; // ya estaba guardada
+  try {
+    await saveRun(sb, row, userId, anonId);
+    borrarRunPendiente();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Partida terminada sin sesión: queda esperando en el navegador. Si el jugador
  * entra con Google desde el cartel del final, se guarda a su nombre; si no,
  * se guarda anónima la próxima vez que abra el juego. En ningún caso se pierde.
