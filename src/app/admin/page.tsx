@@ -25,6 +25,8 @@ export default function AdminPage() {
   const [me, setMe] = useState("");
   const [tab, setTab] = useState<"metricas" | "drivers" | "eventos" | "feedback">("metricas");
   const [feedback, setFeedback] = useState<FeedbackRow[] | null>(null);
+  const [totalFeedback, setTotalFeedback] = useState<number | null>(null);
+  const [soloConTexto, setSoloConTexto] = useState(false);
   const [globales, setGlobales] = useState<{ resumen: RunsResumen; sectores: RunsSector[] } | null>(null);
   const [errorGlobal, setErrorGlobal] = useState(false);
 
@@ -61,11 +63,16 @@ export default function AdminPage() {
       setFeedback([]);
       return;
     }
+    // el count exacto viene aparte del límite de filas: así el panel no puede
+    // decir que hay menos de los que hay, como pasaba con el tope de 200
     sb.from("feedback")
-      .select("id, rating, texto, contexto, created_at")
+      .select("id, rating, texto, contexto, created_at", { count: "exact" })
       .order("created_at", { ascending: false })
-      .limit(200)
-      .then(({ data }) => setFeedback((data as FeedbackRow[]) ?? []));
+      .limit(1000)
+      .then(({ data, count }) => {
+        setFeedback((data as FeedbackRow[]) ?? []);
+        setTotalFeedback(count ?? null);
+      });
   }, [tab, feedback]);
 
   const set = (patch: Partial<Tuning>) => {
@@ -333,15 +340,30 @@ export default function AdminPage() {
           ) : feedback.length === 0 ? (
             <Card><p className="text-xs text-ink/50">Todavía no mandó feedback nadie.</p></Card>
           ) : (
+            (() => {
+              const conTexto = feedback.filter((f) => f.texto && f.texto.trim());
+              const visibles = soloConTexto ? conTexto : feedback;
+              return (
             <>
-              <Card title={`${feedback.length} mensajes`}>
+              <Card title={`${totalFeedback ?? feedback.length} mensajes`}>
                 <div className="grid grid-cols-3 gap-2">
                   <KPI label="Nota promedio" value={promedioNota(feedback)} sub="sobre 5 🤖" />
-                  <KPI label="Con texto" value={String(feedback.filter((f) => f.texto).length)} />
+                  <KPI label="Con texto" value={String(conTexto.length)} />
                   <KPI label="Últimos 7 días" value={String(feedback.filter((f) => Date.now() - new Date(f.created_at).getTime() < 7 * 864e5).length)} />
                 </div>
+                <div className="mt-3 flex items-center gap-2">
+                  <Btn size="sm" variant={soloConTexto ? "primary" : "ghost"} onClick={() => setSoloConTexto((v) => !v)}>
+                    {soloConTexto ? "✓ Solo con comentario" : "Solo con comentario"}
+                  </Btn>
+                  <span className="text-[11px] text-ink/50">Mostrando {visibles.length}</span>
+                </div>
+                {totalFeedback !== null && totalFeedback > feedback.length && (
+                  <p className="mt-2 text-[11px] text-red">
+                    Hay {totalFeedback} en la base y se cargaron {feedback.length}: la API devuelve como máximo 1000 por pedido.
+                  </p>
+                )}
               </Card>
-              {feedback.map((f) => (
+              {visibles.map((f) => (
                 <Card key={f.id}>
                   <div className="mb-1 flex items-center gap-2">
                     <span className="text-sm">{f.rating ? "🤖".repeat(f.rating) : "—"}</span>
@@ -358,6 +380,8 @@ export default function AdminPage() {
                 </Card>
               ))}
             </>
+              );
+            })()
           )}
         </div>
       )}
