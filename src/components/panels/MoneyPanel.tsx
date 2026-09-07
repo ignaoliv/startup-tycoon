@@ -1,5 +1,6 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
+import { useState } from "react";
 import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignAvailable, campaignCooldown, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
 import { OFFICES, STAGES } from "@/lib/game/data";
 import { tuning } from "@/lib/game/tuning";
@@ -12,6 +13,8 @@ export function MoneyPanel({ game }: { game: Game }) {
   const stage = STAGES[s.stage];
   const next = STAGES[s.stage + 1];
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
+  const [confirmarRonda, setConfirmarRonda] = useState(false);
+  const [confirmarIpo, setConfirmarIpo] = useState(false);
   const puedeIpo = d.valuation >= tuning.ipoValuation;
   const porcentajeIpo = Math.floor((d.valuation / tuning.ipoValuation) * 100);
   const nextOffice = OFFICES[s.office + 1];
@@ -78,7 +81,7 @@ export function MoneyPanel({ game }: { game: Game }) {
             <div className="mt-1 text-[11px] text-ink/50">
               Necesitás valer {money(next.minValuation)} para levantar {money(next.raise)} cediendo {next.equity}%.
             </div>
-            <Btn className="mt-2 w-full" disabled={!canRaise} onClick={() => game.mutate((st) => raiseRound(st))}>
+            <Btn className="mt-2 w-full" disabled={!canRaise} onClick={() => setConfirmarRonda(true)}>
               💸 Levantar ronda {next.name} · {money(next.raise)}
             </Btn>
           </>
@@ -94,7 +97,7 @@ export function MoneyPanel({ game }: { game: Game }) {
           </div>
           <Bar value={d.valuation} max={tuning.ipoValuation} color="bg-amber" />
           {puedeIpo ? (
-            <Btn className="mt-2 w-full" variant="amber" onClick={() => game.mutate((st) => ipo(st))}>
+            <Btn className="mt-2 w-full" variant="amber" onClick={() => setConfirmarIpo(true)}>
               🔔 Salir a bolsa (IPO)
             </Btn>
           ) : (
@@ -176,6 +179,87 @@ export function MoneyPanel({ game }: { game: Game }) {
           Pico de usuarios: {num(s.stats.peakUsers)} · Ingresos totales: {money(s.stats.totalRevenue)} · Contrataciones: {s.stats.hires}
         </div>
       </Card>
+
+      {confirmarRonda && next && (
+        <Confirmacion
+          icono="💸"
+          titulo={`Levantar la ronda ${next.name}`}
+          onCancelar={() => setConfirmarRonda(false)}
+          onConfirmar={() => {
+            setConfirmarRonda(false);
+            game.mutate((st) => raiseRound(st));
+          }}
+          confirmar={`Cerrar la ronda · ${money(next.raise)}`}
+        >
+          <p className="mb-2">
+            Entran <b>{money(next.raise)}</b> a la caja y cedés el <b>{next.equity}%</b> de la empresa.
+          </p>
+          <p className="mb-2">
+            Tu equity pasa de <b>{s.equity}%</b> a <b>{s.equity - next.equity}%</b>. Al valor de hoy, tu parte queda en{" "}
+            <b>{money((d.valuation * (s.equity - next.equity)) / 100)}</b>.
+          </p>
+          <p className="text-ink/60">Además el board te va a poner una meta de crecimiento. No se puede deshacer.</p>
+        </Confirmacion>
+      )}
+
+      {confirmarIpo && (
+        <Confirmacion
+          icono="🔔"
+          titulo="Salir a bolsa"
+          onCancelar={() => setConfirmarIpo(false)}
+          onConfirmar={() => {
+            setConfirmarIpo(false);
+            game.mutate((st) => ipo(st));
+          }}
+          confirmar="🔔 Tocar la campana"
+          destacado
+        >
+          <p className="mb-2">
+            Es el final: <b>{s.startupName}</b> sale a bolsa y la partida termina acá.
+          </p>
+          <p className="mb-2">
+            Tu <b>{s.equity}%</b> se convierte en <b>{money((d.valuation * s.equity) / 100)}</b>.
+          </p>
+          <p className="text-ink/60">Si querés estirarla y valer más, podés seguir jugando y volver cuando quieras.</p>
+        </Confirmacion>
+      )}
+    </div>
+  );
+}
+
+/** Confirmación para las decisiones que no se pueden deshacer. */
+function Confirmacion({
+  icono,
+  titulo,
+  children,
+  confirmar,
+  destacado,
+  onConfirmar,
+  onCancelar,
+}: {
+  icono: string;
+  titulo: string;
+  children: React.ReactNode;
+  confirmar: string;
+  destacado?: boolean;
+  onConfirmar: () => void;
+  onCancelar: () => void;
+}) {
+  return (
+    <div role="dialog" aria-modal className="fixed inset-0 z-40 flex items-end justify-center bg-ink/60 p-3 sm:items-center">
+      <div className="pop card w-full max-w-md">
+        <div className="mb-1 text-4xl">{icono}</div>
+        <h2 className="mb-2 text-xl font-black">{titulo}</h2>
+        <div className="mb-4 text-sm text-ink/80">{children}</div>
+        <div className="flex gap-2">
+          <Btn variant={destacado ? "amber" : "primary"} className="flex-1" onClick={onConfirmar}>
+            {confirmar}
+          </Btn>
+          <Btn variant="ghost" onClick={onCancelar}>
+            Cancelar
+          </Btn>
+        </div>
+      </div>
     </div>
   );
 }

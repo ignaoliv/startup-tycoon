@@ -9,6 +9,7 @@ import { MoneyPanel } from "@/components/panels/MoneyPanel";
 import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
+import { Confeti } from "@/components/Confeti";
 import { AuthButton } from "@/components/AuthButton";
 import { signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import FeedbackModal from "@/components/FeedbackModal";
@@ -94,6 +95,8 @@ export function GameShell() {
     );
 
   if (!state) return <Setup onStart={game.startNew} />;
+
+  const ganaste = state.gameOver === "ipo" || state.gameOver === "acquired";
   const d = derived!;
   const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;
   const sector = SECTORS.find((s) => s.id === state.sector);
@@ -219,17 +222,44 @@ export function GameShell() {
       )}
 
       {/* game over */}
+      {state.gameOver && ganaste && <Confeti />}
       {state.gameOver && (
-        <Modal>
-          <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : state.gameOver === "ipo" ? "🔔" : state.gameOver === "fired" ? "🪑" : "🏦"}</div>
-          <h2 className="mb-1 text-xl font-black">{state.gameOver === "bankrupt" ? "Cerró la startup" : state.gameOver === "ipo" ? "¡IPO exitosa!" : state.gameOver === "fired" ? "Te reemplazaron" : "¡Exit!"}</h2>
-          <p className="mb-3 text-sm text-ink/70">
-            {state.gameOver === "fired"
-              ? `El board puso otro CEO en tu silla. ${state.startupName} sigue existiendo sin vos, y tu ${state.equity}% ahora vale ${money((d.valuation * state.equity) / 100)}.`
-              : state.gameOver === "bankrupt"
-              ? `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`
-              : `Tu ${state.equity}% de ${state.startupName} vale ${money((d.valuation * state.equity) / 100)}. ${state.day} días, ${num(state.stats.peakUsers)} usuarios en el pico.`}
-          </p>
+        <Modal centrado={ganaste}>
+          {ganaste ? (
+            <div className="entrada-grande">
+              <div className="mb-1 text-center text-6xl latido">{state.gameOver === "ipo" ? "🔔" : "🏝️"}</div>
+              <div className="text-center text-[11px] font-black uppercase tracking-[0.2em] text-ink/40">
+                {state.gameOver === "ipo" ? "Saliste a bolsa" : "Te compraron"}
+              </div>
+              <h2 className="mb-2 text-center text-3xl font-black leading-tight sm:text-4xl">¡Ganaste el juego!</h2>
+              <div className="mb-3 rounded-2xl border-2 border-amber bg-amber/15 px-3 py-3 text-center">
+                <div className="text-[11px] font-black uppercase tracking-wide text-ink/50">Tu {state.equity}% de {state.startupName} vale</div>
+                <div className="text-4xl font-black tabular-nums sm:text-5xl">{money((d.valuation * state.equity) / 100)}</div>
+              </div>
+              <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+                {[
+                  ["Días", String(state.day)],
+                  ["Usuarios", num(state.stats.peakUsers)],
+                  ["Features", String(state.done.length)],
+                ].map(([k, v]) => (
+                  <div key={k} className="rounded-xl border-2 border-ink/10 bg-white px-1 py-2">
+                    <div className="text-[9px] font-black uppercase tracking-wide text-ink/45">{k}</div>
+                    <div className="text-base font-black tabular-nums">{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : "🪑"}</div>
+              <h2 className="mb-1 text-xl font-black">{state.gameOver === "bankrupt" ? "Cerró la startup" : "Te reemplazaron"}</h2>
+              <p className="mb-3 text-sm text-ink/70">
+                {state.gameOver === "fired"
+                  ? `El board puso otro CEO en tu silla. ${state.startupName} sigue existiendo sin vos, y tu ${state.equity}% ahora vale ${money((d.valuation * state.equity) / 100)}.`
+                  : `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`}
+              </p>
+            </>
+          )}
           {!game.userId && supabaseEnabled() && (
             <div className="mb-3 rounded-xl border-2 border-indigo/25 bg-indigo/5 p-3 text-left">
               <p className="mb-2 text-xs font-bold">
@@ -350,10 +380,14 @@ function MenuItem({ children, onClick }: { children: React.ReactNode; onClick: (
   );
 }
 
-function Modal({ children }: { children: React.ReactNode }) {
+function Modal({ children, centrado = false }: { children: React.ReactNode; centrado?: boolean }) {
   return (
-    <div role="dialog" aria-modal className="fixed inset-0 z-30 flex items-end justify-center bg-ink/50 p-3 sm:items-center">
-      <div className="pop card w-full max-w-md">{children}</div>
+    <div
+      role="dialog"
+      aria-modal
+      className={`fixed inset-0 z-30 flex justify-center overflow-y-auto p-3 ${centrado ? "items-center bg-ink/70" : "items-end bg-ink/50 sm:items-center"}`}
+    >
+      <div className={`pop card w-full ${centrado ? "my-auto max-w-lg border-amber" : "max-w-md"}`}>{children}</div>
     </div>
   );
 }
