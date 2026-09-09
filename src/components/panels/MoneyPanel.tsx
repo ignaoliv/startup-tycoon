@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { useState } from "react";
-import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignAvailable, campaignCooldown, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignAvailable, campaignCooldown, factorVentana, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
 import { OFFICES, STAGES } from "@/lib/game/data";
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
@@ -15,6 +15,7 @@ export function MoneyPanel({ game }: { game: Game }) {
   const canRaise = next && next.raise > 0 && d.valuation >= next.minValuation;
   const [confirmarRonda, setConfirmarRonda] = useState(false);
   const [confirmarIpo, setConfirmarIpo] = useState(false);
+  const ventana = factorVentana(s);
   const puedeIpo = d.valuation >= tuning.ipoValuation;
   const porcentajeIpo = Math.floor((d.valuation / tuning.ipoValuation) * 100);
   const nextOffice = OFFICES[s.office + 1];
@@ -34,6 +35,35 @@ export function MoneyPanel({ game }: { game: Game }) {
           <Li l="Servidores" v={money(-d.serverMonth) + "/mes"} tone="bad" />
           <Li l="Neto" v={money(d.netDay * 30, { sign: d.netDay >= 0 }) + "/mes"} tone={d.netDay >= 0 ? "good" : "bad"} bold />
         </ul>
+        {s.done.includes("mvp") && (
+        <div className="mt-3 rounded-xl border-2 border-ink/15 bg-sand/50 px-3 py-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-[10px] font-bold uppercase tracking-wide text-ink/50">Precio por usuario</div>
+              <div className="text-lg font-black tabular-nums">
+                {money(d.arpu)}<span className="text-xs font-bold text-ink/50">/mes</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Btn size="sm" variant="ghost" disabled={s.precio <= 0.6} onClick={() => game.mutate((st) => void (st.precio = Math.max(0.6, +(st.precio - 0.1).toFixed(2))))}>
+                −
+              </Btn>
+              <span className="w-12 text-center text-xs font-black tabular-nums">{Math.round(s.precio * 100)}%</span>
+              <Btn size="sm" variant="ghost" disabled={s.precio >= 2} onClick={() => game.mutate((st) => void (st.precio = Math.min(2, +(st.precio + 0.1).toFixed(2))))}>
+                +
+              </Btn>
+            </div>
+          </div>
+          {s.precio !== 1 && (
+            <div className={`mt-1 text-[11px] font-bold ${s.precio > 1 ? "text-amber" : "text-indigo"}`}>
+              {s.precio > 1
+                ? `Cobrás ${Math.round((s.precio - 1) * 100)}% más, pero cuesta más venderlo y se te van antes.`
+                : `Cobrás ${Math.round((1 - s.precio) * 100)}% menos: entra más gente y se queda más.`}
+            </div>
+          )}
+        </div>
+        )}
+
         <div className="mt-3 space-y-1.5">
           {CAMPAIGNS.filter((c) => s.users >= c.minUsers).map((c) => {
             const costo = c.cost(s);
@@ -86,6 +116,16 @@ export function MoneyPanel({ game }: { game: Game }) {
             </Btn>
           </>
         )}
+        {ventana < 0.995 && (
+          <div className="mt-3 rounded-xl border-2 border-red/40 bg-red/10 px-3 py-2">
+            <div className="text-[11px] font-black uppercase tracking-wide text-red">La ventana se cierra</div>
+            <div className="text-sm font-bold">
+              Tu empresa vale el <b>{Math.round(ventana * 100)}%</b> de lo que valdría antes.
+            </div>
+            <div className="text-[11px] text-ink/60">Cada día que pasa vale un poco menos. Salir a bolsa hoy te deja {money((d.valuation * s.equity) / 100)}.</div>
+          </div>
+        )}
+
         {/* el camino a la bolsa se ve desde el día 1: no hace falta haber
             levantado rondas, y el que no quiere diluirse necesita ver su meta */}
         <div className="mt-3 border-t-2 border-ink/10 pt-2">

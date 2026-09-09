@@ -79,6 +79,10 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     reactiveCd: {},
     campaignCd: {},
     runSaved: false,
+    precio: 1,
+    conInvierno: tuning.inviernoDesde > 0,
+    officeMax: 0,
+    escenaVista: [],
     lastShipDay: 1,
     idleDays: 0,
     hypeHighDays: 0,
@@ -138,7 +142,8 @@ export function derive(s: GameState): Derived {
   }
   const hasMvp = s.done.includes("mvp");
   const quality = clamp(fx.quality + designPts * 4 - s.bugs * 0.6, 0, 100);
-  const arpu = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) : 0;
+  const precio = s.precio ?? 1;
+  const arpu = hasMvp ? Math.max(0.5, 1.5 + sector.arpu + fx.arpu + salesPts * 0.25) * precio : 0;
   const mrr = s.users * arpu;
   const revenueDay = mrr / 30;
   const salariesMonth = s.employees.reduce((a, e) => a + e.salary, 0) * overheadCosto;
@@ -154,11 +159,24 @@ export function derive(s: GameState): Derived {
   const saturation = Math.max(0, 1 - s.users / (sector.tam * tuning.tamMul)); // el mercado se agota
   const base = hasMvp ? 2 + mktPts * 3 + s.hype * 0.2 : 0;
   const viral = hasMvp ? s.users * 0.0025 * (quality / 100) * (0.4 + s.hype / 100) : 0;
-  const newUsersDay = (base + viral) * growthMul * saturation;
-  const churnRate = clamp(0.012 + s.bugs * 0.0008 - fx.churn - designPts * 0.0008, 0.003, 0.15);
+  // un producto más caro cuesta más venderlo: el precio pega en la adquisición,
+  // que es donde realmente duele, y no solo en el churn
+  const newUsersDay = (base + viral) * growthMul * saturation * Math.pow(precio, -tuning.precioElasticidad);
+  // el churn escala con el precio, no suma un fijo: si no, subirlo siempre
+  // conviene y deja de ser una decisión
+  const churnRate = clamp(
+    (0.012 + s.bugs * 0.0008 - fx.churn - designPts * 0.0008) * Math.pow(precio, tuning.precioElasticidad * 0.5),
+    0.003,
+    0.15,
+  );
   const churnDay = s.users * churnRate;
   const stage = STAGES[s.stage];
-  const valuation = Math.max(0, mrr * 12 * stage.multiple + s.users * 8 + Math.max(0, s.cash) * 0.5 + s.done.length * 5000);
+  // la ventana de salida se va cerrando: el mismo negocio vale menos
+  const ventana = factorVentana(s);
+  const valuation = Math.max(
+    0,
+    (mrr * 12 * stage.multiple + s.users * 8 + Math.max(0, s.cash) * 0.5 + s.done.length * 5000) * ventana,
+  );
   const featureDaysLeft = s.currentFeature
     ? devPts > 0
       ? Math.ceil(((FEATURES.find((f) => f.id === s.currentFeature)?.cost ?? 0) - s.featureProgress) / devPts)
@@ -169,6 +187,21 @@ export function derive(s: GameState): Derived {
     salariesMonth, rentMonth, serverMonth, netDay: revenueDay - costDay, newUsersDay, churnDay, valuation,
     capacity: office.capacity, featureDaysLeft,
   };
+}
+
+/** Cuánto del mercado de tu sector ya tenés. 0..1 */
+export function penetracion(s: GameState) {
+  const sector = SECTORS.find((x) => x.id === s.sector)!;
+  return Math.min(1, s.users / (sector.tam * tuning.tamMul));
+}
+
+/** La ventana de salida se va cerrando: el múltiplo al que te valúan se cae solo. */
+export function factorVentana(s: GameState) {
+  // las partidas viejas siguen como estaban: nadie se despierta con la empresa
+  // valiendo un tercio de un día para el otro
+  if (!s.conInvierno || !tuning.inviernoDesde || s.day < tuning.inviernoDesde) return 1;
+  const avance = Math.min(1, (s.day - tuning.inviernoDesde) / tuning.inviernoDias);
+  return 1 - (1 - tuning.inviernoPiso) * avance;
 }
 
 export function featureAvailable(s: GameState, id: string) {
@@ -437,6 +470,7 @@ export function upgradeOffice(s: GameState): string | null {
   if (s.cash < next.cost) return `Necesitás $${next.cost.toLocaleString("es-AR")}.`;
   s.cash -= next.cost;
   s.office += 1;
+  s.officeMax = Math.max(s.officeMax ?? 0, s.office);
   s.morale = clamp(s.morale + 10, 0, 100);
   addLog(s, `${next.icon} Mudanza a ${next.name}. Lugar para ${next.capacity} personas.`, "good");
   return null;

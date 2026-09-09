@@ -25,6 +25,11 @@ export interface Tuning {
   boardFailsToFire: number; // cuántas metas seguidas podés fallar antes de que te echen
   tamMul: number; // tamaño del mercado (1 = como está definido por sector)
   infraExtra: number; // costo de infraestructura que crece más rápido que los usuarios
+  precioElasticidad: number; // cuánto castiga el churn subir el precio (1 = neutro, >1 castiga)
+  // --- invierno: el múltiplo se cae solo a partir de cierto día
+  inviernoDesde: number; // día en que arranca (0 = apagado)
+  inviernoDias: number; // en cuántos días llega al piso
+  inviernoPiso: number; // hasta dónde cae (0.35 = vale un tercio)
   bankruptLimit: number; // días en rojo antes de cerrar
   startCash: number; // plata inicial
 }
@@ -53,6 +58,10 @@ export const DEFAULT_TUNING: Tuning = {
   boardFailsToFire: 1,
   tamMul: 0.5,
   infraExtra: 0.005,
+  precioElasticidad: 0.8,
+  inviernoDesde: 600,
+  inviernoDias: 250,
+  inviernoPiso: 0.35,
   bankruptLimit: 12,
   startCash: 30000,
 };

@@ -5,7 +5,7 @@ import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { DEFAULT_TUNING, loadTuning, resetTuning, saveTuning, tuning, type Tuning } from "@/lib/game/tuning";
 import { clearRuns, getRuns, playerId, type RunRecord } from "@/lib/analytics";
 import { getSupabase } from "@/lib/supabase/client";
-import { fetchStatsGlobales, type RunsResumen, type RunsSector } from "@/lib/storage";
+import { fetchStatsActos, fetchStatsGlobales, type RunsActo, type RunsResumen, type RunsSalida, type RunsSector } from "@/lib/storage";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
 import { money, num } from "@/lib/game/format";
 
@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [soloConTexto, setSoloConTexto] = useState(false);
   const [globales, setGlobales] = useState<{ resumen: RunsResumen; sectores: RunsSector[] } | null>(null);
   const [errorGlobal, setErrorGlobal] = useState(false);
+  const [actos, setActos] = useState<{ actos: RunsActo[]; salidas: RunsSalida[] } | null>(null);
 
   useEffect(() => {
     const id = setTimeout(() => {
@@ -53,6 +54,7 @@ export default function AdminPage() {
       console.error(e);
       setErrorGlobal(true);
     });
+    fetchStatsActos(sb).then(setActos).catch(console.error);
   }, []);
 
   // el feedback vive en Supabase y solo lo puede leer el admin (RLS por mail)
@@ -167,6 +169,45 @@ export default function AdminPage() {
               })()
             )}
           </Card>
+
+          {actos && actos.actos.length > 0 && (
+            <Card title="🎬 Por acto">
+              <ul className="space-y-1 text-[11px]">
+                {[...actos.actos].sort((a, b) => a.acto.localeCompare(b.acto)).map((a) => (
+                  <li key={a.acto} className="rounded-lg bg-ink/5 px-2 py-1.5">
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 truncate font-bold">Acto {a.acto}</span>
+                      <span className="text-ink/50">{num(a.partidas)} partidas</span>
+                      <span className="w-12 shrink-0 text-right text-sm font-black tabular-nums">
+                        {Math.round((a.ganadas / a.partidas) * 100)}%
+                      </span>
+                    </div>
+                    <div className="mt-0.5 flex flex-wrap gap-1 text-ink/50">
+                      <Pill>día {a.dias_prom}</Pill>
+                      <Pill>equipo {a.equipo_prom}</Pill>
+                      {a.precio_prom !== null && <Pill>precio {a.precio_prom}×</Pill>}
+                      {a.con_invierno > 0 && <Pill tone="bad">{a.con_invierno} con invierno</Pill>}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+              {actos.salidas.length > 0 && (
+                <>
+                  <div className="mt-3 text-[11px] font-black uppercase tracking-wide text-ink/40">Cuándo salen a bolsa</div>
+                  <ul className="mt-1 space-y-1 text-[11px]">
+                    {actos.salidas.map((s) => (
+                      <li key={String(s.invierno)} className="flex items-center gap-2 rounded-lg bg-ink/5 px-2 py-1">
+                        <span className="flex-1 font-bold">{s.invierno ? "con invierno" : "sin invierno"}</span>
+                        <span className="text-ink/50">{num(s.partidas)} IPOs</span>
+                        <span className="tabular-nums">día {s.dia_p25} · <b>{s.dia_mediana}</b> · {s.dia_p75}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-[10px] text-ink/40">percentiles 25 · mediana · 75</p>
+                </>
+              )}
+            </Card>
+          )}
 
           <Card title="Solo este navegador">
             {runs.length === 0 ? (

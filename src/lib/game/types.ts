@@ -153,6 +153,10 @@ export interface GameState {
   reactiveCd: Record<string, number>;
   campaignCd: Record<string, number>; // último día que corriste cada campaña
   runSaved: boolean; // la partida terminada ya se mandó al historial
+  precio: number; // multiplicador de precio que elige el jugador (1 = el de siempre)
+  conInvierno: boolean; // la partida nació con el invierno activo
+  officeMax: number; // la oficina más grande a la que llegó, para medir el acto
+  escenaVista: number[]; // oficinas cuya escena de mudanza ya se mostró
   lastShipDay: number;
   idleDays: number;
   hypeHighDays: number;

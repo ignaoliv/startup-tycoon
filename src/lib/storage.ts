@@ -27,6 +27,10 @@ export function sanitize(s: GameState): GameState {
   s.reactiveCd ??= {};
   s.campaignCd ??= {};
   s.runSaved ??= false;
+  s.precio ??= 1;
+  s.conInvierno ??= false;
+  s.officeMax ??= s.office;
+  s.escenaVista ??= [];
   s.lastShipDay ??= s.day;
   s.idleDays ??= 0;
   s.hypeHighDays ??= 0;
@@ -176,6 +180,9 @@ export async function saveCloud(sb: SupabaseClient, userId: string, s: GameState
 
 export type RunRow = {
   game_id: string;
+  office_max: number;
+  precio: number;
+  invierno: boolean;
   name: string; sector: string; idea: string; ended_as: string; day: number;
   valuation: number; peak_users: number; mrr: number; equity: number;
   team_size: number; stage: number; raised: number; features: number;
@@ -185,6 +192,9 @@ export type RunRow = {
 export function buildRun(s: GameState, d: Derived, endedAs: string): RunRow {
   return {
     game_id: s.id,
+    office_max: Math.max(s.officeMax ?? 0, s.office),
+    precio: s.precio ?? 1,
+    invierno: !!s.conInvierno,
     name: s.startupName,
     sector: s.sector,
     idea: s.idea,
@@ -348,6 +358,34 @@ export interface RunsSector {
  * como máximo 1000 filas: contando del lado del cliente, el panel se quedaría
  * clavado en 1000 partidas para siempre.
  */
+export interface RunsActo {
+  acto: string;
+  partidas: number;
+  ganadas: number;
+  dias_prom: number;
+  equipo_prom: number;
+  precio_prom: number | null;
+  con_invierno: number;
+}
+
+export interface RunsSalida {
+  invierno: boolean;
+  partidas: number;
+  dia_p25: number;
+  dia_mediana: number;
+  dia_p75: number;
+}
+
+/** Métricas por acto y cuándo se bajan. Las cuentas las hace Postgres. */
+export async function fetchStatsActos(sb: SupabaseClient) {
+  const [actos, salidas] = await Promise.all([
+    sb.from("runs_por_acto").select("*"),
+    sb.from("runs_salidas").select("*"),
+  ]);
+  if (actos.error) throw actos.error;
+  return { actos: (actos.data ?? []) as RunsActo[], salidas: (salidas.data ?? []) as RunsSalida[] };
+}
+
 export async function fetchStatsGlobales(sb: SupabaseClient) {
   const [resumen, sectores] = await Promise.all([
     sb.from("runs_resumen").select("*").single(),

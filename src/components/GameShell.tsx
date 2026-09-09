@@ -10,6 +10,8 @@ import { SocialPanel } from "@/components/panels/SocialPanel";
 import { Btn, Card, Stat } from "@/components/ui";
 import { Tour, isTourDone } from "@/components/Tour";
 import { Confeti } from "@/components/Confeti";
+import { EscenaMudanza } from "@/components/EscenaMudanza";
+import { escenaDe } from "@/lib/game/escenas";
 import { AuthButton } from "@/components/AuthButton";
 import { signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import FeedbackModal from "@/components/FeedbackModal";
@@ -50,6 +52,21 @@ export function GameShell() {
   };
   const [feedback, setFeedback] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
+  const [escena, setEscena] = useState<number | null>(null);
+
+  // al mudarse, la escena del acto. Una sola vez por oficina y por partida.
+  const oficinaActual = game.state?.office ?? 0;
+  useEffect(() => {
+    const s = game.state;
+    if (!s || oficinaActual === 0) return;
+    if (s.escenaVista?.includes(oficinaActual) || !escenaDe(oficinaActual)) return;
+    const id = setTimeout(() => {
+      game.mutate((st) => void (st.escenaVista = [...(st.escenaVista ?? []), oficinaActual]));
+      setEscena(oficinaActual);
+    }, 0);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [oficinaActual]);
   const [linkCopiado, setLinkCopiado] = useState(false);
   const tourChecked = useRef(false);
   const gs = game.state;
@@ -69,8 +86,8 @@ export function GameShell() {
     }
   }, [gs]);
   useEffect(() => {
-    setPaused(tour);
-  }, [tour, setPaused]);
+    setPaused(tour || escena !== null);
+  }, [tour, escena, setPaused]);
   const { state, derived } = game;
 
   // auto-post de hitos al muro
@@ -336,6 +353,8 @@ export function GameShell() {
           </div>
         </Modal>
       )}
+
+      {escena !== null && state && <EscenaMudanza state={state} onClose={() => setEscena(null)} />}
 
       {feedback && (
         <FeedbackModal

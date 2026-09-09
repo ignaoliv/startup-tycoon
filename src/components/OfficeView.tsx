@@ -405,7 +405,19 @@ function Desk({ e, x, y, s, scene, showName }: { e: Employee; x: number; y: numb
   );
 }
 
-export function OfficeView({ state, compact = false }: { state: GameState; compact?: boolean }) {
+export function OfficeView({
+  state,
+  compact = false,
+  llegando = false,
+  ritmo = 0,
+}: {
+  state: GameState;
+  compact?: boolean;
+  /** para la escena de mudanza: la gente aparece de a una en vez de estar ya */
+  llegando?: boolean;
+  ritmo?: number;
+}) {
+  const llegando0 = ritmo > 0; // estamos dentro de la escena de mudanza
   const office = OFFICES[state.office];
   const scene = SCENES[state.office] ?? SCENES[0];
   const emps = state.employees;
@@ -447,7 +459,7 @@ export function OfficeView({ state, compact = false }: { state: GameState; compa
 
   return (
     <div className="w-full">
-      <svg viewBox={`0 0 ${W} ${H}`} className={`block w-full ${compact ? "max-h-52" : "max-h-[420px]"}`} role="img" aria-label={`${office.name}: ${emps.length} de ${office.capacity} lugares`}>
+      <svg viewBox={`0 0 ${W} ${H}`} className={`block w-full ${compact ? "max-h-52" : ritmo > 0 ? "" : "max-h-[420px]"}`} role="img" aria-label={`${office.name}: ${emps.length} de ${office.capacity} lugares`}>
         <defs>
           <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
@@ -472,9 +484,14 @@ export function OfficeView({ state, compact = false }: { state: GameState; compa
           <path d={`M120 ${H} L${W - 120} ${H} L${W - 190} ${FLOOR_Y + 18} L190 ${FLOOR_Y + 18} Z`} fill={scene.rug} opacity={0.75} />
 
           {/* gente */}
-          {placed.map((p) =>
+          {placed.map((p, i) =>
             p.e ? (
-              <Desk key={p.key} e={p.e} x={p.x} y={p.y} s={p.s} scene={scene} showName />
+              <g
+                key={p.key}
+                style={ritmo > 0 ? { opacity: llegando ? 1 : 0, transition: `opacity 260ms ease-out ${i * ritmo}ms` } : undefined}
+              >
+                <Desk e={p.e} x={p.x} y={p.y} s={p.s} scene={scene} showName />
+              </g>
             ) : (
               <EscritorioLibre key={p.key} x={p.x} y={p.y} s={p.s} scene={scene} />
             ),
@@ -510,9 +527,11 @@ export function OfficeView({ state, compact = false }: { state: GameState; compa
         <rect width={W} height={H} rx={12} fill="none" stroke="rgba(31,27,22,0.15)" strokeWidth={3} />
       </svg>
 
-      <div className="mt-1 text-center text-sm font-black text-ink/70">
-        {office.icon} {office.name} · {emps.length}/{office.capacity}
-      </div>
+      {!llegando0 && (
+        <div className="mt-1 text-center text-sm font-black text-ink/70">
+          {office.icon} {office.name} · {emps.length}/{office.capacity}
+        </div>
+      )}
     </div>
   );
 }
