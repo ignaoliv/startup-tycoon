@@ -119,7 +119,7 @@ export function GameShell() {
   const sector = SECTORS.find((s) => s.id === state.sector);
 
   return (
-    <div className="mx-auto flex min-h-dvh max-w-6xl flex-col">
+    <div className={`mx-auto flex min-h-dvh max-w-6xl flex-col ${state.inviernoDia ? "invierno" : ""}`}>
       {/* header */}
       <header className="sticky top-0 z-20 border-b-2 border-ink/10 bg-cream/95 backdrop-blur">
         <div className="flex items-center gap-2 px-3 py-2">

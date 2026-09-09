@@ -80,7 +80,9 @@ export function newGame(opts: { startupName: string; founderName: string; idea?:
     campaignCd: {},
     runSaved: false,
     precio: 1,
-    conInvierno: tuning.inviernoDesde > 0,
+    conInvierno: true,
+    inviernoDia: 0,
+    golpesHype: [],
     officeMax: 0,
     escenaVista: [],
     lastShipDay: 1,
@@ -189,6 +191,14 @@ export function derive(s: GameState): Derived {
   };
 }
 
+/**
+ * Reputación ganada: una empresa con miles de usuarios no vuelve a cero porque
+ * dejaste de tuitear. El piso sube con el tamaño de la oficina.
+ */
+export function pisoHype(s: GameState) {
+  return s.office >= 4 ? 40 : s.office >= 2 ? 20 : 0;
+}
+
 /** Cuánto del mercado de tu sector ya tenés. 0..1 */
 export function penetracion(s: GameState) {
   const sector = SECTORS.find((x) => x.id === s.sector)!;
@@ -197,10 +207,10 @@ export function penetracion(s: GameState) {
 
 /** La ventana de salida se va cerrando: el múltiplo al que te valúan se cae solo. */
 export function factorVentana(s: GameState) {
-  // las partidas viejas siguen como estaban: nadie se despierta con la empresa
-  // valiendo un tercio de un día para el otro
-  if (!s.conInvierno || !tuning.inviernoDesde || s.day < tuning.inviernoDesde) return 1;
-  const avance = Math.min(1, (s.day - tuning.inviernoDesde) / tuning.inviernoDias);
+  // arranca el día que cae el invierno de la industria. Las partidas viejas no
+  // lo tienen: nadie se despierta con la empresa valiendo un tercio.
+  if (!s.conInvierno || !s.inviernoDia) return 1;
+  const avance = Math.min(1, (s.day - s.inviernoDia) / tuning.inviernoDias);
   return 1 - (1 - tuning.inviernoPiso) * avance;
 }
 
@@ -270,8 +280,10 @@ export function tick(s: GameState, quiet = false) {
     s.cash += div;
   }
 
-  // hype y moral
-  s.hype = clamp(s.hype - 0.7 + d.mktPts * 0.25, 0, 100);
+  // hype y moral. La caída escala con la altura: sostenerse arriba cuesta cada
+  // vez más, y abajo el piso te sostiene solo.
+  const caidaHype = 0.2 + 1.8 * Math.pow(s.hype / 100, 2);
+  s.hype = clamp(s.hype - caidaHype + d.mktPts * 0.25, pisoHype(s), 100);
   const targetMorale = OFFICES[s.office].morale + d.opsPts * 2 - (s.cash < 0 ? 25 : 0) - (s.employees.length > d.capacity ? 15 : 0);
   s.morale = clamp(s.morale + (targetMorale - s.morale) * 0.05, 0, 100);
 
@@ -362,11 +374,49 @@ function eventInterval(s: GameState): [number, number] {
 }
 
 /** Decide si hoy aparece un popup: primero los reactivos, después el calendario. */
+/**
+ * Los golpes salen entre el día 120 y el final, espaciados. Cuántos toquen se
+ * sortea al arrancar (1 a 3) y siempre incluyen el invierno de la industria,
+ * que va al final porque a partir de ahí se cierra la ventana de salida.
+ */
+function proximoGolpe(s: GameState): string | null {
+  const dados = s.golpesHype ?? [];
+  const cuantos = 1 + (Math.abs(hashId(s.id)) % 3); // 1, 2 o 3, estable por partida
+  if (dados.length >= cuantos) return null;
+  if (s.day < 120 || s.day - s.lastEventDay < 45) return null;
+
+  const esElUltimo = dados.length === cuantos - 1;
+  if (esElUltimo) {
+    // el invierno cierra la serie, y no antes del día 300
+    return s.day >= 300 && !dados.includes("golpe_invierno") ? "golpe_invierno" : null;
+  }
+  const menores = EVENTS.filter((e) => e.id.startsWith("golpe_") && e.id !== "golpe_invierno" && !dados.includes(e.id));
+  if (!menores.length) return null;
+  return menores[Math.floor(Math.random() * menores.length)].id;
+}
+
+/** Número estable a partir del id de la partida, para que el sorteo no cambie. */
+function hashId(id: string) {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return h;
+}
+
 function scheduleEvent(s: GameState) {
   if (s.pendingEvent) return;
   const capped = s.eventCount >= tuning.cap;
   const sep = capped ? tuning.separation * 2 : tuning.separation;
   if (s.day - s.lastEventDay < sep) return;
+
+  // golpes de reputación: 1 a 3 por partida, sorteados al azar y sin repetir.
+  // El invierno de la industria entra siempre, y va último porque es el que
+  // estructura el final.
+  const golpe = proximoGolpe(s);
+  if (golpe) {
+    fireEvent(s, golpe);
+    s.golpesHype = [...(s.golpesHype ?? []), golpe];
+    return;
+  }
 
   // reactivos: consecuencia de cómo venís jugando
   const ctx = reactiveCtx(s);
@@ -385,6 +435,8 @@ function scheduleEvent(s: GameState) {
   const disponibles = EVENTS.filter(
     (e) =>
       !e.reactive &&
+      // los golpes de reputación tienen su propio planificador
+      !e.id.startsWith("golpe_") &&
       (e.sector === undefined || e.sector === s.sector) &&
       (e.minDay ?? 0) <= s.day &&
       (e.minUsers ?? 0) <= s.users &&

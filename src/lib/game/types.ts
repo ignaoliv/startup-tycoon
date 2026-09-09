@@ -155,6 +155,8 @@ export interface GameState {
   runSaved: boolean; // la partida terminada ya se mandó al historial
   precio: number; // multiplicador de precio que elige el jugador (1 = el de siempre)
   conInvierno: boolean; // la partida nació con el invierno activo
+  inviernoDia: number; // el día que cayó el invierno de la industria (0 = todavía no)
+  golpesHype: string[]; // los golpes de reputación que ya salieron
   officeMax: number; // la oficina más grande a la que llegó, para medir el acto
   escenaVista: number[]; // oficinas cuya escena de mudanza ya se mostró
   lastShipDay: number;

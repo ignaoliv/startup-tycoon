@@ -151,7 +151,9 @@ export function MoneyPanel({ game }: { game: Game }) {
         {s.boardGoal && (() => {
           const faltanDias = Math.max(0, s.boardGoal.dueDay - s.day);
           const faltanUsers = Math.max(0, Math.round(s.boardGoal.users - s.users));
-          const apretado = faltanDias <= 20 && faltanUsers > 0;
+          // avisa cuando todavía se puede hacer algo, no cuando ya es tarde:
+          // o queda poco tiempo, o falta demasiado para lo que venís creciendo
+          const apretado = faltanUsers > 0 && (faltanDias <= 25 || faltanUsers > s.users * 0.6);
           return (
             <div className={`mt-2 rounded-lg border-2 px-2 py-1.5 text-[11px] ${apretado ? "border-red bg-red/10" : "border-ink/15 bg-sand/60"}`}>
               <b>🪑 Meta del board:</b> llegar a {Math.round(s.boardGoal.users).toLocaleString("es-AR")} usuarios para el día {s.boardGoal.dueDay}.{" "}

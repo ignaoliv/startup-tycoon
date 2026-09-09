@@ -29,6 +29,8 @@ export function sanitize(s: GameState): GameState {
   s.runSaved ??= false;
   s.precio ??= 1;
   s.conInvierno ??= false;
+  s.inviernoDia ??= 0;
+  s.golpesHype ??= [];
   s.officeMax ??= s.office;
   s.escenaVista ??= [];
   s.lastShipDay ??= s.day;

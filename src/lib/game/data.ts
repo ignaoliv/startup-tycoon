@@ -1,6 +1,10 @@
 import type { FeatureDef, GameEventDef, OfficeDef, Role, SectorDef, StageDef } from "./types";
 import { tuning } from "./tuning";
 
+/** El piso de reputación según la oficina. Duplicado a propósito: importar el
+ * motor desde acá haría un ciclo. */
+const pisoHypeDe = (s: { office: number }) => (s.office >= 4 ? 40 : s.office >= 2 ? 20 : 0);
+
 /**
  * Duración de un día. El arranque es la parte con menos cosas para hacer, así
  * que pasa rápido; después se estabiliza para que se pueda seguir el ritmo.
@@ -502,6 +506,138 @@ export const EVENTS: GameEventDef[] = [
     choices: [
       { label: "Migrar ya", desc: "-progreso ahora, agentes mejoran", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 5); for (const e of s.employees) if (e.role === "ai" && e.level < 3) e.level = (e.level + 1) as 1 | 2 | 3; return "Tus agentes subieron de nivel. Y de precio, seguramente."; } },
       { label: "Esperar", desc: "No frenás el desarrollo", apply: (s) => { s.featureProgress += 5; return "Seguís con lo viejo y sin parar. Twitter se burla un poco."; } },
+    ],
+  },
+
+  // ============ GOLPES DE REPUTACIÓN ============
+  // Salen 1 a 3 por partida y no se repiten. El invierno de la industria entra
+  // siempre: es el que estructura el final de la partida.
+  {
+    id: "golpe_invierno",
+    title: "Se acabó la fiesta",
+    icon: "❄️",
+    text: "Los fondos frenaron todo. Tu sector pasó de ser el futuro a ser «eso que se infló hace dos años». No es tu culpa, pero es tu problema.",
+    choices: [
+      {
+        label: "Aguantar el chaparrón",
+        desc: "Perdés usuarios y la reputación se va al piso",
+        apply: (s) => {
+          const lost = Math.round(s.users * 0.25);
+          s.users -= lost;
+          s.hype = Math.max(pisoHypeDe(s), s.hype - 45);
+          s.inviernoDia = s.day;
+          return `Te agachaste. -${lost.toLocaleString("es-AR")} usuarios y el mercado dejó de mirarte.`;
+        },
+      },
+      {
+        label: "Salir a explicar que ustedes son distintos",
+        desc: "Cuesta plata. 55%: te creen",
+        chance: 0.55,
+        apply: (s, ok) => {
+          s.cash -= Math.round(20000 + s.users * 0.6);
+          s.inviernoDia = s.day;
+          if (ok) {
+            const lost = Math.round(s.users * 0.08);
+            s.users -= lost;
+            s.hype = Math.max(pisoHypeDe(s), s.hype - 15);
+            return `Te creyeron. Solo perdiste ${lost.toLocaleString("es-AR")} usuarios mientras el resto del sector se prendía fuego.`;
+          }
+          const lost = Math.round(s.users * 0.32);
+          s.users -= lost;
+          s.hype = Math.max(pisoHypeDe(s), s.hype - 50);
+          return `Nadie te creyó, y encima gastaste. -${lost.toLocaleString("es-AR")} usuarios.`;
+        },
+      },
+    ],
+  },
+  {
+    id: "golpe_hilo",
+    title: "El hilo",
+    icon: "🧵",
+    text: "Un exempleado escribió cuarenta tuits sobre cómo es trabajar acá. Tiene capturas. Algunas son tuyas.",
+    choices: [
+      { label: "Contestar en público", desc: "60%: se entiende", chance: 0.6, apply: (s, ok) => { if (ok) { s.hype = Math.max(pisoHypeDe(s), s.hype - 8); s.morale = Math.min(100, s.morale + 5); return "Contestaste con calma y quedaste mejor parado que él."; } s.hype = Math.max(pisoHypeDe(s), s.hype - 32); s.morale = Math.max(0, s.morale - 10); return "Contestaste caliente. Ahora el hilo tiene una segunda parte."; } },
+      { label: "No decir nada", desc: "Se apaga solo, pero deja marca", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 20); s.morale = Math.max(0, s.morale - 6); return "En tres días nadie se acordaba. Adentro, un rato más."; } },
+    ],
+  },
+  {
+    id: "golpe_demo",
+    title: "La nota",
+    icon: "📰",
+    text: "Un periodista te pidió una demo y se le rompió en vivo. Tituló: «Probé la startup del momento y no funcionó».",
+    choices: [
+      { label: "Arreglarlo y ofrecerle otra demo", desc: "Frena el roadmap unos días", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 40); s.bugs = Math.max(0, s.bugs - 3); s.hype = Math.max(pisoHypeDe(s), s.hype - 12); return "Le mostraste de nuevo y escribió una segunda nota, mejor. El roadmap pagó el costo."; } },
+      { label: "Decir que fue un caso borde", desc: "Nadie compra la explicación", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 28); return "«Caso borde» quedó como meme por una semana."; } },
+    ],
+  },
+  {
+    id: "golpe_vecino",
+    title: "El vecino",
+    icon: "🪦",
+    text: "Quebró la startup más parecida a la tuya. Ahora te preguntan a vos, y todos usan la misma palabra: burbuja.",
+    choices: [
+      { label: "Mostrar los números", desc: "Cuesta plata en auditoría", apply: (s) => { s.cash -= 15000; s.hype = Math.max(pisoHypeDe(s), s.hype - 6); return "Publicaste las métricas auditadas. Los que dudaban se callaron."; } },
+      { label: "Tomar distancia en público", desc: "50%: te sale bien", chance: 0.5, apply: (s, ok) => { if (ok) { s.hype = Math.min(100, s.hype + 6); return "Quedaste como el adulto de la industria."; } s.hype = Math.max(pisoHypeDe(s), s.hype - 25); return "Quedó como que te alegrabas. No cayó bien."; } },
+    ],
+  },
+  {
+    id: "golpe_datos",
+    title: "Los datos",
+    icon: "🕵️",
+    text: "Se filtró que los agentes entrenan con lo que escriben los usuarios. Estaba en los términos, pero nadie los lee.",
+    choices: [
+      { label: "Cortarlo y avisar", desc: "El producto empeora un poco", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 10); s.bugs += 3; return "Cortaste el entrenamiento. La calidad bajó, la confianza no."; } },
+      { label: "Aclarar que está en los términos", desc: "Técnicamente cierto", apply: (s) => { const lost = Math.round(s.users * 0.08); s.users -= lost; s.hype = Math.max(pisoHypeDe(s), s.hype - 30); return `«Está en los términos» nunca convenció a nadie. -${lost.toLocaleString("es-AR")} usuarios.`; } },
+    ],
+  },
+  {
+    id: "golpe_typo",
+    title: "El typo",
+    icon: "✍️",
+    text: "La campaña salió con un error de ortografía en la palabra «excelencia». Está en la vía pública de tres ciudades.",
+    choices: [
+      { label: "Bajar todo y reimprimir", desc: "Sale caro", apply: (s) => { s.cash -= Math.round(12000 + s.users * 0.4); s.hype = Math.max(pisoHypeDe(s), s.hype - 5); return "Lo bajaste en 48 horas. Salió una fortuna y casi nadie lo vio."; } },
+      { label: "Hacerse los que fue a propósito", desc: "45%: cuela como campaña", chance: 0.45, apply: (s, ok) => { if (ok) { s.hype = Math.min(100, s.hype + 12); return "Dijiste que era para ver quién prestaba atención. Te creyeron y anduvo mejor que la campaña."; } s.hype = Math.max(pisoHypeDe(s), s.hype - 22); return "Nadie te creyó. Ahora sos la marca del cartel con la falta de ortografía."; } },
+    ],
+  },
+  {
+    id: "golpe_influencer",
+    title: "El influencer",
+    icon: "📢",
+    text: "El que contrataste para el lanzamiento dijo una barbaridad al día siguiente. Tu logo está en todas las capturas.",
+    choices: [
+      { label: "Cortar el contrato y decirlo", desc: "Perdés lo que pagaste", apply: (s) => { s.cash -= 25000; s.hype = Math.max(pisoHypeDe(s), s.hype - 12); return "Cortaste rápido. Perdiste la plata pero no la reputación."; } },
+      { label: "Esperar a que pase", desc: "Nunca pasa", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 30); return "No pasó. Ahora sos «la marca que lo bancó»."; } },
+    ],
+  },
+  {
+    id: "golpe_anuncio",
+    title: "El anuncio",
+    icon: "🎯",
+    text: "Tu publicidad automática apareció al lado de un contenido que no querías. El algoritmo no tiene criterio.",
+    choices: [
+      { label: "Cortar toda la pauta automática", desc: "Perdés crecimiento un tiempo", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 8); const lost = Math.round(s.users * 0.03); s.users -= lost; return `Cortaste todo. -${lost.toLocaleString("es-AR")} usuarios y la pauta apagada.`; } },
+      { label: "Culpar a la plataforma", desc: "Es verdad, pero no alcanza", apply: (s) => { s.hype = Math.max(pisoHypeDe(s), s.hype - 20); return "Tenías razón y no le importó a nadie."; } },
+    ],
+  },
+  {
+    id: "golpe_caida",
+    title: "Ocho horas",
+    icon: "🔌",
+    text: "Se cayó el servicio ocho horas. Salió en las noticias. La causa fue un cambio que nadie revisó.",
+    choices: [
+      { label: "Escribir el postmortem público", desc: "Cuesta tiempo, gana respeto", apply: (s) => { s.featureProgress = Math.max(0, s.featureProgress - 30); s.bugs = Math.max(0, s.bugs - 5); s.hype = Math.max(pisoHypeDe(s), s.hype - 8); return "Contaste todo con detalle. Los devs del mundo te aplaudieron."; } },
+      { label: "Poner «ya está resuelto» y seguir", desc: "Hasta la próxima", apply: (s) => { const lost = Math.round(s.users * 0.06); s.users -= lost; s.hype = Math.max(pisoHypeDe(s), s.hype - 25); return `-${lost.toLocaleString("es-AR")} usuarios. Y la deuda sigue ahí.`; } },
+    ],
+  },
+  {
+    id: "golpe_bug",
+    title: "El bug",
+    icon: "🔓",
+    text: "Alguien encontró que podía ver datos de otros usuarios. Lo publicó antes de avisarte.",
+    choices: [
+      { label: "Frenar todo y arreglarlo", desc: "Se para el roadmap", apply: (s) => { s.featureProgress = 0; s.bugs = Math.max(0, s.bugs - 8); s.hype = Math.max(pisoHypeDe(s), s.hype - 15); return "Frenaste todo un día y lo cerraste. La gente lo valoró."; } },
+      { label: "Parchear rápido y no hacer ruido", desc: "40%: nadie más se entera", chance: 0.4, apply: (s, ok) => { if (ok) { s.hype = Math.max(pisoHypeDe(s), s.hype - 8); return "Lo parchaste de madrugada y no pasó a mayores."; } const lost = Math.round(s.users * 0.12); s.users -= lost; s.hype = Math.max(pisoHypeDe(s), s.hype - 35); return `Alguien más lo encontró y esta vez sí escaló. -${lost.toLocaleString("es-AR")} usuarios.`; } },
     ],
   },
 
