@@ -205,13 +205,27 @@ export function penetracion(s: GameState) {
   return Math.min(1, s.users / (sector.tam * tuning.tamMul));
 }
 
-/** La ventana de salida se va cerrando: el múltiplo al que te valúan se cae solo. */
+/**
+ * El invierno de la industria: el múltiplo al que te valúan se cae, toca fondo
+ * y después se recupera. Tiene tres tramos porque un invierno que no termina
+ * no es un susto, es un impuesto permanente sobre el que va más lento.
+ */
 export function factorVentana(s: GameState) {
-  // arranca el día que cae el invierno de la industria. Las partidas viejas no
-  // lo tienen: nadie se despierta con la empresa valiendo un tercio.
+  // arranca el día que cae el invierno. Las partidas viejas no lo tienen:
+  // nadie se despierta con la empresa valiendo un tercio.
   if (!s.conInvierno || !s.inviernoDia) return 1;
-  const avance = Math.min(1, (s.day - s.inviernoDia) / tuning.inviernoDias);
-  return 1 - (1 - tuning.inviernoPiso) * avance;
+  const desde = s.day - s.inviernoDia;
+  const piso = tuning.inviernoPiso;
+  if (desde < tuning.inviernoDias) return 1 - (1 - piso) * (desde / tuning.inviernoDias);
+  const enElFondo = desde - tuning.inviernoDias;
+  if (enElFondo < tuning.inviernoFondo) return piso;
+  const salida = Math.min(1, (enElFondo - tuning.inviernoFondo) / tuning.inviernoSalida);
+  return piso + (1 - piso) * salida;
+}
+
+/** Días que faltan para que se termine la partida, o null si no hay tope. */
+export function diasQueQuedan(s: GameState) {
+  return tuning.diaFinal ? Math.max(0, tuning.diaFinal - s.day) : null;
 }
 
 export function featureAvailable(s: GameState, id: string) {
@@ -309,8 +323,22 @@ export function tick(s: GameState, quiet = false) {
   s.idleDays = !s.currentFeature && s.done.includes("mvp") ? s.idleDays + 1 : 0;
   s.officeFullDays = s.employees.length >= OFFICES[s.office].capacity ? s.officeFullDays + 1 : 0;
 
+  // Varios eventos descuentan equity sin piso y en una partida larga se
+  // acumulan: sin esto se termina con -35% de la propia empresa.
+  s.equity = Math.max(1, s.equity);
+
   if (!quiet) scheduleEvent(s);
   else if (s.day >= s.nextEventDay) s.nextEventDay = s.day + Math.round(rnd(3, 8));
+
+  // el tope: ninguna partida pasa del último día
+  if (tuning.diaFinal && s.day >= tuning.diaFinal) {
+    s.gameOver = "timeout";
+    addLog(s, "⌛ Se terminó tu tiempo al frente de la empresa.", "bad");
+    return;
+  }
+  if (tuning.diaFinal && s.day === tuning.diaAviso) {
+    addLog(s, `⌛ Te quedan ${tuning.diaFinal - tuning.diaAviso} días. Lo que no pase ahora no pasa más.`, "bad");
+  }
 
   // el board mira si cumpliste lo que prometiste
   if (tuning.boardEnabled && s.boardGoal && s.day >= s.boardGoal.dueDay) {
@@ -349,7 +377,24 @@ export function setBoardGoal(s: GameState) {
     s.boardGoal = null;
     return;
   }
-  const objetivo = Math.max(Math.round(s.users * tuning.boardGrowth), Math.round(s.users + 400));
+  // El múltiplo fijo pedía, pasando el 22% del mercado, más usuarios de los que
+  // el motor puede generar: la saturación llega a 0 en tam × tamMul. La meta se
+  // mide ahora contra lo que queda de mercado, que es lo mismo que limita el
+  // crecimiento, así que la exigencia queda pareja de punta a punta.
+  const sectorDef = SECTORS.find((x) => x.id === s.sector) ?? SECTORS[1];
+  const techo = sectorDef.tam * tuning.tamMul;
+  // Con el mercado casi tomado el churn se come la adquisición y el crecimiento
+  // neto se va a cero: medido, arriba del 90% de penetración fallaba el 48% de
+  // las metas pidiendo 4 veces más de lo que el motor puede dar. Ahí el board
+  // deja de pedir crecimiento, que además es lo que haría un board de verdad.
+  if (s.users >= techo * tuning.boardTecho) {
+    if (s.boardGoal) addLog(s, "🪑 El board dejó de pedirte crecimiento: ya tenés el mercado.", "good");
+    s.boardGoal = null;
+    return;
+  }
+  const porMultiplo = s.users * tuning.boardGrowth;
+  const porMercado = s.users + Math.max(0, techo - s.users) * tuning.boardShare;
+  const objetivo = Math.max(Math.round(Math.min(porMultiplo, porMercado)), Math.round(s.users + 400));
   s.boardGoal = { users: objetivo, dueDay: s.day + tuning.boardDays };
   addLog(s, `🪑 El board quiere ${objetivo.toLocaleString("es-AR")} usuarios para el día ${s.boardGoal.dueDay}.`, "info");
 }

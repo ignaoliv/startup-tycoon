@@ -168,7 +168,7 @@ export interface GameState {
   /** meta que pone el board después de levantar una ronda */
   boardGoal: { users: number; dueDay: number } | null;
   boardFails: number;
-  gameOver: "bankrupt" | "ipo" | "acquired" | "fired" | null;
+  gameOver: "bankrupt" | "ipo" | "acquired" | "fired" | "timeout" | null;
   restarts: number;
   stats: { totalRevenue: number; peakUsers: number; raised: number; hires: number };
   achievements: string[];

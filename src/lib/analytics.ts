@@ -9,7 +9,7 @@ export const RUNS_KEY = "startup-tycoon:runs";
 export const PLAYER_KEY = "startup-tycoon:player";
 const MAX_RUNS = 60;
 
-export type Outcome = "playing" | "bankrupt" | "ipo" | "acquired" | "fired" | "abandoned";
+export type Outcome = "playing" | "bankrupt" | "ipo" | "acquired" | "fired" | "abandoned" | "timeout";
 
 export interface RunRecord {
   id: string;

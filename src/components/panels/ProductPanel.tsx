@@ -62,7 +62,7 @@ export function ProductPanel({ game }: { game: Game }) {
                   <div className="mt-0.5 text-[11px] text-ink/60">{f.desc}</div>
                   <div className="mt-1 flex flex-wrap gap-1">
                     {f.effects.growth && <Pill tone="good">+{Math.round(f.effects.growth * 100)}% crecimiento</Pill>}
-                    {f.effects.arpu && <Pill tone="amber">+${f.effects.arpu} ARPU</Pill>}
+                    {f.effects.arpu && <Pill tone="amber">+${Math.round(f.effects.arpu * 100) / 100} ARPU</Pill>}
                     {f.effects.churn && <Pill tone="indigo">-churn</Pill>}
                     {f.effects.quality && <Pill>+{f.effects.quality} calidad</Pill>}
                     {f.effects.hype && <Pill tone="bad">+{f.effects.hype} hype</Pill>}

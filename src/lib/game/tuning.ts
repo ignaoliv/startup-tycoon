@@ -20,18 +20,26 @@ export interface Tuning {
   // --- board: después de levantar, los inversores piden crecimiento
   boardEnabled: boolean;
   boardFromStage: number; // desde qué ronda empieza a exigir
-  boardGrowth: number; // cuánto tenés que multiplicar los usuarios
+  boardGrowth: number; // cuánto tenés que multiplicar los usuarios (tope de arranque)
+  boardShare: number; // qué parte del mercado que queda te pide, cuando el múltiplo no entra
+  boardTecho: number; // penetración a partir de la cual deja de pedir crecimiento
   boardDays: number; // en cuántos días
   boardFailsToFire: number; // cuántas metas seguidas podés fallar antes de que te echen
   tamMul: number; // tamaño del mercado (1 = como está definido por sector)
   infraExtra: number; // costo de infraestructura que crece más rápido que los usuarios
   precioElasticidad: number; // cuánto castiga el churn subir el precio (1 = neutro, >1 castiga)
-  // --- invierno: el múltiplo se cae solo a partir de cierto día
+  // --- invierno: el múltiplo se cae y después se recupera. Es una estación,
+  // no un clima: si no terminara nunca sería un impuesto permanente.
   inviernoDesde: number; // día en que arranca (0 = apagado)
   inviernoDias: number; // en cuántos días llega al piso
   inviernoPiso: number; // hasta dónde cae (0.35 = vale un tercio)
+  inviernoFondo: number; // cuántos días se queda en el piso
+  inviernoSalida: number; // en cuántos días vuelve a valer lo que valía
   bankruptLimit: number; // días en rojo antes de cerrar
   startCash: number; // plata inicial
+  // --- tope: ninguna partida puede durar más de media hora de reloj
+  diaFinal: number; // último día de la partida (0 = sin tope)
+  diaAviso: number; // desde acá se ve que se termina
 }
 
 export const DEFAULT_TUNING: Tuning = {
@@ -54,6 +62,8 @@ export const DEFAULT_TUNING: Tuning = {
   boardEnabled: true,
   boardFromStage: 3,
   boardGrowth: 4.5,
+  boardShare: 0.35,
+  boardTecho: 0.9,
   boardDays: 75,
   boardFailsToFire: 1,
   tamMul: 0.5,
@@ -62,8 +72,12 @@ export const DEFAULT_TUNING: Tuning = {
   inviernoDesde: 0, // ya no arranca por día: lo dispara el evento del invierno
   inviernoDias: 250,
   inviernoPiso: 0.35,
+  inviernoFondo: 120,
+  inviernoSalida: 250,
   bankruptLimit: 12,
   startCash: 30000,
+  diaFinal: 2300,
+  diaAviso: 2050,
 };
 
 export const TUNING_KEY = "startup-tycoon:tuning";

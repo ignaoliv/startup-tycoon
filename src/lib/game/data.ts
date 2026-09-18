@@ -14,9 +14,21 @@ export const TICK_MS_MIN = 1500;
 export const TICK_RAMP_DAYS = 60;
 export const TICK_MS = TICK_MS_START; // referencia para textos
 
+// Segunda rampa. Al principio cada día trae una decisión y conviene que se vea;
+// pasado el día 250 la partida ya está encaminada y lo que queda es escala, así
+// que los días se abaratan. El motor corre por día: esto no cambia el balance,
+// solo cuánto tarda en pasar un día en la pantalla.
+export const TICK_MS_LATE = 500;
+export const TICK_LATE_FROM = 250;
+export const TICK_LATE_TO = 1000;
+
 export function dayMs(day: number) {
-  const t = Math.min(1, Math.max(0, (day - 1) / TICK_RAMP_DAYS));
-  return Math.round(TICK_MS_START + (TICK_MS_MIN - TICK_MS_START) * t);
+  if (day <= TICK_LATE_FROM) {
+    const t = Math.min(1, Math.max(0, (day - 1) / TICK_RAMP_DAYS));
+    return Math.round(TICK_MS_START + (TICK_MS_MIN - TICK_MS_START) * t);
+  }
+  const t = Math.min(1, (day - TICK_LATE_FROM) / (TICK_LATE_TO - TICK_LATE_FROM));
+  return Math.round(TICK_MS_MIN + (TICK_MS_LATE - TICK_MS_MIN) * t);
 }
 
 /** Ideas para arrancar, por sector. El dado del setup saca de acá. */

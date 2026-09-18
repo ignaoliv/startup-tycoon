@@ -1,7 +1,7 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Dashboard } from "@/components/panels/Dashboard";
 import { TeamPanel } from "@/components/panels/TeamPanel";
 import { ProductPanel } from "@/components/panels/ProductPanel";
@@ -17,7 +17,8 @@ import { signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import FeedbackModal from "@/components/FeedbackModal";
 import { trackRun } from "@/lib/analytics";
 import { EVENTS, SECTORS, STAGES } from "@/lib/game/data";
-import { derive, randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { derive, diasQueQuedan, factorVentana, pisoHype, randomIdea, randomStartupName, resolveEvent } from "@/lib/game/engine";
+import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
 import { asegurarRunGuardada, buildRun, createPost, marcarLoginEnCurso } from "@/lib/storage";
@@ -35,6 +36,7 @@ const TABS: { id: Tab; label: string; icon: string }[] = [
 
 export function GameShell() {
   const params = useSearchParams();
+  const router = useRouter();
   const forceLocal = params.get("local") === "1";
   const game = useGame(forceLocal);
   const [tab, setTab] = useState<Tab>("office");
@@ -53,6 +55,19 @@ export function GameShell() {
   const [feedback, setFeedback] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [escena, setEscena] = useState<number | null>(null);
+  // El header es sticky y cambia de alto (la cuenta regresiva suma una línea),
+  // así que las pestañas se pegan a la altura que tenga en cada momento. Va
+  // como callback ref y no como useEffect porque el header todavía no existe
+  // en el primer render: ahí arriba el componente sale por la pantalla de carga.
+  const [altoHeader, setAltoHeader] = useState(0);
+  const observador = useRef<ResizeObserver | null>(null);
+  const headerRef = useCallback((el: HTMLElement | null) => {
+    observador.current?.disconnect();
+    if (!el) return;
+    setAltoHeader(el.offsetHeight);
+    observador.current = new ResizeObserver(() => setAltoHeader(el.offsetHeight));
+    observador.current.observe(el);
+  }, []);
 
   // al mudarse, la escena del acto. Una sola vez por oficina y por partida.
   const oficinaActual = game.state?.office ?? 0;
@@ -114,14 +129,23 @@ export function GameShell() {
   if (!state) return <Setup onStart={game.startNew} />;
 
   const ganaste = state.gameOver === "ipo" || state.gameOver === "acquired";
+  const quedan = diasQueQuedan(state);
+  // el tinte frío se apaga cuando la ventana vuelve a abrirse: el invierno pasa
+  const enInvierno = factorVentana(state) < 0.995;
   const d = derived!;
+  // el mismo cálculo que hace el motor: antes era un -0,7 fijo y con el hype
+  // en 100 el header decía que subía 7,5 por día mientras no se movía
+  const hypeDia = d.mktPts * 0.25 - (0.2 + 1.8 * Math.pow(state.hype / 100, 2));
+  // si está contra el techo o contra el piso, el ritmo no se aplica: decirlo,
+  // porque un "+5,3/día" con el hype clavado en 100 es una mentira prolija
+  const hypeClavado = (state.hype >= 100 && hypeDia > 0) || (state.hype <= pisoHype(state) && hypeDia < 0);
   const ev = state.pendingEvent ? EVENTS.find((e) => e.id === state.pendingEvent!.id) : null;
   const sector = SECTORS.find((s) => s.id === state.sector);
 
   return (
-    <div className={`mx-auto flex min-h-dvh max-w-6xl flex-col ${state.inviernoDia ? "invierno" : ""}`}>
+    <div className={`mx-auto flex min-h-dvh max-w-6xl flex-col ${enInvierno ? "invierno" : ""}`}>
       {/* header */}
-      <header className="sticky top-0 z-20 border-b-2 border-ink/10 bg-cream/95 backdrop-blur">
+      <header ref={headerRef} className="sticky top-0 z-20 border-b-2 border-ink/10 bg-cream/95 backdrop-blur">
         <div className="flex items-center gap-2 px-3 py-2">
           <div className="min-w-0 flex-1">
             <div className="truncate text-base font-black leading-tight">
@@ -130,6 +154,9 @@ export function GameShell() {
             <div className="text-[11px] font-semibold text-ink/50">
               Día {state.day} · {STAGES[state.stage].name} · {game.mode === "cloud" ? (game.saving ? "guardando…" : "☁️ nube") : "💾 local"}
             </div>
+            {quedan !== null && quedan <= tuning.diaFinal - tuning.diaAviso && (
+              <div className="text-[11px] font-black text-red latido">Te quedan {quedan} días</div>
+            )}
           </div>
           <div data-tour="speed" className="flex items-center gap-1 rounded-xl border-2 border-ink/15 bg-white p-0.5">
             {([0, 1, 2] as const).map((sp) => (
@@ -153,6 +180,7 @@ export function GameShell() {
             </button>
             {menu && (
               <div className="pop absolute right-0 top-11 z-30 w-52 rounded-xl border-2 border-ink/15 bg-white p-1 text-sm shadow-lg">
+                <MenuItem onClick={() => { game.saveNow(); setMenu(false); router.push("/"); }}>🏠 Ir al inicio</MenuItem>
                 <MenuItem onClick={() => { game.saveNow(); setMenu(false); }}>💾 Guardar ahora</MenuItem>
                 <MenuItem onClick={() => { setTour(true); setMenu(false); }}>🎓 Ver el tutorial</MenuItem>
                 <MenuItem onClick={() => { setMenu(false); setFeedback(true); }}>💬 Mandar feedback</MenuItem>
@@ -164,12 +192,44 @@ export function GameShell() {
         {/* stats */}
         <div data-tour="stats" className="grid grid-cols-3 gap-1.5 px-3 pb-2 sm:grid-cols-6">
           <Stat icon="💵" label="Caja" value={money(state.cash)} sub={`${money(d.netDay * 30, { sign: d.netDay >= 0 })}/mes`} tone={d.netDay >= 0 ? "good" : "bad"} />
-          <Stat icon="👥" label="Usuarios" value={num(state.users)} sub={`+${num(d.newUsersDay - d.churnDay)}/día`} tone={d.newUsersDay - d.churnDay >= 0 ? "good" : "bad"} />
+          <Stat icon="👥" label="Usuarios" value={num(state.users)} sub={`${num(d.newUsersDay - d.churnDay, { sign: true })}/día`} tone={d.newUsersDay - d.churnDay >= 0 ? "good" : "bad"} />
           <Stat icon="📈" label="MRR" value={money(d.mrr)} sub={`${money(d.arpu)} ARPU`} />
           <Stat icon="🏦" label="Valuación" value={money(d.valuation)} sub={`${state.equity}% tuyo`} />
-          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={`${(d.mktPts * 0.25 - 0.7).toFixed(1)}/día`} tone={d.mktPts * 0.25 - 0.7 >= 0 ? "good" : "bad"} />
+          <Stat icon="🔥" label="Hype" value={`${Math.round(state.hype)}`} sub={hypeClavado ? (state.hype >= 100 ? "al tope" : "en el piso") : `${hypeDia >= 0 ? "+" : ""}${hypeDia.toFixed(1)}/día`} tone={hypeClavado ? undefined : hypeDia >= 0 ? "good" : "bad"} />
           <Stat icon="😊" label="Moral" value={`${Math.round(state.morale)}`} sub={`${state.employees.length} personas`} />
         </div>
+        {/* La meta del board vivía adentro de la pestaña Plata y te echaban sin
+            que la hubieras visto nunca. Ahora está al lado de los números, con
+            lo que falta y cuánto tiempo queda. */}
+        {state.boardGoal && (() => {
+          const faltanDias = Math.max(0, state.boardGoal.dueDay - state.day);
+          const faltanUsers = Math.max(0, Math.round(state.boardGoal.users - state.users));
+          const listo = faltanUsers === 0;
+          const apretado = !listo && (faltanDias <= 25 || faltanUsers > state.users * 0.6);
+          const avance = Math.min(100, Math.round((state.users / state.boardGoal.users) * 100));
+          return (
+            <div className="px-3 pb-2">
+              <div
+                className={`flex items-center gap-2 rounded-xl border-2 px-2.5 py-1.5 text-[11px] font-bold ${
+                  listo ? "border-green/40 bg-green/10" : apretado ? "border-red bg-red/10 text-red latido" : "border-ink/15 bg-white"
+                }`}
+              >
+                <span aria-hidden>🪑</span>
+                <span className="min-w-0 flex-1 truncate">
+                  {listo ? (
+                    <>Cumpliste la meta del board: {num(state.boardGoal.users)} usuarios.</>
+                  ) : (
+                    <>El board quiere {num(state.boardGoal.users)} usuarios · faltan {num(faltanUsers)} en {faltanDias} {faltanDias === 1 ? "día" : "días"}</>
+                  )}
+                </span>
+                <span className="hidden h-1.5 w-28 shrink-0 overflow-hidden rounded-full bg-ink/10 sm:block">
+                  <span className={`block h-full ${listo ? "bg-green" : apretado ? "bg-red" : "bg-indigo"}`} style={{ width: `${avance}%` }} />
+                </span>
+                <span className="shrink-0 tabular-nums">{avance}%</span>
+              </div>
+            </div>
+          );
+        })()}
       </header>
 
       {game.offlineDays > 0 && !offlineDismissed && (
@@ -191,7 +251,10 @@ export function GameShell() {
             <Dashboard game={game} onGoTo={(t) => setTab(t as Tab)} />
           </div>
           <div className={tab === "office" ? "hidden lg:block" : ""}>
-            <div className="mb-3 hidden gap-1 rounded-xl bg-ink/5 p-1 lg:flex">
+            <div
+              className="mb-3 hidden gap-1 rounded-xl bg-ink/5 p-1 lg:flex lg:sticky lg:z-10 lg:bg-cream/95 lg:backdrop-blur"
+              style={{ top: altoHeader }}
+            >
               {TABS.filter((t) => t.id !== "office").map((t) => (
                 <button key={t.id} data-tour={`tab-${t.id}`} onClick={() => setTab(t.id)} className={`flex-1 rounded-lg py-2 text-sm font-black transition ${tab === t.id || (tab === "office" && t.id === "team") ? "bg-white shadow" : "text-ink/50"}`}>
                   {t.icon} {t.label}
@@ -268,12 +331,16 @@ export function GameShell() {
             </div>
           ) : (
             <>
-              <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : "🪑"}</div>
-              <h2 className="mb-1 text-xl font-black">{state.gameOver === "bankrupt" ? "Cerró la startup" : "Te reemplazaron"}</h2>
+              <div className="mb-1 text-5xl">{state.gameOver === "bankrupt" ? "💀" : state.gameOver === "timeout" ? "⌛" : "🪑"}</div>
+              <h2 className="mb-1 text-xl font-black">
+                {state.gameOver === "bankrupt" ? "Cerró la startup" : state.gameOver === "timeout" ? "Hasta acá llegaste" : "Te reemplazaron"}
+              </h2>
               <p className="mb-3 text-sm text-ink/70">
                 {state.gameOver === "fired"
                   ? `El board puso otro CEO en tu silla. ${state.startupName} sigue existiendo sin vos, y tu ${state.equity}% ahora vale ${money((d.valuation * state.equity) / 100)}.`
-                  : `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`}
+                  : state.gameOver === "timeout"
+                    ? `${state.day} días al frente de ${state.startupName}. Nunca saliste a bolsa: tu ${state.equity}% vale ${money((d.valuation * state.equity) / 100)} en papel y ahí se queda.`
+                    : `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`}
               </p>
             </>
           )}
@@ -330,9 +397,19 @@ export function GameShell() {
           <Btn className="w-full" onClick={() => game.reset()}>
             🚀 Fundar otra startup
           </Btn>
-          <button onClick={() => setFeedback(true)} className="mt-2 w-full text-xs font-bold text-ink/50 underline underline-offset-2 hover:text-ink">
-            💬 Contame cómo te fue
-          </button>
+          <div className="mt-2 flex items-center justify-center gap-3 text-xs font-bold text-ink/50">
+            <button onClick={() => setFeedback(true)} className="underline underline-offset-2 hover:text-ink">
+              💬 Contame cómo te fue
+            </button>
+            <span aria-hidden>·</span>
+            <Link href="/home" className="underline underline-offset-2 hover:text-ink">
+              🏆 Mi carrera
+            </Link>
+            <span aria-hidden>·</span>
+            <Link href="/" className="underline underline-offset-2 hover:text-ink">
+              🏠 Inicio
+            </Link>
+          </div>
         </Modal>
       )}
 
@@ -426,6 +503,13 @@ function Setup({ onStart }: { onStart: (o: { startupName: string; founderName: s
   };
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col justify-center p-4">
+      <div className="mb-3 flex items-center justify-between gap-2 text-xs font-bold text-ink/50">
+        <Link href="/" className="underline underline-offset-2 hover:text-ink">🏠 Inicio</Link>
+        <div className="flex gap-3">
+          <Link href="/como-se-juega" className="underline underline-offset-2 hover:text-ink">Cómo se juega</Link>
+          <Link href="/home" className="underline underline-offset-2 hover:text-ink">🏆 Ranking</Link>
+        </div>
+      </div>
       <Card>
         <div className="mb-1 text-3xl">🚀</div>
         <h1 className="text-2xl font-black">Vibecodeá tu startup</h1>

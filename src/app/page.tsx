@@ -12,7 +12,7 @@ const STATS = [
   { icon: "👥", label: "Usuarios", value: "502", sub: "+2/día", tone: "text-green" },
   { icon: "📈", label: "MRR", value: "$3.0k", sub: "$6 ARPU", tone: "text-ink/50" },
   { icon: "🏦", label: "Valuación", value: "$184k", sub: "100% tuyo", tone: "text-ink/50" },
-  { icon: "🔥", label: "Hype", value: "0", sub: "-0.7/día", tone: "text-red" },
+  { icon: "🔥", label: "Hype", value: "0", sub: "-0.2/día", tone: "text-red" },
   { icon: "😊", label: "Moral", value: "55", sub: "2 personas", tone: "text-ink/50" },
 ];
 

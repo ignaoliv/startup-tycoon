@@ -37,6 +37,11 @@ export function TeamPanel({ game }: { game: Game }) {
           <span>💵 Días de caja</span>
           <b className="tabular-nums">{runway === null ? "ganás plata" : `${runway} días`}</b>
         </div>
+        {s.candidates.length === 0 && (
+          <div className="rounded-xl border-2 border-dashed border-ink/15 px-3 py-4 text-center text-xs text-ink/50">
+            No quedan candidatos. Se renuevan solos cada 7 días, o buscá más ahora.
+          </div>
+        )}
         <ul className="space-y-2">
           {s.candidates.map((c) => (
             <li key={c.id} className="flex items-center gap-2 rounded-xl border-2 border-ink/10 p-2">

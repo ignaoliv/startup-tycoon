@@ -57,17 +57,28 @@ body {
 .toast {
   animation: slidein 0.2s ease-out;
 }
-/* modo invierno: la época cambió y se nota. Colores más fríos y apagados. */
-.invierno {
-  filter: saturate(0.72) brightness(0.97) hue-rotate(-6deg);
-  transition: filter 3s ease-out;
+/* Modo invierno: la época cambió y se nota. Colores más fríos y apagados.
+   El desaturado va como backdrop-filter en una capa fija y NO como filter en
+   el contenedor: un `filter` sobre un ancestro le crea un bloque contenedor a
+   todo lo `position: fixed` que tenga adentro, y eso mandaba los modales
+   (eventos, fin de partida, confirmaciones) al medio del documento en vez de
+   al medio de la pantalla. La capa va abajo de los modales, así que lo que
+   hay que leer se lee sin tintar. */
+.invierno::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  backdrop-filter: saturate(0.72) brightness(0.97) hue-rotate(-6deg);
+  -webkit-backdrop-filter: saturate(0.72) brightness(0.97) hue-rotate(-6deg);
 }
 .invierno::before {
   content: "";
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 5;
+  z-index: 26;
   background: linear-gradient(180deg, rgba(120, 150, 190, 0.13), rgba(120, 150, 190, 0.05) 40%, transparent);
 }
 

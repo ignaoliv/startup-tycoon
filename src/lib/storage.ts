@@ -185,6 +185,7 @@ export type RunRow = {
   office_max: number;
   precio: number;
   invierno: boolean;
+  invierno_dia: number | null;
   name: string; sector: string; idea: string; ended_as: string; day: number;
   valuation: number; peak_users: number; mrr: number; equity: number;
   team_size: number; stage: number; raised: number; features: number;
@@ -196,7 +197,10 @@ export function buildRun(s: GameState, d: Derived, endedAs: string): RunRow {
     game_id: s.id,
     office_max: Math.max(s.officeMax ?? 0, s.office),
     precio: s.precio ?? 1,
-    invierno: !!s.conInvierno,
+    // `conInvierno` solo dice que la partida nació con el motor nuevo: lo que
+    // hay que medir es si el invierno efectivamente cayó, y qué día.
+    invierno: !!s.inviernoDia,
+    invierno_dia: s.inviernoDia || null,
     name: s.startupName,
     sector: s.sector,
     idea: s.idea,

@@ -1,7 +1,7 @@
 "use client";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { useState } from "react";
-import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignAvailable, campaignCooldown, factorVentana, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
+import { ACHIEVEMENT_DEFS, CAMPAIGNS, campaignCooldown, factorVentana, ipo, marketingPush, raiseRound, upgradeOffice } from "@/lib/game/engine";
 import { OFFICES, STAGES } from "@/lib/game/data";
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
@@ -68,20 +68,24 @@ export function MoneyPanel({ game }: { game: Game }) {
           {CAMPAIGNS.filter((c) => s.users >= c.minUsers).map((c) => {
             const costo = c.cost(s);
             const espera = campaignCooldown(s, c.id);
+            // el hype tiene techo: lo que sobra se descarta, así que se muestra
+            // lo que de verdad vas a ganar y no el número nominal
+            const hypeReal = Math.max(0, Math.min(c.hype, 100 - s.hype));
+            const alPedo = hypeReal === 0 && c.usersPct === 0;
             return (
               <Btn
                 key={c.id}
                 variant="amber"
                 size="sm"
                 className="w-full justify-between"
-                disabled={espera > 0 || s.cash < costo}
+                disabled={espera > 0 || s.cash < costo || alPedo}
                 onClick={() => game.mutate((st) => marketingPush(st, c.id))}
               >
                 <span>
-                  {c.icon} {c.name} · +{c.hype} hype
+                  {c.icon} {c.name} · +{hypeReal} hype
                   {c.usersPct > 0 && ` y +${Math.round(c.usersPct * 100)}% usuarios`}
                 </span>
-                <span className="tabular-nums">{espera > 0 ? `en ${espera} días` : money(costo)}</span>
+                <span className="tabular-nums">{espera > 0 ? `en ${espera} días` : alPedo ? "el hype ya está al tope" : money(costo)}</span>
               </Btn>
             );
           })}
