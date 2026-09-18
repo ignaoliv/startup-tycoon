@@ -8,7 +8,7 @@ import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
 import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, enviarRunPendienteAlSalir, type IncomingAction } from "@/lib/storage";
 import { closeStaleRuns, playerId, trackRun, trackValuation } from "@/lib/analytics";
-import { loadTuning } from "@/lib/game/tuning";
+import { applyTuning, loadTuning, tuning } from "@/lib/game/tuning";
 
 export type Mode = "local" | "cloud";
 
@@ -21,7 +21,7 @@ export interface Toast {
 /** Debajo de esto es una recarga o un alt-tab, no una ausencia. */
 const AUSENCIA_MS = 30_000;
 
-export function useGame(forceLocal: boolean) {
+export function useGame(forceLocal: boolean, modoTest = false) {
   const sb = useMemo<SupabaseClient | null>(() => (forceLocal ? null : getSupabase()), [forceLocal]);
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(!sb);
@@ -75,8 +75,11 @@ export function useGame(forceLocal: boolean) {
   // ajustes de /admin y limpieza de partidas viejas
   useEffect(() => {
     loadTuning();
+    // El modo test va después de loadTuning para que no se lo pise lo guardado,
+    // y con applyTuning y no saveTuning para que no quede pegado en el navegador.
+    if (modoTest) applyTuning({ modoTest: true });
     closeStaleRuns();
-  }, []);
+  }, [modoTest]);
 
   // auth
   useEffect(() => {
@@ -138,7 +141,9 @@ export function useGame(forceLocal: boolean) {
         // arranca en pausa y se pregunta antes de seguir.
         const afuera = tiempoAfuera(s);
         s.lastTickAt = Date.now();
-        if (afuera > AUSENCIA_MS) {
+        if (modoTest) {
+          s.speed = 0;
+        } else if (afuera > AUSENCIA_MS) {
           s.speed = 0;
           setVolviste(afuera);
         } else {
@@ -336,6 +341,10 @@ export function useGame(forceLocal: boolean) {
   // estaba; si tardaste, queda en pausa y se pregunta.
   useEffect(() => {
     const alCambiar = () => {
+      // En modo test no hay nadie que se haya ido: lo maneja un agente, y en
+      // un navegador headless la pestaña siempre reporta hidden. Sin esto el
+      // juego queda congelado para cualquier herramienta automática.
+      if (tuning.modoTest) return;
       if (document.hidden) {
         ocultoDesde.current = Date.now();
         setOculto(true);
@@ -344,7 +353,7 @@ export function useGame(forceLocal: boolean) {
       const afuera = ocultoDesde.current ? Date.now() - ocultoDesde.current : 0;
       ocultoDesde.current = 0;
       setOculto(false);
-      if (afuera > AUSENCIA_MS && ref.current && !ref.current.gameOver) {
+      if (!tuning.modoTest && afuera > AUSENCIA_MS && ref.current && !ref.current.gameOver) {
         setVolviste(afuera);
         mutate((s) => {
           s.speed = 0;

@@ -35,6 +35,10 @@ export interface Tuning {
   inviernoPiso: number; // hasta dónde cae (0.35 = vale un tercio)
   inviernoFondo: number; // cuántos días se queda en el piso
   inviernoSalida: number; // en cuántos días vuelve a valer lo que valía
+  // Modo test: la partida no corre sola y no saltan eventos, para que un agente
+  // automático pueda parar el estado y mirarlo. Se activa con ?test=1 y NO se
+  // guarda: vive solo en memoria, en la pestaña que lo pidió.
+  modoTest: boolean;
   bankruptLimit: number; // días en rojo antes de cerrar
   startCash: number; // plata inicial
   // --- tope: ninguna partida puede durar más de media hora de reloj
@@ -74,6 +78,7 @@ export const DEFAULT_TUNING: Tuning = {
   inviernoPiso: 0.35,
   inviernoFondo: 120,
   inviernoSalida: 250,
+  modoTest: false,
   bankruptLimit: 12,
   startCash: 30000,
   diaFinal: 2300,

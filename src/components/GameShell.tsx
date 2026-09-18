@@ -38,7 +38,10 @@ export function GameShell() {
   const params = useSearchParams();
   const router = useRouter();
   const forceLocal = params.get("local") === "1";
-  const game = useGame(forceLocal);
+  // ?test=1: la partida arranca quieta y sin eventos, para que se pueda parar
+  // el estado y mirarlo. No cambia ninguna regla del juego.
+  const modoTest = params.get("test") === "1";
+  const game = useGame(forceLocal, modoTest);
   const [tab, setTab] = useState<Tab>("office");
   const [menu, setMenu] = useState(false);
   const [tour, setTour] = useState(false);
@@ -73,6 +76,7 @@ export function GameShell() {
   useEffect(() => {
     const s = game.state;
     if (!s || oficinaActual === 0) return;
+    if (modoTest) return;
     if (s.escenaVista?.includes(oficinaActual) || !escenaDe(oficinaActual)) return;
     const id = setTimeout(() => {
       game.mutate((st) => void (st.escenaVista = [...(st.escenaVista ?? []), oficinaActual]));
@@ -94,11 +98,11 @@ export function GameShell() {
     if (tourChecked.current) return;
     tourChecked.current = true;
     // se muestra una vez a quien nunca lo vio, tenga la partida que tenga
-    if (!isTourDone()) {
+    if (!isTourDone() && !modoTest) {
       const t = setTimeout(() => setTour(true), 350);
       return () => clearTimeout(t);
     }
-  }, [gs]);
+  }, [gs, modoTest]);
   useEffect(() => {
     setPaused(tour || escena !== null);
   }, [tour, escena, setPaused]);

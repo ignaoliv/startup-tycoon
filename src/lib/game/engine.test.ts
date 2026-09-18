@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import * as engine from "./engine";
 import { derive, factorVentana, newGame, pisoHype, setBoardGoal, tick } from "./engine";
 import { OFFICES, SECTORS } from "./data";
-import { tuning } from "./tuning";
+import { applyTuning, tuning } from "./tuning";
 import { num } from "./format";
 import type { GameState } from "./types";
 
@@ -175,6 +175,34 @@ describe("el piso del hype", () => {
     for (let i = 0; i < 200 && !s.gameOver; i++) tick(s, true);
     expect(s.hype).toBeLessThanOrEqual(100);
     expect(s.hype).toBeGreaterThanOrEqual(pisoHype(s));
+  });
+});
+
+describe("el modo test", () => {
+  it("con el modo prendido no salta ningún evento", () => {
+    // ?test=1 deja el estado quieto para que se pueda mirar. Si vuelven los
+    // eventos, cualquier test de navegador se vuelve a llenar de modales.
+    const s = partida();
+    const antes = tuning.modoTest;
+    applyTuning({ modoTest: true });
+    try {
+      for (let i = 0; i < 400 && !s.gameOver; i++) {
+        tick(s);
+        expect(s.pendingEvent).toBeNull();
+      }
+    } finally {
+      applyTuning({ modoTest: antes });
+    }
+  });
+
+  it("apagado los eventos siguen saliendo", () => {
+    const s = partida();
+    let hubo = false;
+    for (let i = 0; i < 400 && !s.gameOver && !hubo; i++) {
+      tick(s);
+      if (s.pendingEvent) hubo = true;
+    }
+    expect(hubo).toBe(true);
   });
 });
 

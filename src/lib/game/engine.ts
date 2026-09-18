@@ -448,6 +448,7 @@ function hashId(id: string) {
 }
 
 function scheduleEvent(s: GameState) {
+  if (tuning.modoTest) return;
   if (s.pendingEvent) return;
   const capped = s.eventCount >= tuning.cap;
   const sep = capped ? tuning.separation * 2 : tuning.separation;
