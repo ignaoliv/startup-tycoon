@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# TestSprite: los artefactos quedan en disco pero no en el repo
+testsprite_tests/
