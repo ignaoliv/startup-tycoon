@@ -173,7 +173,6 @@ export const IDEAS_POR_SECTOR: Record<string, string[]> = {
 /** Todas las ideas juntas, para fallbacks y para el dado sin sector elegido. */
 export const IDEAS = Object.values(IDEAS_POR_SECTOR).flat();
 
-export const OFFLINE_MAX_DAYS = 240;
 export const START_CASH = 30000;
 
 export const ROLES: Record<Role, { name: string; plural: string; icon: string; baseSalary: number; desc: string; payLabel: string }> = {

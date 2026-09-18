@@ -41,7 +41,6 @@ export function GameShell() {
   const game = useGame(forceLocal);
   const [tab, setTab] = useState<Tab>("office");
   const [menu, setMenu] = useState(false);
-  const [offlineDismissed, setOfflineDismissed] = useState(false);
   const [tour, setTour] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   // el link de la partida solo sirve si la fila ya está en la base: si el
@@ -232,17 +231,7 @@ export function GameShell() {
         })()}
       </header>
 
-      {game.offlineDays > 0 && !offlineDismissed && (
-        <div className="mx-3 mt-3 flex items-center gap-2 rounded-xl border-2 border-indigo bg-indigo/10 px-3 py-2 text-sm">
-          <span>⏰</span>
-          <span className="flex-1">
-            Mientras no estabas pasaron <b>{game.offlineDays} días</b>. Mirá las novedades.
-          </span>
-          <button onClick={() => setOfflineDismissed(true)} className="font-black">
-            ✕
-          </button>
-        </div>
-      )}
+
 
       {/* body */}
       <main className="flex-1 px-3 py-3 pb-24 lg:pb-6">
@@ -297,6 +286,25 @@ export function GameShell() {
                 <div className="text-xs text-ink/60">{c.desc}</div>
               </button>
             ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* volviste: la partida te esperó en el día que la dejaste */}
+      {game.volviste > 0 && !state.gameOver && (
+        <Modal centrado>
+          <div className="mb-1 text-center text-5xl">☕</div>
+          <h2 className="mb-1 text-center text-2xl font-black">Tu startup te esperó</h2>
+          <p className="mb-4 text-center text-sm text-ink/70">
+            {state.startupName} quedó en el <b>día {state.day}</b>, igual que la dejaste. Estuviste afuera {hace(game.volviste)}.
+          </p>
+          <Btn variant="amber" className="w-full" onClick={game.reanudar}>
+            ▶ Seguir
+          </Btn>
+          <div className="mt-2 text-center text-xs font-bold text-ink/50">
+            <Link href="/home" className="underline underline-offset-2 hover:text-ink">
+              Dejarla para después
+            </Link>
           </div>
         </Modal>
       )}
@@ -474,6 +482,16 @@ function MenuItem({ children, onClick }: { children: React.ReactNode; onClick: (
       {children}
     </button>
   );
+}
+
+/** "3 horas", "2 días": lo justo para entender cuánto estuviste afuera. */
+function hace(ms: number) {
+  const min = Math.round(ms / 60000);
+  if (min < 60) return `${min} ${min === 1 ? "minuto" : "minutos"}`;
+  const hs = Math.round(min / 60);
+  if (hs < 36) return `${hs} ${hs === 1 ? "hora" : "horas"}`;
+  const dias = Math.round(hs / 24);
+  return `${dias} ${dias === 1 ? "día" : "días"}`;
 }
 
 function Modal({ children, centrado = false }: { children: React.ReactNode; centrado?: boolean }) {

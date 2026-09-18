@@ -1,4 +1,4 @@
-import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, dayMs, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IDEAS_POR_SECTOR, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, OFFLINE_MAX_DAYS, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
+import { AI_LEVEL_NAMES, AI_NAMES, AVATARS, EVENTS, FEATURES, FIRST_NAMES, IDEAS, IDEAS_POR_SECTOR, IPO_VALUATION, LAST_NAMES, LEVEL_NAMES, OFFICES, ROLES, SECTORS, STAGES, START_CASH, STARTUP_NAME_PARTS } from "./data";
 import type { Candidate, Derived, Employee, GameState, Level, LogEntry, ReactiveCtx, Role } from "./types";
 import { tuning } from "./tuning";
 
@@ -721,27 +721,9 @@ export function applyIncoming(s: GameState, a: { kind: string; from_name: string
   }
 }
 
-export function applyOffline(s: GameState, now = Date.now()): number {
-  const elapsed = now - s.lastTickAt;
-  const before = s.cash;
-  const beforeDay = s.day;
-  // los días duran distinto según la etapa, así que se descuentan de a uno
-  let restante = elapsed;
-  let días = 0;
-  while (días < OFFLINE_MAX_DAYS) {
-    const costo = dayMs(s.day);
-    if (restante < costo) break;
-    restante -= costo;
-    tick(s, true);
-    días += 1;
-    if (s.gameOver || s.pendingEvent) break; // un evento pendiente frena el tiempo
-  }
-  s.lastTickAt = now;
-  const simulated = s.day - beforeDay;
-  if (simulated <= 0) return 0;
-  const delta = s.cash - before;
-  addLog(s, `⏰ Pasaron ${simulated} días mientras no estabas. Caja: ${delta >= 0 ? "+" : ""}$${Math.round(delta).toLocaleString("es-AR")}.`, "info");
-  return simulated;
+/** Cuánto tiempo real pasó desde el último día jugado. */
+export function tiempoAfuera(s: GameState, now = Date.now()) {
+  return Math.max(0, now - (s.lastTickAt ?? now));
 }
 
 const ACHIEVEMENTS: { id: string; name: string; icon: string; test: (s: GameState, d: Derived) => boolean }[] = [

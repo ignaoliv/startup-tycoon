@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { dayMs } from "@/lib/game/data";
-import { applyIncoming, applyOffline, derive, newGame, tick } from "@/lib/game/engine";
+import { applyIncoming, derive, newGame, tick, tiempoAfuera } from "@/lib/game/engine";
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
 import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, enviarRunPendienteAlSalir, type IncomingAction } from "@/lib/storage";
@@ -18,6 +18,9 @@ export interface Toast {
   kind: "info" | "good" | "bad" | "social";
 }
 
+/** Debajo de esto es una recarga o un alt-tab, no una ausencia. */
+const AUSENCIA_MS = 30_000;
+
 export function useGame(forceLocal: boolean) {
   const sb = useMemo<SupabaseClient | null>(() => (forceLocal ? null : getSupabase()), [forceLocal]);
   const [user, setUser] = useState<User | null>(null);
@@ -26,7 +29,12 @@ export function useGame(forceLocal: boolean) {
   const [loadedState, setLoaded] = useState(false);
   const router = useRouter();
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [offlineDays, setOfflineDays] = useState(0);
+  // Cuánto tiempo estuviste afuera, si vale la pena preguntarte si seguir.
+  // Antes la partida se simulaba sola mientras no estabas (hasta 240 días):
+  // dos minutos de ausencia podían fundirte o hacer que te echara el board.
+  const [volviste, setVolviste] = useState(0);
+  const [oculto, setOculto] = useState(false);
+  const ocultoDesde = useRef(0);
   const [saving, setSaving] = useState(false);
   const [paused, setPaused] = useState(false); // pausa externa (tutorial)
   const ref = useRef<GameState | null>(null);
@@ -126,9 +134,16 @@ export function useGame(forceLocal: boolean) {
             console.error(e);
           }
         }
-        const days = applyOffline(s);
-        setOfflineDays(days);
-        s.speed = s.speed === 0 ? 0 : 1;
+        // La partida se quedó en el día que la dejaste. Si pasó un rato,
+        // arranca en pausa y se pregunta antes de seguir.
+        const afuera = tiempoAfuera(s);
+        s.lastTickAt = Date.now();
+        if (afuera > AUSENCIA_MS) {
+          s.speed = 0;
+          setVolviste(afuera);
+        } else {
+          s.speed = s.speed === 0 ? 0 : 1;
+        }
       }
       ref.current = s;
       setStateRaw(s);
@@ -144,7 +159,7 @@ export function useGame(forceLocal: boolean) {
   useEffect(() => {
     if (!state || state.gameOver) return;
     const speed = state.speed;
-    if (speed === 0 || paused || state.pendingEvent) return;
+    if (speed === 0 || paused || oculto || state.pendingEvent) return;
     const id = setInterval(() => {
       const cur = ref.current;
       if (!cur) return;
@@ -154,7 +169,7 @@ export function useGame(forceLocal: boolean) {
       commit(copy);
     }, dayMs(state.day) / speed);
     return () => clearInterval(id);
-  }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state, paused]);
+  }, [state?.speed, state?.pendingEvent, state?.gameOver, commit, state, paused, oculto]);
 
   // el historial se escribe una sola vez, cuando la partida termina.
   // Sin sesión también se guarda (user_id null): cuenta para las estadísticas.
@@ -283,7 +298,7 @@ export function useGame(forceLocal: boolean) {
     (opts: { startupName: string; founderName: string; sector: string }) => {
       const prev = ref.current;
       const s = newGame({ ...opts, restarts: prev ? prev.restarts + (prev.gameOver ? 1 : 0) : 0 });
-      setOfflineDays(0); // la partida nueva no arrastra el aviso de la anterior
+      setVolviste(0); // la partida nueva no arrastra la pregunta de la anterior
       commit(s);
       saveLocal(s, userId);
       if (sb && userId) saveCloud(sb, userId, s, derive(s)).catch(console.error);
@@ -301,12 +316,47 @@ export function useGame(forceLocal: boolean) {
       else guardarRunPendiente(row);
     }
     clearLocal(userId);
-    setOfflineDays(0);
+    setVolviste(0);
     ref.current = null;
     setStateRaw(null);
   }, [userId, sb]);
 
   const setSpeed = useCallback((sp: Speed) => mutate((s) => void (s.speed = sp)), [mutate]);
+
+  /** Volvés y decidís vos: la partida no avanzó ni un día sin vos. */
+  const reanudar = useCallback(() => {
+    setVolviste(0);
+    mutate((s) => {
+      s.speed = 1;
+      s.lastTickAt = Date.now();
+    });
+  }, [mutate]);
+
+  // Con la pestaña de fondo el reloj se frena. Si volvés enseguida sigue como
+  // estaba; si tardaste, queda en pausa y se pregunta.
+  useEffect(() => {
+    const alCambiar = () => {
+      if (document.hidden) {
+        ocultoDesde.current = Date.now();
+        setOculto(true);
+        return;
+      }
+      const afuera = ocultoDesde.current ? Date.now() - ocultoDesde.current : 0;
+      ocultoDesde.current = 0;
+      setOculto(false);
+      if (afuera > AUSENCIA_MS && ref.current && !ref.current.gameOver) {
+        setVolviste(afuera);
+        mutate((s) => {
+          s.speed = 0;
+          s.lastTickAt = Date.now();
+        });
+      } else {
+        mutate((s) => void (s.lastTickAt = Date.now()));
+      }
+    };
+    document.addEventListener("visibilitychange", alCambiar);
+    return () => document.removeEventListener("visibilitychange", alCambiar);
+  }, [mutate]);
 
   const derived: Derived | null = useMemo(() => (state ? derive(state) : null), [state]);
   const loaded = loadedState;
@@ -318,7 +368,7 @@ export function useGame(forceLocal: boolean) {
     router.push("/");
   }, [sb, router]);
 
-  return { sb, mode, user, userId, state, derived, loaded, mutate, notify, toasts, startNew, reset, setSpeed, saveNow, saving, offlineDays, signOut, setPaused };
+  return { sb, mode, user, userId, state, derived, loaded, mutate, notify, toasts, startNew, reset, setSpeed, saveNow, saving, volviste, reanudar, signOut, setPaused };
 }
 
 export type Game = ReturnType<typeof useGame>;
