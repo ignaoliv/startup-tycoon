@@ -549,7 +549,19 @@ export async function votarProyecto(sb: SupabaseClient, voter: string, target: s
   const { error } = await sb.from("project_votes").insert({ voter, target });
   if (!error) return null;
   const codigo = (error as { code?: string }).code;
+  // la policy junta dos reglas, así que el 42501 puede ser falta de saldo o el
+  // tope de 3; quien llama sabe cuál mostrar
   if (codigo === "42501") return "Te quedaste sin vibecoins. Jugá una partida y volvé.";
   if (codigo === "23514") return "No podés votar tu propio proyecto.";
   return error.message;
+}
+
+/** Cuántas monedas le dio este jugador a cada proyecto. Tope de 3 por proyecto. */
+export const TOPE_VOTOS_POR_PROYECTO = 3;
+
+export async function fetchMisVotos(sb: SupabaseClient, userId: string): Promise<Record<string, number>> {
+  const { data } = await sb.from("project_votes").select("target").eq("voter", userId).limit(1000);
+  const out: Record<string, number> = {};
+  for (const v of (data ?? []) as { target: string }[]) out[v.target] = (out[v.target] ?? 0) + 1;
+  return out;
 }

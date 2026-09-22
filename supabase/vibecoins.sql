@@ -28,14 +28,25 @@ alter table public.project_votes enable row level security;
 drop policy if exists "votos se ven" on public.project_votes;
 create policy "votos se ven" on public.project_votes for select using (true);
 
--- Cada voto es una moneda. El saldo se valida ACÁ y no en el cliente: si la
--- regla viviera en el navegador, cualquiera manda mil votos con cero monedas,
--- que es exactamente lo que pasó con el ranking de partidas.
+-- Cuántas monedas le dio una persona a un proyecto. Va como función para que
+-- la policy no tenga que desambiguar entre la fila nueva y la subconsulta.
+create or replace function public.votos_dados(de uuid, a uuid) returns int
+language sql stable as $$
+  select count(*)::int from public.project_votes where voter = de and target = a
+$$;
+
+-- Cada voto es una moneda. Las dos reglas se validan ACÁ y no en el cliente:
+-- si vivieran en el navegador, cualquiera manda el POST a mano, que es
+-- exactamente lo que pasó con el ranking de partidas.
+--
+-- El tope de 3 por proyecto es para que el que junta muchas monedas no defina
+-- el podio solo: te obliga a repartir.
 drop policy if exists "voto con mi cuenta" on public.project_votes;
 create policy "voto con mi cuenta" on public.project_votes
   for insert to authenticated with check (
     auth.uid() = voter
     and coalesce((select v.saldo from public.vibecoins v where v.user_id = auth.uid()), 0) > 0
+    and public.votos_dados(auth.uid(), target) < 3
   );
 
 -- ---------------------------------------------------------------------------

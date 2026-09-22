@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Btn } from "@/components/ui";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
-import { fetchVibecoins, votarProyecto } from "@/lib/storage";
+import { fetchMisVotos, fetchVibecoins, TOPE_VOTOS_POR_PROYECTO, votarProyecto } from "@/lib/storage";
 import { plataCorta } from "@/lib/compartir";
 import { dominioDe, urlProyecto, type ProyectoListado } from "@/lib/perfil";
 
@@ -15,6 +15,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
   const [filas, setFilas] = useState(iniciales);
   const [userId, setUserId] = useState<string | null>(null);
   const [saldo, setSaldo] = useState<number | null>(null);
+  const [mios, setMios] = useState<Record<string, number>>({});
   const [votando, setVotando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
 
@@ -24,7 +25,10 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
     sb.auth.getUser().then(({ data }) => {
       const id = data.user?.id ?? null;
       setUserId(id);
-      if (id) fetchVibecoins(sb, id).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+      if (id) {
+        fetchVibecoins(sb, id).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+        fetchMisVotos(sb, id).then(setMios).catch(() => {});
+      }
     });
   }, []);
 
@@ -35,11 +39,14 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
     setAviso(null);
     const error = await votarProyecto(sb, userId, target);
     if (error) {
-      setAviso(error);
+      // la policy junta saldo y tope, así que el motivo lo decidimos acá
+      const yaDio = mios[target] ?? 0;
+      setAviso(yaDio >= TOPE_VOTOS_POR_PROYECTO ? `Ya le diste ${TOPE_VOTOS_POR_PROYECTO} a este proyecto. Repartí en otros.` : error);
       // el saldo pudo haber cambiado en otra pestaña
       fetchVibecoins(sb, userId).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
     } else {
       setSaldo((s) => (s === null ? s : s - 1));
+      setMios((m) => ({ ...m, [target]: (m[target] ?? 0) + 1 }));
       setFilas((f) =>
         [...f.map((p) => (p.user_id === target ? { ...p, votos: p.votos + 1 } : p))].sort((a, b) => b.votos - a.votos),
       );
@@ -61,7 +68,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
                 {saldo ?? "…"} <span className="text-xs font-bold text-ink/55">vibecoins</span>
               </div>
               <div className="mt-0.5 text-[11px] text-ink/55">
-                {sinMonedas ? "Jugá una partida para conseguir más." : "Cada voto cuesta una."}
+                {sinMonedas ? "Jugá una partida para conseguir más." : `Cada voto cuesta una, hasta ${TOPE_VOTOS_POR_PROYECTO} por proyecto.`}
               </div>
             </div>
           ) : (
@@ -119,15 +126,30 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
                     <div className="text-base font-black leading-none tabular-nums">{p.votos}</div>
                     <div className="text-[9px] font-black uppercase tracking-wide text-ink/45">🪙</div>
                   </div>
-                  {userId && !propio && (
-                    <button
-                      onClick={() => votar(p.user_id)}
-                      disabled={votando === p.user_id || sinMonedas}
-                      className="rounded-lg border-2 border-ink/20 bg-white px-2 py-0.5 text-[11px] font-black transition hover:border-amber hover:bg-amber/15 disabled:opacity-40"
-                      title={sinMonedas ? "Te quedaste sin vibecoins" : "Darle una moneda"}
-                    >
-                      {votando === p.user_id ? "…" : "+1"}
-                    </button>
+                  {userId && !propio && (() => {
+                    const dados = mios[p.user_id] ?? 0;
+                    const enElTope = dados >= TOPE_VOTOS_POR_PROYECTO;
+                    return (
+                      <button
+                        onClick={() => votar(p.user_id)}
+                        disabled={votando === p.user_id || sinMonedas || enElTope}
+                        className="rounded-lg border-2 border-ink/20 bg-white px-2 py-0.5 text-[11px] font-black transition hover:border-amber hover:bg-amber/15 disabled:opacity-40"
+                        title={
+                          enElTope
+                            ? `Ya le diste ${TOPE_VOTOS_POR_PROYECTO}, el máximo por proyecto`
+                            : sinMonedas
+                              ? "Te quedaste sin vibecoins"
+                              : "Darle una moneda"
+                        }
+                      >
+                        {votando === p.user_id ? "…" : enElTope ? `${dados}/${TOPE_VOTOS_POR_PROYECTO}` : "+1"}
+                      </button>
+                    );
+                  })()}
+                  {userId && !propio && (mios[p.user_id] ?? 0) > 0 && (mios[p.user_id] ?? 0) < TOPE_VOTOS_POR_PROYECTO && (
+                    <span className="text-[9px] font-bold text-ink/40">
+                      diste {mios[p.user_id]}/{TOPE_VOTOS_POR_PROYECTO}
+                    </span>
                   )}
                 </div>
               </div>
