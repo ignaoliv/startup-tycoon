@@ -545,8 +545,13 @@ export async function fetchVibecoins(sb: SupabaseClient, userId: string): Promis
  * Da una moneda a un proyecto. El saldo lo valida la base: si no alcanza, el
  * insert lo rechaza la policy y devolvemos el motivo en criollo.
  */
-export async function votarProyecto(sb: SupabaseClient, voter: string, target: string): Promise<string | null> {
-  const { error } = await sb.from("project_votes").insert({ voter, target });
+export async function votarProyecto(
+  sb: SupabaseClient,
+  voter: string,
+  target: string,
+  tipo: "juego" | "invitacion" = "juego",
+): Promise<string | null> {
+  const { error } = await sb.from("project_votes").insert({ voter, target, tipo });
   if (!error) return null;
   const codigo = (error as { code?: string }).code;
   // la policy junta dos reglas, así que el 42501 puede ser falta de saldo o el
@@ -560,8 +565,40 @@ export async function votarProyecto(sb: SupabaseClient, voter: string, target: s
 export const TOPE_VOTOS_POR_PROYECTO = 3;
 
 export async function fetchMisVotos(sb: SupabaseClient, userId: string): Promise<Record<string, number>> {
-  const { data } = await sb.from("project_votes").select("target").eq("voter", userId).limit(1000);
+  // solo las de juego: son las que cuentan para el tope de 3
+  const { data } = await sb.from("project_votes").select("target").eq("voter", userId).eq("tipo", "juego").limit(1000);
   const out: Record<string, number> = {};
   for (const v of (data ?? []) as { target: string }[]) out[v.target] = (out[v.target] ?? 0) + 1;
   return out;
+}
+
+export const REF_KEY = "startup-tycoon:invitado-por";
+
+/** Guarda quién te invitó, para reclamarlo cuando entres con cuenta. */
+export function guardarInvitacion(handle: string) {
+  try {
+    if (!localStorage.getItem(REF_KEY)) localStorage.setItem(REF_KEY, handle);
+  } catch {}
+}
+
+/**
+ * Atribuye la invitación una sola vez. El trigger de la base se encarga de que
+ * no se pueda cambiar después, así que reintentar es inofensivo.
+ */
+export async function reclamarInvitacion(sb: SupabaseClient, userId: string) {
+  let handle: string | null = null;
+  try {
+    handle = localStorage.getItem(REF_KEY);
+  } catch {}
+  if (!handle) return;
+  const { data: yo } = await sb.from("profiles").select("invitado_por").eq("id", userId).maybeSingle();
+  if ((yo as { invitado_por?: string | null } | null)?.invitado_por) {
+    try { localStorage.removeItem(REF_KEY); } catch {}
+    return;
+  }
+  const { data: quien } = await sb.from("profiles").select("id").eq("handle", handle.toLowerCase()).maybeSingle();
+  const id = (quien as { id?: string } | null)?.id;
+  if (!id || id === userId) return;
+  await sb.from("profiles").update({ invitado_por: id }).eq("id", userId);
+  try { localStorage.removeItem(REF_KEY); } catch {}
 }

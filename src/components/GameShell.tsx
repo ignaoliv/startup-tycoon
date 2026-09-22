@@ -21,7 +21,7 @@ import { derive, diasQueQuedan, factorVentana, pisoHype, randomIdea, randomStart
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
-import { asegurarRunGuardada, buildRun, createPost, fetchProfile, marcarLoginEnCurso } from "@/lib/storage";
+import { asegurarRunGuardada, buildRun, createPost, fetchProfile, guardarInvitacion, marcarLoginEnCurso } from "@/lib/storage";
 import { textoParaCompartir } from "@/lib/compartir";
 import { playerId } from "@/lib/analytics";
 
@@ -41,6 +41,11 @@ export function GameShell() {
   // ?test=1: la partida arranca quieta y sin eventos, para que se pueda parar
   // el estado y mirarlo. No cambia ninguna regla del juego.
   const modoTest = params.get("test") === "1";
+  // ?ref=<handle>: se guarda al llegar y se atribuye cuando entra con cuenta
+  const ref = params.get("ref");
+  useEffect(() => {
+    if (ref) guardarInvitacion(ref);
+  }, [ref]);
   const game = useGame(forceLocal, modoTest);
   const [tab, setTab] = useState<Tab>("office");
   const [menu, setMenu] = useState(false);

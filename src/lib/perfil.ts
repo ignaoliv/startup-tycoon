@@ -92,8 +92,14 @@ export function dominioDe(url: string | null) {
 
 export interface Vibecoins {
   user_id: string;
-  ganadas: number;
-  gastadas: number;
+  juego_ganadas: number;
+  invit_ganadas: number;
+  juego_gastadas: number;
+  invit_gastadas: number;
+  /** Con tope de 3 por proyecto. */
+  saldo_juego: number;
+  /** Sin tope: se pueden poner donde ya votaste. */
+  saldo_invitacion: number;
   saldo: number;
 }
 

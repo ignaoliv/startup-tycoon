@@ -5,7 +5,7 @@ import { Btn } from "@/components/ui";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import { fetchMisVotos, fetchVibecoins, TOPE_VOTOS_POR_PROYECTO, votarProyecto } from "@/lib/storage";
 import { plataCorta } from "@/lib/compartir";
-import { dominioDe, urlProyecto, type ProyectoListado } from "@/lib/perfil";
+import { dominioDe, urlProyecto, type ProyectoListado, type Vibecoins } from "@/lib/perfil";
 
 /**
  * El ranking de proyectos. Se vota con vibecoins, que se ganan jugando: por eso
@@ -14,7 +14,7 @@ import { dominioDe, urlProyecto, type ProyectoListado } from "@/lib/perfil";
 export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) {
   const [filas, setFilas] = useState(iniciales);
   const [userId, setUserId] = useState<string | null>(null);
-  const [saldo, setSaldo] = useState<number | null>(null);
+  const [coins, setCoins] = useState<Vibecoins | null>(null);
   const [mios, setMios] = useState<Record<string, number>>({});
   const [votando, setVotando] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -26,27 +26,46 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
       const id = data.user?.id ?? null;
       setUserId(id);
       if (id) {
-        fetchVibecoins(sb, id).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+        fetchVibecoins(sb, id).then(setCoins).catch(() => {});
         fetchMisVotos(sb, id).then(setMios).catch(() => {});
       }
     });
   }, []);
 
+  /**
+   * Primero se gastan las de juego, que son las que caducan contra el tope de 3.
+   * Las de invitación quedan para cuando el tope ya no deja, que es justamente
+   * para lo que sirven.
+   */
+  const monedaParaUsar = (target: string): "juego" | "invitacion" | null => {
+    if (!coins) return null;
+    const dadas = mios[target] ?? 0;
+    if (coins.saldo_juego > 0 && dadas < TOPE_VOTOS_POR_PROYECTO) return "juego";
+    if (coins.saldo_invitacion > 0) return "invitacion";
+    return null;
+  };
+
   const votar = async (target: string) => {
     const sb = getSupabase();
     if (!sb || !userId) return;
+    const tipo = monedaParaUsar(target);
+    if (!tipo) return;
     setVotando(target);
     setAviso(null);
-    const error = await votarProyecto(sb, userId, target);
+    const error = await votarProyecto(sb, userId, target, tipo);
     if (error) {
-      // la policy junta saldo y tope, así que el motivo lo decidimos acá
-      const yaDio = mios[target] ?? 0;
-      setAviso(yaDio >= TOPE_VOTOS_POR_PROYECTO ? `Ya le diste ${TOPE_VOTOS_POR_PROYECTO} a este proyecto. Repartí en otros.` : error);
-      // el saldo pudo haber cambiado en otra pestaña
-      fetchVibecoins(sb, userId).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+      setAviso(error);
+      fetchVibecoins(sb, userId).then(setCoins).catch(() => {});
+      fetchMisVotos(sb, userId).then(setMios).catch(() => {});
     } else {
-      setSaldo((s) => (s === null ? s : s - 1));
-      setMios((m) => ({ ...m, [target]: (m[target] ?? 0) + 1 }));
+      setCoins((c) =>
+        !c
+          ? c
+          : tipo === "juego"
+            ? { ...c, saldo_juego: c.saldo_juego - 1, saldo: c.saldo - 1 }
+            : { ...c, saldo_invitacion: c.saldo_invitacion - 1, saldo: c.saldo - 1 },
+      );
+      if (tipo === "juego") setMios((m) => ({ ...m, [target]: (m[target] ?? 0) + 1 }));
       setFilas((f) =>
         [...f.map((p) => (p.user_id === target ? { ...p, votos: p.votos + 1 } : p))].sort((a, b) => b.votos - a.votos),
       );
@@ -54,7 +73,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
     setVotando(null);
   };
 
-  const sinMonedas = saldo !== null && saldo <= 0;
+  const sinMonedas = !!coins && coins.saldo <= 0;
 
   return (
     <>
@@ -65,10 +84,14 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
           {userId ? (
             <div className="min-w-0 flex-1">
               <div className="text-lg font-black leading-none tabular-nums">
-                {saldo ?? "…"} <span className="text-xs font-bold text-ink/55">vibecoins</span>
+                {coins?.saldo ?? "…"} <span className="text-xs font-bold text-ink/55">vibecoins</span>
               </div>
               <div className="mt-0.5 text-[11px] text-ink/55">
-                {sinMonedas ? "Jugá una partida para conseguir más." : `Cada voto cuesta una, hasta ${TOPE_VOTOS_POR_PROYECTO} por proyecto.`}
+                {sinMonedas
+                  ? "Jugá una partida para conseguir más."
+                  : coins && coins.saldo_invitacion > 0
+                    ? `${coins.saldo_juego} de jugar (máx. ${TOPE_VOTOS_POR_PROYECTO} por proyecto) y ${coins.saldo_invitacion} de invitar, que van donde quieras.`
+                    : `Cada voto cuesta una, hasta ${TOPE_VOTOS_POR_PROYECTO} por proyecto.`}
               </div>
             </div>
           ) : (
@@ -128,21 +151,28 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
                   </div>
                   {userId && !propio && (() => {
                     const dados = mios[p.user_id] ?? 0;
+                    const tipo = monedaParaUsar(p.user_id);
                     const enElTope = dados >= TOPE_VOTOS_POR_PROYECTO;
                     return (
                       <button
                         onClick={() => votar(p.user_id)}
-                        disabled={votando === p.user_id || sinMonedas || enElTope}
-                        className="rounded-lg border-2 border-ink/20 bg-white px-2 py-0.5 text-[11px] font-black transition hover:border-amber hover:bg-amber/15 disabled:opacity-40"
+                        disabled={votando === p.user_id || !tipo}
+                        className={`rounded-lg border-2 px-2 py-0.5 text-[11px] font-black transition disabled:opacity-40 ${
+                          tipo === "invitacion"
+                            ? "border-indigo/40 bg-indigo/10 hover:border-indigo"
+                            : "border-ink/20 bg-white hover:border-amber hover:bg-amber/15"
+                        }`}
                         title={
-                          enElTope
-                            ? `Ya le diste ${TOPE_VOTOS_POR_PROYECTO}, el máximo por proyecto`
-                            : sinMonedas
-                              ? "Te quedaste sin vibecoins"
-                              : "Darle una moneda"
+                          tipo === "invitacion"
+                            ? "Usás una moneda de invitación, que no tiene tope"
+                            : tipo === "juego"
+                              ? "Darle una moneda"
+                              : enElTope
+                                ? `Ya le diste ${TOPE_VOTOS_POR_PROYECTO}. Invitá gente para poder darle más.`
+                                : "Te quedaste sin vibecoins"
                         }
                       >
-                        {votando === p.user_id ? "…" : enElTope ? `${dados}/${TOPE_VOTOS_POR_PROYECTO}` : "+1"}
+                        {votando === p.user_id ? "…" : !tipo && enElTope ? `${dados}/${TOPE_VOTOS_POR_PROYECTO}` : "+1"}
                       </button>
                     );
                   })()}

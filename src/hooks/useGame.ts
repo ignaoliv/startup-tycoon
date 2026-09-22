@@ -6,7 +6,7 @@ import { dayMs } from "@/lib/game/data";
 import { applyIncoming, derive, newGame, tick, tiempoAfuera } from "@/lib/game/engine";
 import type { Derived, GameState, Speed } from "@/lib/game/types";
 import { getSupabase } from "@/lib/supabase/client";
-import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, enviarRunPendienteAlSalir, type IncomingAction } from "@/lib/storage";
+import { clearLocal, ensureProfile, fetchIncoming, fetchPortfolioTargets, loadCloud, loadLocal, markProcessed, saveCloud, saveLocal, saveRun, buildRun, guardarRunPendiente, leerRunPendiente, borrarRunPendiente, enviarRunPendienteAlSalir, reclamarInvitacion, type IncomingAction } from "@/lib/storage";
 import { closeStaleRuns, playerId, trackRun, trackValuation } from "@/lib/analytics";
 import { applyTuning, loadTuning, tuning } from "@/lib/game/tuning";
 
@@ -116,6 +116,8 @@ export function useGame(forceLocal: boolean, modoTest = false) {
         if (user) {
           const meta = user.user_metadata ?? {};
           await ensureProfile(sb, userId, meta.full_name ?? meta.name ?? (user.is_anonymous ? "Invitado" : "Fundador/a"));
+          // si llegó por el link de alguien, queda atribuido una sola vez
+          reclamarInvitacion(sb, userId).catch(() => {});
         }
       } else {
         s = loadLocal(null);

@@ -210,6 +210,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
   const [proyDesc, setProyDesc] = useState("");
   const [editandoProy, setEditandoProy] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [copiadoRef, setCopiadoRef] = useState(false);
   const [coins, setCoins] = useState<Vibecoins | null>(null);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
@@ -340,11 +341,40 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
             </div>
             <div className="mt-0.5 text-[10px] text-ink/50">
               +1 por terminar una partida, +2 si la ganás
+              {coins.saldo_invitacion > 0 && ` · ${coins.saldo_invitacion} de invitar, sin tope`}
             </div>
           </div>
           <Link href="/proyectos" className="btn shrink-0 border-ink/25 bg-white px-3 py-1.5 text-xs">
             Ver proyectos
           </Link>
+        </div>
+      )}
+
+      {/* El link de invitación: 5 monedas por cada uno que llegue a terminar una partida */}
+      {perfil?.handle && (
+        <div className="mt-2 rounded-xl border-2 border-indigo/25 bg-indigo/5 px-3 py-2">
+          <div className="text-[10px] font-black uppercase tracking-wide text-ink/45">Tu link para invitar</div>
+          <div className="mt-1 flex items-center gap-2">
+            <code className="min-w-0 flex-1 truncate rounded-lg bg-white px-2 py-1 text-[11px] font-bold">
+              {`${SITIO}/play?ref=${perfil.handle}`}
+            </code>
+            <Btn
+              size="sm"
+              variant="ghost"
+              className="shrink-0"
+              onClick={() => {
+                navigator.clipboard?.writeText(`${SITIO}/play?ref=${perfil.handle}`).then(() => {
+                  setCopiadoRef(true);
+                  setTimeout(() => setCopiadoRef(false), 2000);
+                });
+              }}
+            >
+              {copiadoRef ? "¡Copiado!" : "Copiar"}
+            </Btn>
+          </div>
+          <div className="mt-1 text-[10px] text-ink/50">
+            5 vibecoins por cada uno que termine una partida. Esas no tienen tope por proyecto.
+          </div>
         </div>
       )}
 
