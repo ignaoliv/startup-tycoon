@@ -1,0 +1,140 @@
+"use client";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { Btn } from "@/components/ui";
+import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
+import { fetchVibecoins, votarProyecto } from "@/lib/storage";
+import { plataCorta } from "@/lib/compartir";
+import { dominioDe, urlProyecto, type ProyectoListado } from "@/lib/perfil";
+
+/**
+ * El ranking de proyectos. Se vota con vibecoins, que se ganan jugando: por eso
+ * el que quiere votos manda a su gente a jugar, y no a hacer click y rajar.
+ */
+export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) {
+  const [filas, setFilas] = useState(iniciales);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [saldo, setSaldo] = useState<number | null>(null);
+  const [votando, setVotando] = useState<string | null>(null);
+  const [aviso, setAviso] = useState<string | null>(null);
+
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb) return;
+    sb.auth.getUser().then(({ data }) => {
+      const id = data.user?.id ?? null;
+      setUserId(id);
+      if (id) fetchVibecoins(sb, id).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+    });
+  }, []);
+
+  const votar = async (target: string) => {
+    const sb = getSupabase();
+    if (!sb || !userId) return;
+    setVotando(target);
+    setAviso(null);
+    const error = await votarProyecto(sb, userId, target);
+    if (error) {
+      setAviso(error);
+      // el saldo pudo haber cambiado en otra pestaña
+      fetchVibecoins(sb, userId).then((v) => setSaldo(v?.saldo ?? 0)).catch(() => {});
+    } else {
+      setSaldo((s) => (s === null ? s : s - 1));
+      setFilas((f) =>
+        [...f.map((p) => (p.user_id === target ? { ...p, votos: p.votos + 1 } : p))].sort((a, b) => b.votos - a.votos),
+      );
+    }
+    setVotando(null);
+  };
+
+  const sinMonedas = saldo !== null && saldo <= 0;
+
+  return (
+    <>
+      {/* la billetera, arriba de la lista: es lo que habilita todo lo de abajo */}
+      {supabaseEnabled() && (
+        <div className="mb-4 flex items-center gap-3 rounded-2xl border-2 border-amber bg-amber/10 px-4 py-3">
+          <span className="text-2xl leading-none">🪙</span>
+          {userId ? (
+            <div className="min-w-0 flex-1">
+              <div className="text-lg font-black leading-none tabular-nums">
+                {saldo ?? "…"} <span className="text-xs font-bold text-ink/55">vibecoins</span>
+              </div>
+              <div className="mt-0.5 text-[11px] text-ink/55">
+                {sinMonedas ? "Jugá una partida para conseguir más." : "Cada voto cuesta una."}
+              </div>
+            </div>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-bold">Para votar hace falta jugar.</div>
+              <div className="mt-0.5 text-[11px] text-ink/55">Terminar una partida da 1 vibecoin, ganarla da 2.</div>
+            </div>
+          )}
+          {userId ? (
+            <Link href="/play" className="btn shrink-0 border-ink bg-amber px-3 py-1.5 text-xs text-ink">
+              🚀 Jugar
+            </Link>
+          ) : (
+            <Btn size="sm" variant="ghost" className="shrink-0" onClick={() => signInWithGoogle("/proyectos")}>
+              Entrar
+            </Btn>
+          )}
+        </div>
+      )}
+
+      {aviso && (
+        <p className="mb-3 rounded-xl border-2 border-red bg-red/10 px-3 py-2 text-xs font-bold text-red">{aviso}</p>
+      )}
+
+      <ul className="space-y-2">
+        {filas.map((p, i) => {
+          const link = urlProyecto(p.proyecto_url);
+          const dominio = dominioDe(p.proyecto_url);
+          const propio = p.user_id === userId;
+          return (
+            <li key={p.user_id} className="rounded-2xl border-2 border-ink/10 bg-white p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <span className="mt-1 w-6 shrink-0 text-center text-sm font-black tabular-nums text-ink/35">
+                  {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-lg font-black leading-tight">{p.proyecto}</div>
+                  {p.proyecto_desc && <p className="mt-0.5 text-sm text-ink/65">{p.proyecto_desc}</p>}
+                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-bold">
+                    <Link href={`/u/${p.handle}`} className="text-ink/60 underline underline-offset-2 hover:text-ink">
+                      {p.display_name ?? p.handle}
+                    </Link>
+                    {link && (
+                      <a href={link} target="_blank" rel="noreferrer" className="text-indigo underline underline-offset-2">
+                        🔗 {dominio}
+                      </a>
+                    )}
+                    {p.mejor_valuacion ? (
+                      <span className="text-ink/45">su mejor startup valió {plataCorta(Number(p.mejor_valuacion))}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex shrink-0 flex-col items-center gap-1">
+                  <div className="rounded-xl border-2 border-ink/15 bg-cream px-2.5 py-1 text-center">
+                    <div className="text-base font-black leading-none tabular-nums">{p.votos}</div>
+                    <div className="text-[9px] font-black uppercase tracking-wide text-ink/45">🪙</div>
+                  </div>
+                  {userId && !propio && (
+                    <button
+                      onClick={() => votar(p.user_id)}
+                      disabled={votando === p.user_id || sinMonedas}
+                      className="rounded-lg border-2 border-ink/20 bg-white px-2 py-0.5 text-[11px] font-black transition hover:border-amber hover:bg-amber/15 disabled:opacity-40"
+                      title={sinMonedas ? "Te quedaste sin vibecoins" : "Darle una moneda"}
+                    >
+                      {votando === p.user_id ? "…" : "+1"}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
+}

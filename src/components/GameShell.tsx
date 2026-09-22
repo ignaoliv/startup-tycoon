@@ -21,7 +21,7 @@ import { derive, diasQueQuedan, factorVentana, pisoHype, randomIdea, randomStart
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
-import { asegurarRunGuardada, buildRun, createPost, marcarLoginEnCurso } from "@/lib/storage";
+import { asegurarRunGuardada, buildRun, createPost, fetchProfile, marcarLoginEnCurso } from "@/lib/storage";
 import { textoParaCompartir } from "@/lib/compartir";
 import { playerId } from "@/lib/analytics";
 
@@ -57,6 +57,10 @@ export function GameShell() {
   const [feedback, setFeedback] = useState(false);
   const [compartiendo, setCompartiendo] = useState(false);
   const [escena, setEscena] = useState<number | null>(null);
+  // Al terminar, al que ya tiene cuenta se le pide el proyecto en el mismo
+  // lugar donde al que no la tiene se le pide la cuenta: nunca conviven, así
+  // que la pantalla de fin no suma una acción más.
+  const [sinProyecto, setSinProyecto] = useState(false);
   // El header es sticky y cambia de alto (la cuenta regresiva suma una línea),
   // así que las pestañas se pegan a la altura que tenga en cada momento. Va
   // como callback ref y no como useEffect porque el header todavía no existe
@@ -107,6 +111,13 @@ export function GameShell() {
     setPaused(tour || escena !== null);
   }, [tour, escena, setPaused]);
   const { state, derived } = game;
+  const terminada = !!game.state?.gameOver;
+  useEffect(() => {
+    if (!terminada || !game.sb || !game.userId) return;
+    fetchProfile(game.sb, game.userId)
+      .then((p) => setSinProyecto(!p?.proyecto))
+      .catch(() => {});
+  }, [terminada, game.sb, game.userId]);
 
   // auto-post de hitos al muro
   const stageRef = useRef(-1);
@@ -355,6 +366,19 @@ export function GameShell() {
                     : `${state.startupName} duró ${state.day} días. Pico de ${num(state.stats.peakUsers)} usuarios. La próxima arrancás con más caja.`}
               </p>
             </>
+          )}
+          {game.userId && sinProyecto && (
+            <div className="mb-3 rounded-xl border-2 border-amber bg-amber/10 p-3 text-left">
+              <p className="mb-1 text-xs font-bold">
+                🪙 Sumaste {ganaste ? 2 : 1} vibecoin{ganaste ? "s" : ""}. Sirven para votar proyectos.
+              </p>
+              <p className="mb-2 text-[11px] text-ink/60">
+                Sumá el tuyo y aparecé con tu mejor partida al lado.
+              </p>
+              <Link href="/home" className="btn w-full justify-center border-ink/25 bg-white px-3 py-2 text-sm">
+                Mostrar lo que estoy construyendo
+              </Link>
+            </div>
           )}
           {!game.userId && supabaseEnabled() && (
             <div className="mb-3 rounded-xl border-2 border-indigo/25 bg-indigo/5 p-3 text-left">

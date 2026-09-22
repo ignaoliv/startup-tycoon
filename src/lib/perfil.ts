@@ -89,3 +89,37 @@ export function dominioDe(url: string | null) {
     return null;
   }
 }
+
+export interface Vibecoins {
+  user_id: string;
+  ganadas: number;
+  gastadas: number;
+  saldo: number;
+}
+
+export interface ProyectoListado {
+  user_id: string;
+  handle: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  twitter: string | null;
+  proyecto: string;
+  proyecto_url: string | null;
+  proyecto_desc: string | null;
+  created_at: string;
+  votos: number;
+  votos_semana: number;
+  mejor_valuacion: number | null;
+  mejor_startup: string | null;
+}
+
+/** El ranking de proyectos: más monedas arriba, y a igualdad, lo más nuevo. */
+export async function fetchProyectos(limite = 60): Promise<ProyectoListado[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/proyectos?select=*&order=votos.desc,created_at.desc&limit=${limite}`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, next: { revalidate: 60 } },
+  );
+  if (!res.ok) return [];
+  return (await res.json()) as ProyectoListado[];
+}

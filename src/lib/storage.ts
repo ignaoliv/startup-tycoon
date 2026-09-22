@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
 import { FEATURES, IDEAS, ROLES } from "./game/data";
 import { SUPABASE_KEY, SUPABASE_URL } from "./supabase/env";
-import { handleDesdeNombre } from "./perfil";
+import { handleDesdeNombre, type Vibecoins } from "./perfil";
 
 /** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
 export function sanitize(s: GameState): GameState {
@@ -533,4 +533,23 @@ export async function hypedToday(sb: SupabaseClient, from: string, to: string): 
   const since = new Date(Date.now() - 24 * 3600 * 1000).toISOString();
   const { count } = await sb.from("social_actions").select("id", { count: "exact", head: true }).eq("from_user", from).eq("to_user", to).eq("kind", "hype").gte("created_at", since);
   return (count ?? 0) > 0;
+}
+
+/** Saldo de vibecoins del jugador. Se deriva de sus partidas, no se guarda. */
+export async function fetchVibecoins(sb: SupabaseClient, userId: string): Promise<Vibecoins | null> {
+  const { data } = await sb.from("vibecoins").select("*").eq("user_id", userId).maybeSingle();
+  return (data as Vibecoins) ?? null;
+}
+
+/**
+ * Da una moneda a un proyecto. El saldo lo valida la base: si no alcanza, el
+ * insert lo rechaza la policy y devolvemos el motivo en criollo.
+ */
+export async function votarProyecto(sb: SupabaseClient, voter: string, target: string): Promise<string | null> {
+  const { error } = await sb.from("project_votes").insert({ voter, target });
+  if (!error) return null;
+  const codigo = (error as { code?: string }).code;
+  if (codigo === "42501") return "Te quedaste sin vibecoins. Jugá una partida y volvé.";
+  if (codigo === "23514") return "No podés votar tu propio proyecto.";
+  return error.message;
 }

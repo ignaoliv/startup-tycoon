@@ -5,7 +5,8 @@ import type { User } from "@supabase/supabase-js";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
-import { fetchLeaderboard, fetchMisRuns, fetchProfile, fetchRankingRuns, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type Perfil, type RunRanking } from "@/lib/storage";
+import { fetchLeaderboard, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type Perfil, type RunRanking } from "@/lib/storage";
+import type { Vibecoins } from "@/lib/perfil";
 import { SITIO } from "@/lib/seo";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
@@ -209,6 +210,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
   const [proyDesc, setProyDesc] = useState("");
   const [editandoProy, setEditandoProy] = useState(false);
   const [copiado, setCopiado] = useState(false);
+  const [coins, setCoins] = useState<Vibecoins | null>(null);
   const [editando, setEditando] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<string | null>(null);
@@ -226,6 +228,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
         setProyDesc(p?.proyecto_desc ?? "");
       })
       .catch(console.error);
+    fetchVibecoins(sb, userId).then(setCoins).catch(console.error);
   }, [userId]);
 
   const guardar = async () => {
@@ -327,6 +330,24 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
           </div>
         </>
       )}
+      {/* Vibecoins: se ganan jugando y se gastan votando proyectos */}
+      {coins && (
+        <div className="mt-3 flex items-center gap-3 rounded-xl border-2 border-amber bg-amber/10 px-3 py-2">
+          <span className="text-2xl leading-none">🪙</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-lg font-black leading-none tabular-nums">
+              {coins.saldo} <span className="text-xs font-bold text-ink/55">vibecoins</span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-ink/50">
+              +1 por terminar una partida, +2 si la ganás
+            </div>
+          </div>
+          <Link href="/proyectos" className="btn shrink-0 border-ink/25 bg-white px-3 py-1.5 text-xs">
+            Ver proyectos
+          </Link>
+        </div>
+      )}
+
       {/* El proyecto real: es lo que hace que la página valga la pena compartir */}
       <div className="mt-3 border-t-2 border-ink/10 pt-3">
         {!editandoProy ? (
