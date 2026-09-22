@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
 import { FEATURES, IDEAS, ROLES } from "./game/data";
 import { SUPABASE_KEY, SUPABASE_URL } from "./supabase/env";
+import { handleDesdeNombre } from "./perfil";
 
 /** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
 export function sanitize(s: GameState): GameState {
@@ -97,6 +98,10 @@ export interface Perfil {
   avatar_url: string | null;
   twitter?: string | null;
   linkedin?: string | null;
+  handle?: string | null;
+  proyecto?: string | null;
+  proyecto_url?: string | null;
+  proyecto_desc?: string | null;
 }
 
 /** Deja solo el usuario, venga como URL, con arroba o pelado. */
@@ -129,6 +134,39 @@ export async function fetchProfiles(sb: SupabaseClient, ids: string[]): Promise<
 export async function saveProfileLinks(sb: SupabaseClient, userId: string, links: { twitter: string; linkedin: string }) {
   const { error } = await sb.from("profiles").update({ twitter: links.twitter || null, linkedin: links.linkedin || null }).eq("id", userId);
   if (error) throw error;
+}
+
+/**
+ * Guarda el proyecto y, si todavía no tenía, le asigna un handle. El handle se
+ * deriva del nombre y el índice único de la base decide: si está tomado, se
+ * reintenta con sufijo en vez de pedirle al jugador que invente uno.
+ */
+export async function saveProyecto(
+  sb: SupabaseClient,
+  userId: string,
+  datos: { proyecto: string; proyecto_url: string; proyecto_desc: string },
+  nombreParaHandle: string,
+  handleActual?: string | null,
+): Promise<string> {
+  const campos = {
+    proyecto: datos.proyecto.trim() || null,
+    proyecto_url: datos.proyecto_url.trim() || null,
+    proyecto_desc: datos.proyecto_desc.trim() || null,
+  };
+  if (handleActual) {
+    const { error } = await sb.from("profiles").update(campos).eq("id", userId);
+    if (error) throw error;
+    return handleActual;
+  }
+  const base = handleDesdeNombre(nombreParaHandle);
+  for (let intento = 0; intento < 6; intento++) {
+    const handle = intento === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+    const { error } = await sb.from("profiles").update({ ...campos, handle }).eq("id", userId);
+    if (!error) return handle;
+    // 23505 = el handle ya lo tiene otro; se reintenta con sufijo
+    if ((error as { code?: string }).code !== "23505") throw error;
+  }
+  throw new Error("No pude armarte una dirección de perfil. Probá de nuevo.");
 }
 
 export interface Post {
