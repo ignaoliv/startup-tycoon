@@ -10,6 +10,7 @@ import { derive, factorVentana, marketingPush, newGame, pisoHype, setBoardGoal, 
 import { OFFICES, SECTORS } from "./data";
 import { applyTuning, tuning } from "./tuning";
 import { num } from "./format";
+import { candidatosDeHandle } from "../perfil";
 import type { GameState } from "./types";
 
 /** Una partida arrancada como corresponde, con el sector que se pide. */
@@ -234,6 +235,37 @@ describe("las campañas de marketing", () => {
     const antes = s.users;
     marketingPush(s, "sponsor");
     expect(s.users).toBeGreaterThan(antes);
+  });
+});
+
+describe("los handles de perfil", () => {
+  it("arranca por el nombre de pila y no por el nombre completo", () => {
+    // Google devuelve el nombre completo. Si se usara entero, el link a
+    // compartir quedaría /u/juan-perez-gonzalez, que nadie pega en su bio.
+    expect(candidatosDeHandle("Juan Pérez González")[0]).toBe("juan");
+    expect(candidatosDeHandle("Ignacio Olivieri")[0]).toBe("ignacio");
+  });
+
+  it("si el de pila está tomado ofrece apellido antes que azar", () => {
+    const c = candidatosDeHandle("Juan Pérez González");
+    expect(c[1]).toBe("juan-perez");
+    expect(c[2]).toBe("juanp");
+  });
+
+  it("siempre devuelve algo usable, aunque el nombre no sirva", () => {
+    for (const nombre of ["", "X", "!!!", "   "]) {
+      for (const h of candidatosDeHandle(nombre)) {
+        expect(h).toMatch(/^[a-z0-9_-]{2,24}$/);
+      }
+    }
+  });
+
+  it("todos los candidatos pasan el formato que exige la base", () => {
+    for (const nombre of ["Juan Pérez González", "María José Fernández de la Vega", "Weare Chekaq"]) {
+      for (const h of candidatosDeHandle(nombre)) {
+        expect(h, `${nombre} → ${h}`).toMatch(/^[a-z0-9_-]{2,24}$/);
+      }
+    }
   });
 });
 

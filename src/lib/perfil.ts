@@ -55,19 +55,37 @@ export async function fetchPuesto(valuacion: number): Promise<number | null> {
   return Number.isFinite(total) ? total + 1 : null;
 }
 
-/**
- * Un handle a partir del nombre. No garantiza que esté libre: de eso se encarga
- * el índice único, y quien guarda reintenta con sufijo.
- */
-export function handleDesdeNombre(nombre: string) {
-  const base = nombre
+/** Saca tildes, deja letras y numeros, y usa guiones. */
+function limpiar(s: string) {
+  return s
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 24);
-  return base.length >= 2 ? base : `jugador-${Math.random().toString(36).slice(2, 7)}`;
+    .replace(/^-+|-+$/g, "");
+}
+
+/**
+ * Candidatos de handle, del mas lindo al menos. Google devuelve el nombre
+ * completo, asi que usar todo daria "juan-perez-gonzalez": largo y feo de pegar
+ * en una bio. Se arranca por el nombre de pila y solo se agrega apellido si
+ * el primero esta tomado.
+ */
+export function candidatosDeHandle(nombre: string): string[] {
+  const partes = limpiar(nombre).split("-").filter(Boolean);
+  const pila = partes[0] ?? "";
+  const salidas: string[] = [];
+  if (pila.length >= 2) {
+    salidas.push(pila.slice(0, 24));
+    if (partes[1]) {
+      salidas.push(`${pila}-${partes[1]}`.slice(0, 24));
+      salidas.push(`${pila}${partes[1][0]}`.slice(0, 24));
+    }
+  }
+  // ultimos recursos, siempre con algo de azar para no volver a chocar
+  const raiz = pila.length >= 2 ? pila.slice(0, 16) : "vibecoder";
+  for (let i = 0; i < 4; i++) salidas.push(`${raiz}-${Math.random().toString(36).slice(2, 6)}`);
+  return salidas;
 }
 
 export const sectorDe = (id: string | null) => (id ? SECTORS.find((s) => s.id === id) : undefined);

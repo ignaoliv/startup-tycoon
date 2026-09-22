@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Derived, GameState } from "./game/types";
 import { FEATURES, IDEAS, ROLES } from "./game/data";
 import { SUPABASE_KEY, SUPABASE_URL } from "./supabase/env";
-import { handleDesdeNombre, type Vibecoins } from "./perfil";
+import { candidatosDeHandle, type Vibecoins } from "./perfil";
 
 /** Limpia partidas guardadas por otras versiones: roles o features que esta versión no conoce. */
 export function sanitize(s: GameState): GameState {
@@ -158,9 +158,7 @@ export async function saveProyecto(
     if (error) throw error;
     return handleActual;
   }
-  const base = handleDesdeNombre(nombreParaHandle);
-  for (let intento = 0; intento < 6; intento++) {
-    const handle = intento === 0 ? base : `${base}-${Math.random().toString(36).slice(2, 6)}`;
+  for (const handle of candidatosDeHandle(nombreParaHandle)) {
     const { error } = await sb.from("profiles").update({ ...campos, handle }).eq("id", userId);
     if (!error) return handle;
     // 23505 = el handle ya lo tiene otro; se reintenta con sufijo
