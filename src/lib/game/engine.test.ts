@@ -6,7 +6,7 @@
  */
 import { describe, expect, it } from "vitest";
 import * as engine from "./engine";
-import { derive, factorVentana, newGame, pisoHype, setBoardGoal, tick } from "./engine";
+import { derive, factorVentana, marketingPush, newGame, pisoHype, setBoardGoal, tick } from "./engine";
 import { OFFICES, SECTORS } from "./data";
 import { applyTuning, tuning } from "./tuning";
 import { num } from "./format";
@@ -203,6 +203,37 @@ describe("el modo test", () => {
       if (s.pendingEvent) hubo = true;
     }
     expect(hubo).toBe(true);
+  });
+});
+
+describe("las campañas de marketing", () => {
+  it("no pueden empujar los usuarios más allá del mercado", () => {
+    // Sumaban un % de los usuarios actuales sin mirar el techo, así que
+    // componían: +10% cada 55 días durante 3.400 días daban 111 mil millones
+    // de usuarios y un ranking con valuaciones de cuatrillones.
+    const sector = SECTORS.find((x) => x.id === "saas")!;
+    const techo = sector.tam * tuning.tamMul;
+    const s = partida("saas");
+    s.stage = 5;
+    s.users = techo * 0.98;
+    s.cash = 1e12;
+    s.done = ["mvp"];
+    for (let i = 0; i < 200; i++) {
+      s.campaignCd = {};
+      marketingPush(s, "sponsor");
+    }
+    expect(s.users).toBeLessThanOrEqual(techo);
+  });
+
+  it("sí sirven cuando queda mercado", () => {
+    const s = partida("saas");
+    s.stage = 5;
+    s.users = 200_000; // sponsor pide 150.000, y el mercado saas es 1.5M
+    s.cash = 1e12;
+    s.done = ["mvp"];
+    const antes = s.users;
+    marketingPush(s, "sponsor");
+    expect(s.users).toBeGreaterThan(antes);
   });
 });
 

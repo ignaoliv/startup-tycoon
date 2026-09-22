@@ -664,7 +664,14 @@ export function marketingPush(s: GameState, id = "push"): string | null {
   s.cash -= cost;
   s.campaignCd = { ...(s.campaignCd ?? {}), [c.id]: s.day };
   s.hype = clamp(s.hype + c.hype, 0, 100);
-  const nuevos = Math.round(s.users * c.usersPct);
+  // Las campañas sumaban un porcentaje de los usuarios actuales sin mirar el
+  // mercado, así que componían solas: +10% cada 55 días durante 3.400 días son
+  // 111 mil millones de usuarios. El techo del sector tiene que valer también
+  // acá, igual que para el crecimiento orgánico.
+  const sector = SECTORS.find((x) => x.id === s.sector) ?? SECTORS[1];
+  const techo = sector.tam * tuning.tamMul;
+  const margen = Math.max(0, 1 - s.users / techo);
+  const nuevos = Math.round(s.users * c.usersPct * margen);
   if (nuevos > 0) {
     s.users += nuevos;
     s.stats.peakUsers = Math.max(s.stats.peakUsers, s.users);
