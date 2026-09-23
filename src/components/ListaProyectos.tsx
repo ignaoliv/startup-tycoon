@@ -91,13 +91,21 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
                   ? "Jugá una partida para conseguir más."
                   : coins && coins.saldo_invitacion > 0
                     ? `${coins.saldo_juego} de jugar (máx. ${TOPE_VOTOS_POR_PROYECTO} por proyecto) y ${coins.saldo_invitacion} de invitar, que van donde quieras.`
-                    : `Cada voto cuesta una, hasta ${TOPE_VOTOS_POR_PROYECTO} por proyecto.`}
+                    : `Cada voto cuesta una, hasta ${TOPE_VOTOS_POR_PROYECTO} por proyecto.`}{" "}
+                <Link href="/vibecoins" className="underline underline-offset-2 hover:text-ink">
+                  Cómo funcionan
+                </Link>
               </div>
             </div>
           ) : (
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold">Para votar hace falta jugar.</div>
-              <div className="mt-0.5 text-[11px] text-ink/55">Terminar una partida da 1 vibecoin, ganarla da 2.</div>
+              <div className="mt-0.5 text-[11px] text-ink/55">
+                Terminar una partida da 1 vibecoin, ganarla da 2.{" "}
+                <Link href="/vibecoins" className="underline underline-offset-2 hover:text-ink">
+                  Cómo funcionan
+                </Link>
+              </div>
             </div>
           )}
           {userId ? (

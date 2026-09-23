@@ -341,7 +341,10 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
             </div>
             <div className="mt-0.5 text-[10px] text-ink/50">
               +1 por terminar una partida, +2 si la ganás
-              {coins.saldo_invitacion > 0 && ` · ${coins.saldo_invitacion} de invitar, sin tope`}
+              {coins.saldo_invitacion > 0 && ` · ${coins.saldo_invitacion} de invitar, sin tope`}{" "}
+              <Link href="/vibecoins" className="underline underline-offset-2 hover:text-ink">
+                Cómo funcionan
+              </Link>
             </div>
           </div>
           <Link href="/proyectos" className="btn shrink-0 border-ink/25 bg-white px-3 py-1.5 text-xs">
