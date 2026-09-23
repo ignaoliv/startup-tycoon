@@ -8,22 +8,52 @@ import { SITIO } from "@/lib/seo";
 
 export const revalidate = 60;
 
+const TITULO = "La comunidad de vibecoders y lo que está construyendo";
+const DESC =
+  "Los proyectos reales de la comunidad de vibecoding: productos hechos con inteligencia artificial, con su link y quién los construye. Se votan con vibecoins, que se ganan jugando.";
+
 export const metadata: Metadata = {
-  title: { absolute: "Qué están construyendo · Vibe Coding Game" },
-  description: "Los proyectos reales de la gente que juega a fundar startups con IA.",
+  title: { absolute: `${TITULO} · Vibe Coding Game` },
+  description: DESC,
+  keywords: ["vibecoding", "vibecoders", "comunidad vibecoding", "proyectos hechos con IA", "indie hackers"],
   alternates: { canonical: `${SITIO}/proyectos` },
-  openGraph: {
-    title: "Qué están construyendo los vibecoders",
-    description: "Los proyectos reales de la gente que juega a fundar startups con IA.",
-    url: `${SITIO}/proyectos`,
-  },
+  openGraph: { title: TITULO, description: DESC, url: `${SITIO}/proyectos` },
+  twitter: { card: "summary_large_image", title: TITULO, description: DESC },
 };
 
 export default async function Proyectos() {
   const proyectos = await fetchProyectos();
 
+  // La lista en datos estructurados: es lo que un buscador con IA puede citar
+  // cuando le preguntan qué está construyendo la comunidad de vibecoding.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: TITULO,
+    description: DESC,
+    url: `${SITIO}/proyectos`,
+    isPartOf: { "@type": "WebSite", name: "Vibe Coding Game", url: SITIO },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: proyectos.length,
+      itemListElement: proyectos.slice(0, 50).map((p, i) => ({
+        "@type": "ListItem",
+        position: i + 1,
+        item: {
+          "@type": "SoftwareApplication",
+          name: p.proyecto,
+          description: p.proyecto_desc ?? undefined,
+          url: p.proyecto_url ?? `${SITIO}/u/${p.handle}`,
+          applicationCategory: "WebApplication",
+          author: { "@type": "Person", name: p.display_name ?? p.handle, url: `${SITIO}/u/${p.handle}` },
+        },
+      })),
+    },
+  };
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-5">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm">
         <Link href="/">
           <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} className="h-8 w-auto sm:h-10" />
@@ -39,9 +69,10 @@ export default async function Proyectos() {
       </header>
 
       <div className="mb-5">
-        <h1 className="text-3xl font-black leading-tight">Qué están construyendo</h1>
+        <h1 className="text-3xl font-black leading-tight">Qué está construyendo la comunidad vibecodera</h1>
         <p className="mt-1 text-sm text-ink/60">
-          Los proyectos de la gente que juega. Se votan con vibecoins, y las vibecoins se ganan jugando.
+          Productos reales hechos con IA, por la gente que juega. Se votan con vibecoins, y las vibecoins se ganan
+          jugando.
         </p>
       </div>
 

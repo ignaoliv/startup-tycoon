@@ -4,7 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
 
 const title = "Vibe Coding Game";
-const description = "Fundá una startup hecha 100% con IA: contratá agentes, shippeá features, levantá rondas y llegá a unicornio antes que tus amigos.";
+const description = "Fundá una startup hecha 100% con IA y sumate a la comunidad de vibecoders: contratá agentes, shippeá features, llegá a unicornio y compartí el producto que estás vibecodeando de verdad.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://vibecodingame.com"),
@@ -21,6 +21,7 @@ export const metadata: Metadata = {
     url: "/",
     locale: "es_AR",
   },
+  keywords: ["vibecoding", "vibecoders", "comunidad de vibecoding", "juego de startups", "startup con IA", "agentes de IA"],
   twitter: { card: "summary_large_image", title, description },
 };
 

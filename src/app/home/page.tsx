@@ -1,6 +1,7 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -35,7 +36,7 @@ const FINAL: Record<string, { txt: string; tone: "good" | "bad" | "ink" }> = {
 const sectorNombre = (id: string) => SECTORS.find((s) => s.id === id)?.name ?? id;
 const sectorIcono = (id: string) => SECTORS.find((s) => s.id === id)?.icon ?? "•";
 
-export default function HomePage() {
+function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [listo, setListo] = useState(false);
   const [runs, setRuns] = useState<(RunResumen & { id: string; name: string; idea: string | null })[]>([]);
@@ -46,16 +47,14 @@ export default function HomePage() {
   // proyecto.
   // Arranca en comunidad, que es el corazón de la página. El mail entra
   // directo al perfil con ?s=perfil, porque ahí está el formulario.
-  const [seccion, setSeccion] = useState<Seccion>("comunidad");
+  const pedida = useSearchParams().get("s");
+  const [seccion, setSeccion] = useState<Seccion>(
+    SECCIONES.some(([k]) => k === pedida) ? (pedida as Seccion) : "comunidad",
+  );
   const [proyectos, setProyectos] = useState<ProyectoListado[] | null>(null);
   const [vivo, setVivo] = useState<LeaderRow[] | null>(null);
   const [semana, setSemana] = useState<RunRanking[] | null>(null);
   const [historico, setHistorico] = useState<RunRanking[] | null>(null);
-
-  useEffect(() => {
-    const s = new URLSearchParams(window.location.search).get("s");
-    if (s && SECCIONES.some(([k]) => k === s)) setSeccion(s as Seccion);
-  }, []);
 
   useEffect(() => {
     if (seccion !== "comunidad" || proyectos) return;
@@ -570,5 +569,14 @@ function ListaRuns({ filas, yo }: { filas: RunRanking[] | null; yo?: string }) {
         );
       })}
     </ul>
+  );
+}
+
+export default function HomePage() {
+  // useSearchParams pide un límite de Suspense para no bloquear el prerender.
+  return (
+    <Suspense fallback={<main className="p-6 text-sm font-bold text-ink/50">Cargando…</main>}>
+      <Home />
+    </Suspense>
   );
 }

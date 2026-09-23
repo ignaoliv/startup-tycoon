@@ -16,6 +16,17 @@ export const metadata: Metadata = {
   },
 };
 
+const PREGUNTAS: [string, string][] = [
+  ["¿Puedo votar mi propio proyecto?", "No."],
+  ["¿Se pueden comprar?", "No. La única forma de conseguirlas es jugando o invitando."],
+  [
+    "¿Me sirve inventar cuentas para autoinvitarme?",
+    "No rinde: las cinco monedas se acreditan recién cuando esa cuenta termina una partida entera, y eso lleva entre doce y treinta minutos reales.",
+  ],
+  ["¿Puedo recuperar una moneda que gasté?", "No, el voto no se deshace."],
+  ["¿Valen plata?", "No, y no está previsto que valgan."],
+];
+
 const COMO_SE_GANAN = [
   { q: "Terminás una partida", a: "1 vibecoin", d: "No importa cómo termine: quiebra, te echan, se acaba el tiempo." },
   { q: "Ganás la partida", a: "2 vibecoins", d: "Salir a bolsa o que te compren." },
@@ -23,8 +34,29 @@ const COMO_SE_GANAN = [
 ];
 
 export default function Vibecoins() {
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      {
+        "@type": "Question",
+        name: "¿Qué son las vibecoins?",
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: "Es la moneda de la comunidad de Vibe Coding Game: se gana jugando y se gasta votando los proyectos de otros vibecoders. Terminar una partida da una, ganarla da dos, e invitar a alguien que termine su primera partida da cinco. No se compran y no valen dinero real.",
+        },
+      },
+      ...PREGUNTAS.map(([q, a]) => ({
+        "@type": "Question",
+        name: q,
+        acceptedAnswer: { "@type": "Answer", text: a },
+      })),
+    ],
+  };
+
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-5">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm">
         <Link href="/">
           <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} className="h-8 w-auto sm:h-10" />
@@ -103,16 +135,7 @@ export default function Vibecoins() {
 
         <h2 className="mt-9 text-xl font-black">Preguntas sueltas</h2>
         <dl className="mt-3 space-y-3">
-          {[
-            ["¿Puedo votar mi propio proyecto?", "No."],
-            ["¿Se pueden comprar?", "No. La única forma de conseguirlas es jugando o invitando."],
-            [
-              "¿Me sirve inventar cuentas para autoinvitarme?",
-              "No rinde: las cinco monedas se acreditan recién cuando esa cuenta termina una partida entera, y eso lleva entre doce y treinta minutos reales.",
-            ],
-            ["¿Puedo recuperar una moneda que gasté?", "No, el voto no se deshace."],
-            ["¿Valen plata?", "No, y no está previsto que valgan."],
-          ].map(([q, a]) => (
+          {PREGUNTAS.map(([q, a]) => (
             <div key={q} className="rounded-xl border-2 border-ink/10 bg-white p-3">
               <dt className="text-sm font-black">{q}</dt>
               <dd className="mt-0.5 text-[13px] text-ink/65">{a}</dd>

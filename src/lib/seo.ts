@@ -1,7 +1,7 @@
 export const SITIO = "https://vibecodingame.com";
 export const NOMBRE = "Vibe Coding Game";
 export const DESCRIPCION =
-  "Juego gratis de simulación donde fundás una startup hecha con inteligencia artificial: contratá agentes, shippeá features, levantá rondas y llegá a unicornio. Se juega en el navegador, sin instalar nada.";
+  "Juego gratis de simulación donde fundás una startup hecha con inteligencia artificial: contratá agentes, shippeá features, levantá rondas y llegá a unicornio. Se juega en el navegador, sin instalar nada. Y es también la comunidad de vibecoders que comparte los productos que está construyendo de verdad.";
 
 /** Preguntas que la gente escribe en Google y que responden los buscadores con IA. */
 export const FAQ: { q: string; a: string }[] = [
@@ -28,6 +28,18 @@ export const FAQ: { q: string; a: string }[] = [
   {
     q: "¿Cómo se gana?",
     a: "Ganás cuando tu startup vale mil millones de dólares y salís a bolsa tocando la campana, o cuando una empresa grande te compra. Perdés si te quedás sin plata doce días seguidos o si el directorio te reemplaza como CEO por no cumplir las metas de crecimiento.",
+  },
+  {
+    q: "¿Qué es un vibecoder?",
+    a: "Alguien que construye software apoyándose en inteligencia artificial para escribir el código, en vez de escribirlo todo a mano. El término viene de vibe coding: describís lo que querés y el modelo lo implementa. En Vibe Coding Game además hay una comunidad de vibecoders que comparte los productos que está construyendo de verdad.",
+  },
+  {
+    q: "¿Dónde puedo mostrar el proyecto que estoy vibecodeando?",
+    a: "En la sección Comunidad de Vibe Coding Game. Entrás con Google, cargás el nombre de tu proyecto, su link y una línea que lo explique, y te queda una página propia que podés compartir. Al lado aparece tu mejor partida del juego, que funciona como credencial: se gana jugando y no pidiendo votos.",
+  },
+  {
+    q: "¿Qué son las vibecoins?",
+    a: "Es la moneda con la que se votan los proyectos de la comunidad. Se ganan jugando: una por cada partida terminada, dos si la ganás, y cinco por cada persona que invites y termine una partida. Podés dar hasta tres a un mismo proyecto. No se compran ni valen dinero real.",
   },
   {
     q: "¿En qué se parece a la vida real de una startup?",
