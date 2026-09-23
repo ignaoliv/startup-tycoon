@@ -8,11 +8,21 @@ import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/c
 import { fetchLeaderboard, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type Perfil, type RunRanking } from "@/lib/storage";
 import type { Vibecoins } from "@/lib/perfil";
 import { SITIO } from "@/lib/seo";
+import { ListaProyectos } from "@/components/ListaProyectos";
+import { fetchProyectos, type ProyectoListado } from "@/lib/perfil";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
 import { SECTORS } from "@/lib/game/data";
 
 type Tab = "vivo" | "semana" | "historico";
+
+type Seccion = "comunidad" | "ranking" | "carrera" | "perfil";
+const SECCIONES: [Seccion, string][] = [
+  ["comunidad", "🛠️ Comunidad"],
+  ["ranking", "🏆 Ranking"],
+  ["carrera", "🏅 Mi carrera"],
+  ["perfil", "🙋 Mi perfil"],
+];
 
 const FINAL: Record<string, { txt: string; tone: "good" | "bad" | "ink" }> = {
   ipo: { txt: "IPO", tone: "good" },
@@ -34,10 +44,23 @@ export default function HomePage() {
   // ranking: un scroll sin fin donde lo que hay que hacer no se ve. En
   // secciones, lo primero que aparece es el perfil, que es donde se carga el
   // proyecto.
-  const [seccion, setSeccion] = useState<"perfil" | "carrera" | "ranking">("perfil");
+  // Arranca en comunidad, que es el corazón de la página. El mail entra
+  // directo al perfil con ?s=perfil, porque ahí está el formulario.
+  const [seccion, setSeccion] = useState<Seccion>("comunidad");
+  const [proyectos, setProyectos] = useState<ProyectoListado[] | null>(null);
   const [vivo, setVivo] = useState<LeaderRow[] | null>(null);
   const [semana, setSemana] = useState<RunRanking[] | null>(null);
   const [historico, setHistorico] = useState<RunRanking[] | null>(null);
+
+  useEffect(() => {
+    const s = new URLSearchParams(window.location.search).get("s");
+    if (s && SECCIONES.some(([k]) => k === s)) setSeccion(s as Seccion);
+  }, []);
+
+  useEffect(() => {
+    if (seccion !== "comunidad" || proyectos) return;
+    fetchProyectos().then(setProyectos).catch(() => setProyectos([]));
+  }, [seccion, proyectos]);
 
   useEffect(() => {
     const sb = getSupabase();
@@ -91,32 +114,41 @@ export default function HomePage() {
         <Link href="/play" className="btn border-ink bg-indigo px-3 py-2 text-sm text-white">Jugar</Link>
       </header>
 
-      {user && (
-        <div className="mb-3 flex gap-1 rounded-xl bg-ink/5 p-1">
-          {([
-            ["perfil", "🙋 Mi perfil"],
-            ["carrera", "🏅 Mi carrera"],
-            ["ranking", "🏆 Ranking"],
-          ] as const).map(([k, txt]) => (
-            <button
-              key={k}
-              onClick={() => setSeccion(k)}
-              className={`flex-1 rounded-lg py-2 text-xs font-black transition ${seccion === k ? "bg-white shadow" : "text-ink/50"}`}
-            >
-              {txt}
-            </button>
-          ))}
-        </div>
+      <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl bg-ink/5 p-1">
+        {SECCIONES.filter(([k]) => user || k === "comunidad" || k === "ranking").map(([k, txt]) => (
+          <button
+            key={k}
+            onClick={() => setSeccion(k)}
+            className={`flex-1 whitespace-nowrap rounded-lg px-2 py-2 text-xs font-black transition ${seccion === k ? "bg-white shadow" : "text-ink/50"}`}
+          >
+            {txt}
+          </button>
+        ))}
+      </div>
+
+      {seccion === "comunidad" && (
+        <Card title="Qué están construyendo" className="mb-3">
+          <p className="mb-3 text-xs text-ink/55">
+            Los proyectos de la gente que juega. Se votan con vibecoins, que se ganan jugando.
+          </p>
+          {proyectos === null ? (
+            <p className="text-xs text-ink/50">Cargando…</p>
+          ) : proyectos.length === 0 ? (
+            <p className="text-xs text-ink/50">Todavía no hay ninguno. Sumá el tuyo desde Mi perfil.</p>
+          ) : (
+            <ListaProyectos iniciales={proyectos} />
+          )}
+        </Card>
       )}
 
-      {!user && supabaseEnabled() && (
+      {!user && supabaseEnabled() && seccion !== "comunidad" && (
         <Card className="mb-3">
           <div className="mb-1 text-2xl">🏆</div>
           <h2 className="mb-1 text-lg font-black">Entrá para tener tu carrera</h2>
           <p className="mb-3 text-sm text-ink/60">
             Se guardan todas tus partidas, se te desbloquean los {LOGROS.length} logros y entrás al ranking. Jugar sigue sin pedir cuenta.
           </p>
-          <Btn className="w-full" onClick={() => signInWithGoogle("/home")}>Entrar con Google</Btn>
+          <Btn className="w-full" onClick={() => signInWithGoogle(`/home?s=${seccion}`)}>Entrar con Google</Btn>
         </Card>
       )}
 
@@ -196,7 +228,7 @@ export default function HomePage() {
         </>
       )}
 
-      {(!user || seccion === "ranking") && (
+      {seccion === "ranking" && (
       <Card title="Ranking">
         <div className="mb-3 flex gap-1 rounded-xl bg-ink/5 p-1">
           {(["vivo", "semana", "historico"] as Tab[]).map((k) => (
