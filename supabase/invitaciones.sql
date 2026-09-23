@@ -40,8 +40,14 @@ alter table public.project_votes add constraint project_votes_tipo check (tipo i
 
 -- ---------------------------------------------------------------------------
 -- El saldo, con los dos bolsillos separados
+--
+-- Se dropea antes de crear porque `create or replace view` no puede renombrar
+-- columnas, y `ganadas` pasa a ser `juego_ganadas`. Y antes hay que sacar la
+-- policy, que depende de la vista.
 -- ---------------------------------------------------------------------------
-create or replace view public.vibecoins
+drop policy if exists "voto con mi cuenta" on public.project_votes;
+drop view if exists public.vibecoins;
+create view public.vibecoins
 with (security_invoker = on) as
   select
     p.id                                                                 as user_id,
@@ -89,7 +95,6 @@ language sql stable as $$
   where voter = de and target = a and tipo = 'juego'
 $$;
 
-drop policy if exists "voto con mi cuenta" on public.project_votes;
 create policy "voto con mi cuenta" on public.project_votes
   for insert to authenticated with check (
     auth.uid() = voter
