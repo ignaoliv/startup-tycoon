@@ -600,3 +600,77 @@ export async function reclamarInvitacion(sb: SupabaseClient, userId: string) {
   await sb.from("profiles").update({ invitado_por: id }).eq("id", userId);
   try { localStorage.removeItem(REF_KEY); } catch {}
 }
+
+// ---------------------------------------------------------------------------
+// Tu puesto
+//
+// El ranking muestra 50 filas y hay más de mil jugadores: casi nadie se ve ahí
+// adentro, y el que no se ve no tiene forma de saber si le fue bien o mal. En
+// vez de traer el ranking entero para buscarse (PostgREST corta en mil filas de
+// todos modos), se cuenta cuántas partidas hay por encima.
+// ---------------------------------------------------------------------------
+
+export interface MiPuesto {
+  puesto: number;
+  total: number;
+  valuation: number;
+  name: string | null;
+  /** Cuánto falta para entrar al top que se está mirando. 0 si ya está adentro. */
+  falta: number;
+}
+
+const desdeISO = (dias?: number) => (dias ? new Date(Date.now() - dias * 864e5).toISOString() : null);
+
+/**
+ * Puesto de una valuación en el ranking de partidas terminadas, sin necesidad
+ * de que la partida esté guardada todavía: sirve para la pantalla final.
+ */
+export async function puestoDeValuacion(
+  sb: SupabaseClient,
+  valuation: number,
+  desdeDias?: number,
+): Promise<{ puesto: number; total: number } | null> {
+  const desde = desdeISO(desdeDias);
+  const base = () => {
+    let q = sb.from("runs_ranking").select("id", { count: "exact", head: true }).not("user_id", "is", null);
+    if (desde) q = q.gte("created_at", desde);
+    return q;
+  };
+  const [arriba, todas] = await Promise.all([base().gt("valuation", Math.round(valuation)), base()]);
+  if (arriba.error || todas.error) return null;
+  return { puesto: (arriba.count ?? 0) + 1, total: todas.count ?? 0 };
+}
+
+/** El mejor puesto del jugador, se vea o no en el top que está mirando. */
+export async function fetchMiPuestoRuns(
+  sb: SupabaseClient,
+  userId: string,
+  desdeDias?: number,
+): Promise<MiPuesto | null> {
+  const desde = desdeISO(desdeDias);
+  let q = sb.from("runs_ranking").select("name, valuation").eq("user_id", userId);
+  if (desde) q = q.gte("created_at", desde);
+  const { data } = await q.order("valuation", { ascending: false }).limit(1);
+  const fila = (data as { name: string; valuation: number }[] | null)?.[0];
+  if (!fila) return null;
+  const r = await puestoDeValuacion(sb, fila.valuation, desdeDias);
+  if (!r) return null;
+  return { ...r, valuation: Number(fila.valuation), name: fila.name, falta: 0 };
+}
+
+/** Puesto de la partida en curso, entre todas las que se están jugando ahora. */
+export async function fetchMiPuestoVivo(sb: SupabaseClient, userId: string): Promise<MiPuesto | null> {
+  const { data } = await sb.from("leaderboard").select("name, valuation").eq("user_id", userId).maybeSingle();
+  const fila = data as { name: string; valuation: number } | null;
+  if (!fila) return null;
+  const base = () => sb.from("leaderboard").select("user_id", { count: "exact", head: true });
+  const [arriba, todas] = await Promise.all([base().gt("valuation", fila.valuation), base()]);
+  if (arriba.error || todas.error) return null;
+  return {
+    puesto: (arriba.count ?? 0) + 1,
+    total: todas.count ?? 0,
+    valuation: Number(fila.valuation),
+    name: fila.name,
+    falta: 0,
+  };
+}

@@ -21,7 +21,7 @@ import { derive, diasQueQuedan, factorVentana, pisoHype, randomIdea, randomStart
 import { tuning } from "@/lib/game/tuning";
 import { money, num } from "@/lib/game/format";
 import { useGame } from "@/hooks/useGame";
-import { asegurarRunGuardada, buildRun, createPost, fetchProfile, guardarInvitacion, marcarLoginEnCurso } from "@/lib/storage";
+import { asegurarRunGuardada, buildRun, createPost, fetchProfile, guardarInvitacion, marcarLoginEnCurso, puestoDeValuacion } from "@/lib/storage";
 import { textoParaCompartir } from "@/lib/compartir";
 import { playerId } from "@/lib/analytics";
 
@@ -66,6 +66,7 @@ export function GameShell() {
   // lugar donde al que no la tiene se le pide la cuenta: nunca conviven, así
   // que la pantalla de fin no suma una acción más.
   const [sinProyecto, setSinProyecto] = useState(false);
+  const [puesto, setPuesto] = useState<{ puesto: number; total: number } | null>(null);
   // El header es sticky y cambia de alto (la cuenta regresiva suma una línea),
   // así que las pestañas se pegan a la altura que tenga en cada momento. Va
   // como callback ref y no como useEffect porque el header todavía no existe
@@ -123,6 +124,14 @@ export function GameShell() {
       .then((p) => setSinProyecto(!p?.proyecto))
       .catch(() => {});
   }, [terminada, game.sb, game.userId]);
+  // El puesto sale de la valuación, así que no hay que esperar a que la partida
+  // termine de guardarse. Se calcula igual sin sesión: ahí es el motivo para
+  // crearse una.
+  useEffect(() => {
+    const v = game.derived?.valuation;
+    if (!terminada || !game.sb || !v) return;
+    puestoDeValuacion(game.sb, v).then(setPuesto).catch(() => {});
+  }, [terminada, game.sb, game.derived?.valuation]);
 
   // auto-post de hitos al muro
   const stageRef = useRef(-1);
@@ -372,6 +381,20 @@ export function GameShell() {
               </p>
             </>
           )}
+          {puesto && game.userId && (
+            <Link
+              href="/home?s=ranking"
+              className="mb-3 flex items-center gap-3 rounded-xl border-2 border-indigo/30 bg-indigo/5 px-3 py-2.5 text-left"
+            >
+              <span className="text-2xl">{puesto.puesto <= 3 ? ["🥇", "🥈", "🥉"][puesto.puesto - 1] : "🏆"}</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-black">
+                  Puesto #{puesto.puesto} del ranking histórico
+                </div>
+                <div className="text-[11px] text-ink/60">Entre {num(puesto.total)} partidas · ver el ranking</div>
+              </div>
+            </Link>
+          )}
           {game.userId && sinProyecto && (
             <div className="mb-3 rounded-xl border-2 border-amber bg-amber/10 p-3 text-left">
               <p className="mb-1 text-xs font-bold">
@@ -388,7 +411,9 @@ export function GameShell() {
           {!game.userId && supabaseEnabled() && (
             <div className="mb-3 rounded-xl border-2 border-indigo/25 bg-indigo/5 p-3 text-left">
               <p className="mb-2 text-xs font-bold">
-                Entrá con Google y esta partida queda guardada en tu historial, con tus logros y tu puesto en el ranking.
+                {puesto
+                  ? `Esta partida entra en el puesto #${puesto.puesto} del ranking, pero solo si tenés cuenta. Entrá con Google y queda guardada, con tus logros.`
+                  : "Entrá con Google y esta partida queda guardada en tu historial, con tus logros y tu puesto en el ranking."}
               </p>
               <Btn variant="ghost" className="w-full" onClick={() => { marcarLoginEnCurso(); signInWithGoogle("/play"); }}>
                 Guardar esta partida

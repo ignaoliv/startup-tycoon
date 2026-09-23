@@ -6,7 +6,7 @@ import type { User } from "@supabase/supabase-js";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
-import { fetchLeaderboard, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type Perfil, type RunRanking } from "@/lib/storage";
+import { fetchLeaderboard, fetchMiPuestoRuns, fetchMiPuestoVivo, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type MiPuesto, type Perfil, type RunRanking } from "@/lib/storage";
 import type { Vibecoins } from "@/lib/perfil";
 import { SITIO } from "@/lib/seo";
 import { ListaProyectos } from "@/components/ListaProyectos";
@@ -55,6 +55,8 @@ function Home() {
   const [vivo, setVivo] = useState<LeaderRow[] | null>(null);
   const [semana, setSemana] = useState<RunRanking[] | null>(null);
   const [historico, setHistorico] = useState<RunRanking[] | null>(null);
+  // undefined = todavía no se pidió · null = no tiene partidas en ese ranking
+  const [puestos, setPuestos] = useState<Partial<Record<Tab, MiPuesto | null>>>({});
 
   useEffect(() => {
     if (seccion !== "comunidad" || proyectos) return;
@@ -94,6 +96,14 @@ function Home() {
     if (tab === "semana" && !semana) fetchRankingRuns(sb, 7).then(setSemana).catch(console.error);
     if (tab === "historico" && !historico) fetchRankingRuns(sb).then(setHistorico).catch(console.error);
   }, [tab, vivo, semana, historico]);
+
+  // Tu puesto se pide aparte del top 50: casi nadie está ahí adentro.
+  useEffect(() => {
+    const sb = getSupabase();
+    if (!sb || !user || tab in puestos) return;
+    const pedir = tab === "vivo" ? fetchMiPuestoVivo(sb, user.id) : fetchMiPuestoRuns(sb, user.id, tab === "semana" ? 7 : undefined);
+    pedir.then((p) => setPuestos((x) => ({ ...x, [tab]: p }))).catch(() => setPuestos((x) => ({ ...x, [tab]: null })));
+  }, [tab, user, puestos]);
 
   const carrera: Carrera = calcularCarrera(runs);
   const ganados = LOGROS.filter((l) => conseguido(l, carrera)).length;
@@ -243,6 +253,13 @@ function Home() {
             ? "Las mejores partidas terminadas en los últimos 7 días. Arranca de cero cada semana."
             : "Salón de la fama: las mejores partidas terminadas de todos los tiempos."}
         </p>
+        <TuPuesto
+          mio={puestos[tab]}
+          pedido={tab in puestos}
+          hayUser={!!user}
+          corte={(tab === "vivo" ? vivo : tab === "semana" ? semana : historico) ?? null}
+          tab={tab}
+        />
         {tab === "vivo" ? (
           <ListaVivo filas={vivo} yo={user?.id} />
         ) : (
@@ -524,6 +541,75 @@ function KPI({ label, value, sub }: { label: string; value: string; sub?: string
 function Puesto({ n }: { n: number }) {
   const medalla = n === 1 ? "🥇" : n === 2 ? "🥈" : n === 3 ? "🥉" : null;
   return <span className="w-7 shrink-0 text-center text-xs font-black tabular-nums text-ink/40">{medalla ?? n}</span>;
+}
+
+/**
+ * Dónde está el jugador cuando no aparece en las 50 filas de arriba, que es
+ * el caso de casi todos: sin esto, el ranking le dice cómo le fue a otros y
+ * nada sobre él.
+ */
+function TuPuesto({
+  mio,
+  pedido,
+  hayUser,
+  corte,
+  tab,
+}: {
+  mio: MiPuesto | null | undefined;
+  pedido: boolean;
+  hayUser: boolean;
+  corte: { valuation: number }[] | null;
+  tab: Tab;
+}) {
+  if (!hayUser) return null;
+  if (!pedido) return <div className="mb-2 h-[52px] animate-pulse rounded-xl bg-ink/5" />;
+
+  if (!mio) {
+    const txt =
+      tab === "vivo"
+        ? "No tenés ninguna partida en curso."
+        : tab === "semana"
+        ? "No terminaste ninguna partida esta semana."
+        : "Todavía no terminaste ninguna partida.";
+    return (
+      <div className="mb-2 flex items-center gap-2 rounded-xl border-2 border-dashed border-ink/15 px-3 py-2.5">
+        <span className="text-lg">🎯</span>
+        <p className="flex-1 text-[11px] text-ink/55">{txt}</p>
+        <Link href="/play" className="btn shrink-0 border-ink bg-amber px-2.5 py-1 text-[11px] text-ink">
+          Jugar
+        </Link>
+      </div>
+    );
+  }
+
+  const ultimo = corte?.length ? corte[corte.length - 1].valuation : null;
+  const afuera = !!corte && mio.puesto > corte.length;
+  const falta = afuera && ultimo !== null ? Math.max(0, ultimo - mio.valuation) : 0;
+  // Con poca gente el percentil miente ("mejor que el 50%" siendo el segundo de
+  // dos), así que recién se muestra cuando hay con qué compararse.
+  const mejorQue = mio.total >= 20 ? Math.floor(((mio.total - mio.puesto) / mio.total) * 100) : null;
+
+  return (
+    <div className="mb-2 flex items-center gap-3 rounded-xl border-2 border-indigo/30 bg-indigo/5 px-3 py-2.5">
+      <div className="shrink-0 text-center">
+        <div className="text-[9px] font-black uppercase tracking-wide text-indigo/70">Tu puesto</div>
+        <div className="text-xl font-black leading-none tabular-nums text-indigo">#{mio.puesto}</div>
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[12px] font-black">
+          {mio.name ?? "Tu partida"} · {money(mio.valuation)}
+        </div>
+        <div className="truncate text-[10px] text-ink/55">
+          {afuera && falta > 0
+            ? `Te faltan ${money(falta)} para entrar al top ${corte!.length}`
+            : afuera
+            ? `Entre ${num(mio.total)} partidas`
+            : `De ${num(mio.total)}${mejorQue !== null ? ` · mejor que el ${mejorQue}%` : ""}`}
+        </div>
+      </div>
+      {!afuera && mio.puesto <= 3 && <span className="shrink-0 text-xl">{["🥇", "🥈", "🥉"][mio.puesto - 1]}</span>}
+    </div>
+  );
 }
 
 function ListaVivo({ filas, yo }: { filas: LeaderRow[] | null; yo?: string }) {
