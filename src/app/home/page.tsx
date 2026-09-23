@@ -30,6 +30,11 @@ export default function HomePage() {
   const [listo, setListo] = useState(false);
   const [runs, setRuns] = useState<(RunResumen & { id: string; name: string; idea: string | null })[]>([]);
   const [tab, setTab] = useState<Tab>("semana");
+  // La página apilaba perfil, carrera, 33 logros, el historial entero y el
+  // ranking: un scroll sin fin donde lo que hay que hacer no se ve. En
+  // secciones, lo primero que aparece es el perfil, que es donde se carga el
+  // proyecto.
+  const [seccion, setSeccion] = useState<"perfil" | "carrera" | "ranking">("perfil");
   const [vivo, setVivo] = useState<LeaderRow[] | null>(null);
   const [semana, setSemana] = useState<RunRanking[] | null>(null);
   const [historico, setHistorico] = useState<RunRanking[] | null>(null);
@@ -86,6 +91,24 @@ export default function HomePage() {
         <Link href="/play" className="btn border-ink bg-indigo px-3 py-2 text-sm text-white">Jugar</Link>
       </header>
 
+      {user && (
+        <div className="mb-3 flex gap-1 rounded-xl bg-ink/5 p-1">
+          {([
+            ["perfil", "🙋 Mi perfil"],
+            ["carrera", "🏅 Mi carrera"],
+            ["ranking", "🏆 Ranking"],
+          ] as const).map(([k, txt]) => (
+            <button
+              key={k}
+              onClick={() => setSeccion(k)}
+              className={`flex-1 rounded-lg py-2 text-xs font-black transition ${seccion === k ? "bg-white shadow" : "text-ink/50"}`}
+            >
+              {txt}
+            </button>
+          ))}
+        </div>
+      )}
+
       {!user && supabaseEnabled() && (
         <Card className="mb-3">
           <div className="mb-1 text-2xl">🏆</div>
@@ -97,9 +120,9 @@ export default function HomePage() {
         </Card>
       )}
 
-      {user && <MiPerfil userId={user.id} nombre={user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Fundador/a"} avatar={user.user_metadata?.avatar_url ?? user.user_metadata?.picture} />}
+      {user && seccion === "perfil" && <MiPerfil userId={user.id} nombre={user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Fundador/a"} avatar={user.user_metadata?.avatar_url ?? user.user_metadata?.picture} />}
 
-      {user && (
+      {user && seccion === "carrera" && (
         <>
           <Card title="Tu carrera" className="mb-3">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -173,6 +196,7 @@ export default function HomePage() {
         </>
       )}
 
+      {(!user || seccion === "ranking") && (
       <Card title="Ranking">
         <div className="mb-3 flex gap-1 rounded-xl bg-ink/5 p-1">
           {(["vivo", "semana", "historico"] as Tab[]).map((k) => (
@@ -194,6 +218,7 @@ export default function HomePage() {
           <ListaRuns filas={tab === "semana" ? semana : historico} yo={user?.id} />
         )}
       </Card>
+      )}
 
       <SiteFooter />
     </main>
