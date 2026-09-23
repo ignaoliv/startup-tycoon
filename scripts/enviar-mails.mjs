@@ -47,52 +47,50 @@ const leer = async (ruta, porDefecto) => {
 function armar({ display_name, baja_token }) {
   const nombre = (display_name ?? "").split(" ")[0] || "Hola";
   const baja = `${SITIO}/baja?t=${baja_token}`;
-  const jugar = `${SITIO}/play?utm_source=mail&utm_medium=email&utm_campaign=nunca-ganaron`;
+  const utm = "utm_source=mail&utm_medium=email&utm_campaign=proyectos";
+  const sumar = `${SITIO}/home?${utm}`;
+  const lista = `${SITIO}/proyectos?${utm}`;
 
-  const texto = `${nombre}, te escribo porque jugaste a Vibe Coding Game y no ganaste ninguna partida.
+  const texto = `${nombre}, jugaste a Vibe Coding Game hace un tiempo. Te escribo por algo nuevo.
 
-Puede que no haya sido culpa tuya.
+Armé un lugar donde la gente que juega muestra lo que está construyendo de verdad. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.
 
-Encontré tres cosas rotas y las arreglé:
+Sumar el tuyo: ${sumar}
 
-- El board te pedía más usuarios de los que existían en el mercado. Pasando cierto punto la meta era matemáticamente inalcanzable, y te echaban al primer fallo. Uno de cada cuatro jugadores perdía por eso.
-- Si dejabas el juego dos minutos, la partida seguía corriendo sola hasta 240 días. Mucha gente volvió a una empresa fundida sin haber tocado nada.
-- Las ventanas del juego aparecían fuera de la pantalla si te tocaba el invierno de la industria, así que ni siquiera veías por qué habías perdido.
+Toma un minuto y te queda una página propia para compartir.
 
-Tu partida sigue guardada donde la dejaste.
+Los proyectos se votan con vibecoins, que se ganan jugando: una por partida terminada, dos si la ganás. Así el que quiere votos trae gente que juega, no clicks de paso.
 
-Jugar: ${jugar}
-
-Y si querés, ahora podés sumar tu proyecto al perfil y aparecer en la lista de lo que está construyendo la gente que juega.
+Mirar lo que hay: ${lista}
 
 Nacho
+
+PD: de paso arreglé tres bugs que hacían perder partidas sin motivo. El peor echaba a uno de cada cuatro jugadores por una meta que era matemáticamente imposible de cumplir. Si alguna vez perdiste sin entender por qué, era eso.
 
 Si no querés más mails: ${baja}`;
 
   const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.55;color:#1f1b16;max-width:520px">
-<p>${nombre}, te escribo porque jugaste a Vibe Coding Game y no ganaste ninguna partida.</p>
-<p><b>Puede que no haya sido culpa tuya.</b></p>
-<p>Encontré tres cosas rotas y las arreglé:</p>
-<ul>
-<li>El board te pedía <b>más usuarios de los que existían en el mercado</b>. Pasando cierto punto la meta era matemáticamente inalcanzable, y te echaban al primer fallo. Uno de cada cuatro jugadores perdía por eso.</li>
-<li>Si dejabas el juego dos minutos, la partida <b>seguía corriendo sola hasta 240 días</b>. Mucha gente volvió a una empresa fundida sin haber tocado nada.</li>
-<li>Las ventanas del juego aparecían fuera de la pantalla si te tocaba el invierno de la industria, así que ni siquiera veías por qué habías perdido.</li>
-</ul>
-<p>Tu partida sigue guardada donde la dejaste.</p>
-<p><a href="${jugar}" style="display:inline-block;background:#f5b731;color:#1f1b16;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:10px;border:2px solid #1f1b16">Seguir jugando</a></p>
-<p>Y si querés, ahora podés sumar tu proyecto al perfil y aparecer en la lista de lo que está construyendo la gente que juega.</p>
+<p>${nombre}, jugaste a Vibe Coding Game hace un tiempo. Te escribo por algo nuevo.</p>
+<p>Armé un lugar donde la gente que juega muestra <b>lo que está construyendo de verdad</b>. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.</p>
+<p><a href="${sumar}" style="display:inline-block;background:#f5b731;color:#1f1b16;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:10px;border:2px solid #1f1b16">Sumar mi proyecto</a></p>
+<p>Toma un minuto y te queda una página propia para compartir.</p>
+<p>Los proyectos se votan con vibecoins, que se ganan jugando: una por partida terminada, dos si la ganás. Así el que quiere votos trae gente que juega, no clicks de paso.</p>
+<p><a href="${lista}" style="color:#5b5bd6">Mirar lo que hay</a></p>
 <p>Nacho</p>
-<p style="font-size:12px;color:#8a837b;border-top:1px solid #e6e0d6;padding-top:12px;margin-top:24px">
+<p style="font-size:13px;color:#6b655d;border-top:1px solid #e6e0d6;padding-top:12px;margin-top:20px">
+PD: de paso arreglé tres bugs que hacían perder partidas sin motivo. El peor echaba a uno de cada cuatro jugadores por una meta que era matemáticamente imposible de cumplir. Si alguna vez perdiste sin entender por qué, era eso.
+</p>
+<p style="font-size:12px;color:#8a837b;margin-top:16px">
 Te llega esto porque entraste con Google a vibecodingame.com. <a href="${baja}" style="color:#8a837b">No quiero más mails</a>.
 </p>
 </div>`;
 
   return {
-    subject: `${nombre}, puede que hayas perdido por un bug mío`,
+    subject: "¿Qué estás construyendo?",
     text: texto,
     html,
-    // Gmail exige baja en un click para quien manda en volumen. Sin esto, la
-    // gente que no quiere el mail marca spam en vez de darse de baja.
+    // Gmail exige baja en un click para quien manda en volumen. Sin esto, el
+    // que no quiere el mail marca spam en vez de darse de baja.
     headers: {
       "List-Unsubscribe": `<${baja}>`,
       "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
