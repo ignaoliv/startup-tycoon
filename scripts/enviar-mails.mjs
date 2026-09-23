@@ -51,9 +51,9 @@ function armar({ display_name, baja_token }) {
   const sumar = `${SITIO}/home?${utm}`;
   const lista = `${SITIO}/proyectos?${utm}`;
 
-  const texto = `${nombre}, jugaste a Vibe Coding Game hace un tiempo. Te escribo por algo nuevo.
+  const texto = `${nombre}, armé un lugar para esto.
 
-Armé un lugar donde la gente que juega muestra lo que está construyendo de verdad. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.
+La gente que juega a Vibe Coding Game ahora muestra lo que está vibecodeando de verdad. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.
 
 Sumar el tuyo: ${sumar}
 
@@ -70,8 +70,8 @@ PD: de paso arreglé tres bugs que hacían perder partidas sin motivo. El peor e
 Si no querés más mails: ${baja}`;
 
   const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.55;color:#1f1b16;max-width:520px">
-<p>${nombre}, jugaste a Vibe Coding Game hace un tiempo. Te escribo por algo nuevo.</p>
-<p>Armé un lugar donde la gente que juega muestra <b>lo que está construyendo de verdad</b>. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.</p>
+<p>${nombre}, armé un lugar para esto.</p>
+<p>La gente que juega a Vibe Coding Game ahora muestra <b>lo que está vibecodeando de verdad</b>. No la startup del juego: tu proyecto, con su link, y al lado tu mejor partida.</p>
 <p><a href="${sumar}" style="display:inline-block;background:#f5b731;color:#1f1b16;font-weight:bold;text-decoration:none;padding:11px 20px;border-radius:10px;border:2px solid #1f1b16">Sumar mi proyecto</a></p>
 <p>Toma un minuto y te queda una página propia para compartir.</p>
 <p>Los proyectos se votan con vibecoins, que se ganan jugando: una por partida terminada, dos si la ganás. Así el que quiere votos trae gente que juega, no clicks de paso.</p>
@@ -86,7 +86,7 @@ Te llega esto porque entraste con Google a vibecodingame.com. <a href="${baja}" 
 </div>`;
 
   return {
-    subject: "¿Qué estás construyendo?",
+    subject: "Compartí lo que estás vibecodeando",
     text: texto,
     html,
     // Gmail exige baja en un click para quien manda en volumen. Sin esto, el
