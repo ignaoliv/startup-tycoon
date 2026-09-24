@@ -12,6 +12,7 @@ import { SITIO } from "@/lib/seo";
 import { ListaProyectos } from "@/components/ListaProyectos";
 import { fetchProyectos, type ProyectoListado } from "@/lib/perfil";
 import { MisProyectos } from "@/components/MisProyectos";
+import { ModalSumaProyecto } from "@/components/ModalSumaProyecto";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
 import { SECTORS } from "@/lib/game/data";
@@ -113,6 +114,7 @@ function Home() {
 
   return (
     <main className="mx-auto max-w-2xl p-4">
+      <ModalSumaProyecto />
       <header className="mb-4 flex items-center gap-3">
         <Link href="/" className="text-2xl" aria-label="Inicio">🚀</Link>
         <div className="min-w-0 flex-1">

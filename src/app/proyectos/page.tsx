@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ListaProyectos } from "@/components/ListaProyectos";
 import { fetchActividad, fetchProyectos } from "@/lib/perfil";
 import { IconoProyecto } from "@/components/IconoProyecto";
+import { BotonSumarProyecto, ModalSumaProyecto } from "@/components/ModalSumaProyecto";
 import { SITIO } from "@/lib/seo";
 
 export const revalidate = 60;
@@ -54,6 +56,10 @@ export default async function Proyectos() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-5">
+      {/* useSearchParams necesita un límite de Suspense para no bloquear el prerender */}
+      <Suspense fallback={null}>
+        <ModalSumaProyecto />
+      </Suspense>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <header className="mb-6 flex items-center justify-between gap-3 rounded-2xl border border-ink/10 bg-white px-4 py-3 shadow-sm">
         <Link href="/">
@@ -77,9 +83,9 @@ export default async function Proyectos() {
           Productos reales hechos con IA, por la gente que juega. Se votan con vibecoins, y las vibecoins se ganan
           jugando.
         </p>
-        <Link href="/home?s=perfil" className="btn mt-4 inline-flex border-ink bg-amber px-4 py-2.5 text-sm text-ink">
+        <BotonSumarProyecto className="btn mt-4 inline-flex border-ink bg-amber px-4 py-2.5 text-sm text-ink">
           🛠️ Sumá tu proyecto
-        </Link>
+        </BotonSumarProyecto>
       </div>
 
       {actividad.length > 0 && (

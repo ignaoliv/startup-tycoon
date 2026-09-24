@@ -12,12 +12,13 @@ import {
   TOPE_PROYECTOS,
   type MiProyecto,
 } from "@/lib/storage";
-import { CATEGORIAS, categoriaDe, dominioDe } from "@/lib/perfil";
+import { categoriaDe, dominioDe } from "@/lib/perfil";
+import { FormProyecto, PROYECTO_VACIO, type DatosProyecto } from "@/components/FormProyecto";
 import { SITIO } from "@/lib/seo";
 
-type Borrador = { id: string | null; nombre: string; url: string; descripcion: string; categoria: string };
+type Borrador = { id: string | null; datos: DatosProyecto };
 
-const VACIO: Borrador = { id: null, nombre: "", url: "", descripcion: "", categoria: "otros" };
+const NUEVO: Borrador = { id: null, datos: PROYECTO_VACIO };
 
 /**
  * Los proyectos del jugador. Son varios a propósito: el que vibecodea rara vez
@@ -53,7 +54,7 @@ export function MisProyectos({
   const miUrl = handle ? `${SITIO}/u/${handle}` : null;
   const lleno = (proyectos?.length ?? 0) >= TOPE_PROYECTOS;
 
-  const guardar = async () => {
+  const guardar = async (datos: DatosProyecto) => {
     const sb = getSupabase();
     if (!sb || !borrador) return;
     setGuardando(true);
@@ -63,7 +64,7 @@ export function MisProyectos({
       // antes del primer proyecto
       const h = await asegurarHandle(sb, userId, nombre, handle);
       if (h !== handle) onHandle(h);
-      await guardarProyecto(sb, userId, borrador.id, borrador);
+      await guardarProyecto(sb, userId, borrador.id, datos);
       setProyectos(await fetchMisProyectos(sb, userId));
       setBorrador(null);
       setAviso(borrador.id ? "Listo, ya está actualizado." : "Listo, ya aparece en la comunidad.");
@@ -96,7 +97,7 @@ export function MisProyectos({
       title="Mis proyectos"
       right={
         !borrador && !lleno ? (
-          <Btn size="sm" variant="amber" onClick={() => setBorrador(VACIO)}>
+          <Btn size="sm" variant="amber" onClick={() => setBorrador(NUEVO)}>
             + Sumar
           </Btn>
         ) : null
@@ -112,7 +113,7 @@ export function MisProyectos({
                 Tu proyecto real, no el del juego. Te armamos una página con tu mejor partida al lado, para que la
                 compartas.
               </p>
-              <Btn size="sm" variant="amber" onClick={() => setBorrador(VACIO)}>
+              <Btn size="sm" variant="amber" onClick={() => setBorrador(NUEVO)}>
                 Sumar mi proyecto
               </Btn>
             </div>
@@ -157,10 +158,12 @@ export function MisProyectos({
                           onClick={() =>
                             setBorrador({
                               id: x.id,
-                              nombre: x.nombre,
-                              url: x.url ?? "",
-                              descripcion: x.descripcion ?? "",
-                              categoria: x.categoria ?? "otros",
+                              datos: {
+                                nombre: x.nombre,
+                                url: x.url ?? "",
+                                descripcion: x.descripcion ?? "",
+                                categoria: x.categoria ?? "otros",
+                              },
                             })
                           }
                           className="rounded-lg border-2 border-ink/15 bg-white px-2 py-0.5 text-[10px] font-black text-ink/60 hover:border-ink/40"
@@ -184,63 +187,13 @@ export function MisProyectos({
 
           {borrador && (
             <div className="rounded-xl border-2 border-ink/15 bg-cream/60 p-3">
-              <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
-                Nombre del proyecto
-                <input
-                  value={borrador.nombre}
-                  onChange={(e) => setBorrador({ ...borrador, nombre: e.target.value })}
-                  maxLength={40}
-                  placeholder="Cuida el Mango"
-                  className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-white px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo"
-                />
-              </label>
-              <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
-                Link
-                <input
-                  value={borrador.url}
-                  onChange={(e) => setBorrador({ ...borrador, url: e.target.value })}
-                  maxLength={200}
-                  placeholder="cuidaelmango.com"
-                  className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-white px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo"
-                />
-              </label>
-              <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
-                En una línea
-                <input
-                  value={borrador.descripcion}
-                  onChange={(e) => setBorrador({ ...borrador, descripcion: e.target.value })}
-                  maxLength={140}
-                  placeholder="Todas las promos bancarias de Argentina en un lugar"
-                  className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-white px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo"
-                />
-              </label>
-              <div className="mb-3">
-                <span className="mb-1 block text-[11px] font-bold uppercase text-ink/50">Categoría</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {CATEGORIAS.map((c) => (
-                    <button
-                      key={c.id}
-                      type="button"
-                      onClick={() => setBorrador({ ...borrador, categoria: c.id })}
-                      className={`rounded-full border-2 px-2.5 py-1 text-[11px] font-black transition ${
-                        borrador.categoria === c.id
-                          ? "border-ink bg-ink text-cream"
-                          : "border-ink/15 bg-white text-ink/60 hover:border-ink/40"
-                      }`}
-                    >
-                      {c.icono} {c.nombre}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Btn className="flex-1" disabled={guardando || !borrador.nombre.trim()} onClick={guardar}>
-                  {guardando ? "Guardando…" : "Guardar"}
-                </Btn>
-                <Btn variant="ghost" onClick={() => setBorrador(null)}>
-                  Cancelar
-                </Btn>
-              </div>
+              <FormProyecto
+                key={borrador.id ?? "nuevo"}
+                inicial={borrador.datos}
+                guardando={guardando}
+                onGuardar={guardar}
+                onCancelar={() => setBorrador(null)}
+              />
             </div>
           )}
 

@@ -71,12 +71,19 @@ export default function Home() {
             Fundá tu empresa, contratá agentes IA, conseguí usuarios y levantá inversión. Todo desde una interfaz simple y caótica, como una startup de verdad.
           </p>
           <div className="mt-6 flex flex-col items-center gap-3 sm:flex-row lg:justify-start">
-            <Link href={PLAY_HREF} className="btn w-full justify-center border-ink bg-amber px-6 py-4 text-lg text-ink sm:w-auto sm:text-xl">
+            <Link href={PLAY_HREF} className="btn w-full justify-center whitespace-nowrap border-ink bg-amber px-6 py-4 text-lg text-ink sm:w-auto sm:text-xl">
               <span aria-hidden>🚀</span> Crear mi startup
             </Link>
-            <Link href="/home" className="btn w-full justify-center border-ink/25 bg-white px-5 py-4 text-base text-ink sm:w-auto">
-              <span aria-hidden>🏆</span> Ver el ranking
-            </Link>
+            {/* secundarios más chicos: con tres del mismo tamaño la columna del hero
+                los parte en varias líneas */}
+            <div className="flex w-full gap-3 sm:w-auto">
+              <Link href="/proyectos" className="btn flex-1 justify-center whitespace-nowrap border-ink/25 bg-white px-4 py-3 text-sm text-ink sm:flex-none">
+                <span aria-hidden>🛠️</span> La comunidad
+              </Link>
+              <Link href="/home" className="btn flex-1 justify-center whitespace-nowrap border-ink/25 bg-white px-4 py-3 text-sm text-ink sm:flex-none">
+                <span aria-hidden>🏆</span> Ranking
+              </Link>
+            </div>
           </div>
         </div>
 
