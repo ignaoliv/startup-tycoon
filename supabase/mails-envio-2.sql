@@ -9,21 +9,27 @@
 --   233  se registraron y nunca jugaron
 --   227  jugaron y nunca ganaron        <- el envío 1, ya recibieron
 --
--- Los tres grupos son disjuntos, así que este filtro deja afuera solo a los
--- que ya recibieron el primero sin tener que cruzar ninguna lista a mano.
+-- POR QUÉ NO FILTRA BAJAS
+--
+-- `mails.sql` (baja_token, baja_at, darse_de_baja) todavía no se corrió, así
+-- que esas columnas no existen. Para ESTE envío no hace falta: el envío 1 fue
+-- exactamente el grupo de "jugaron y nunca ganaron", y este es el de "ganaron
+-- al menos una". Son disjuntos por construcción, así que nadie de esta lista
+-- pudo haberse dado de baja del anterior.
+--
+-- A partir del tercer envío sí hace falta, porque ahí empiezan a solaparse.
+-- Correr `mails.sql` antes y volver a agregar `and p.baja_at is null`.
 
 select u.email,
        p.display_name,
-       p.baja_token,
        count(r.id)                                                    as partidas,
        count(*) filter (where r.ended_as in ('ipo', 'acquired'))      as ganadas,
        max(r.created_at)                                              as ultima_partida
 from auth.users u
 join public.profiles p on p.id = u.id
 join public.runs r on r.user_id = u.id
-where p.baja_at is null
-  and u.email is not null
-group by u.email, p.display_name, p.baja_token
+where u.email is not null
+group by u.email, p.display_name
 having count(*) filter (where r.ended_as in ('ipo', 'acquired')) > 0
 -- los que jugaron más cerca de hoy primero: son los que más chance tienen de volver
 order by max(r.created_at) desc
