@@ -10,7 +10,7 @@ import { fetchLeaderboard, fetchMiPuestoRuns, fetchMiPuestoVivo, fetchMisRuns, f
 import type { Vibecoins } from "@/lib/perfil";
 import { SITIO } from "@/lib/seo";
 import { ListaProyectos } from "@/components/ListaProyectos";
-import { fetchProyectos, type ProyectoListado } from "@/lib/perfil";
+import { CATEGORIAS, fetchProyectos, type ProyectoListado } from "@/lib/perfil";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
 import { SECTORS } from "@/lib/game/data";
@@ -281,6 +281,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
   const [proy, setProy] = useState("");
   const [proyUrl, setProyUrl] = useState("");
   const [proyDesc, setProyDesc] = useState("");
+  const [proyCat, setProyCat] = useState("otros");
   const [editandoProy, setEditandoProy] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [copiadoRef, setCopiadoRef] = useState(false);
@@ -300,6 +301,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
         setProy(p?.proyecto ?? "");
         setProyUrl(p?.proyecto_url ?? "");
         setProyDesc(p?.proyecto_desc ?? "");
+        setProyCat(p?.proyecto_categoria ?? "otros");
       })
       .catch(console.error);
     fetchVibecoins(sb, userId).then(setCoins).catch(console.error);
@@ -335,11 +337,13 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
       const handle = await saveProyecto(
         sb,
         userId,
-        { proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc },
+        { proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc, proyecto_categoria: proyCat },
         nombre,
         perfil?.handle,
       );
-      setPerfil((p) => (p ? { ...p, handle, proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc } : p));
+      setPerfil((p) =>
+        p ? { ...p, handle, proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc, proyecto_categoria: proyCat } : p,
+      );
       setEditandoProy(false);
       setAviso("Listo, tu página ya se puede compartir.");
     } catch (e) {
@@ -512,6 +516,23 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
               En una línea
               <input value={proyDesc} onChange={(e) => setProyDesc(e.target.value)} maxLength={140} placeholder="Todas las promos bancarias de Argentina en un lugar" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
             </label>
+            <div className="mb-3">
+              <span className="mb-1 block text-[11px] font-bold uppercase text-ink/50">Categoría</span>
+              <div className="flex flex-wrap gap-1.5">
+                {CATEGORIAS.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setProyCat(c.id)}
+                    className={`rounded-full border-2 px-2.5 py-1 text-[11px] font-black transition ${
+                      proyCat === c.id ? "border-ink bg-ink text-cream" : "border-ink/15 bg-white text-ink/60 hover:border-ink/40"
+                    }`}
+                  >
+                    {c.icono} {c.nombre}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="flex gap-2">
               <Btn className="flex-1" disabled={guardando || !proy.trim()} onClick={guardarProyecto}>
                 {guardando ? "Guardando…" : "Guardar"}

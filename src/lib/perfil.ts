@@ -121,6 +121,57 @@ export interface Vibecoins {
   saldo: number;
 }
 
+/**
+ * Lista cerrada, igual que el check de la base: con texto libre terminaríamos
+ * con "IA", "ia" y "Inteligencia artificial" como tres categorías distintas.
+ */
+export const CATEGORIAS: { id: string; nombre: string; icono: string }[] = [
+  { id: "ia", nombre: "IA", icono: "🤖" },
+  { id: "fintech", nombre: "Fintech", icono: "💳" },
+  { id: "productividad", nombre: "Productividad", icono: "⚡" },
+  { id: "comercio", nombre: "Comercio", icono: "🛒" },
+  { id: "social", nombre: "Social", icono: "💬" },
+  { id: "juegos", nombre: "Juegos", icono: "🎮" },
+  { id: "devtools", nombre: "Dev tools", icono: "🧰" },
+  { id: "otros", nombre: "Otros", icono: "✨" },
+];
+
+export const categoriaDe = (id: string | null | undefined) =>
+  CATEGORIAS.find((c) => c.id === id) ?? CATEGORIAS[CATEGORIAS.length - 1];
+
+/** El favicon del sitio del proyecto, que es el único logo que ya existe. */
+export function faviconDe(url: string | null) {
+  const d = dominioDe(url);
+  return d ? `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(d)}` : null;
+}
+
+/** Color estable a partir del nombre, para el cuadradito cuando no hay favicon. */
+export function colorDe(nombre: string) {
+  const tonos = ["#5b5bd6", "#f5b731", "#2f9e63", "#d9534f", "#8b5cf6", "#0ea5e9"];
+  let n = 0;
+  for (const c of nombre) n = (n + c.charCodeAt(0)) % 997;
+  return tonos[n % tonos.length];
+}
+
+export interface ActividadProyecto {
+  created_at: string;
+  handle: string;
+  proyecto: string;
+  proyecto_url: string | null;
+  categoria: string;
+}
+
+/** Los últimos votos, para que se vea que el ranking se mueve. */
+export async function fetchActividad(limite = 8): Promise<ActividadProyecto[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/actividad_proyectos?select=*&limit=${limite}`, {
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    next: { revalidate: 60 },
+  });
+  if (!res.ok) return [];
+  return (await res.json()) as ActividadProyecto[];
+}
+
 export interface ProyectoListado {
   user_id: string;
   handle: string;
@@ -130,6 +181,7 @@ export interface ProyectoListado {
   proyecto: string;
   proyecto_url: string | null;
   proyecto_desc: string | null;
+  categoria: string;
   created_at: string;
   votos: number;
   votos_semana: number;

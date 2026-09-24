@@ -102,6 +102,7 @@ export interface Perfil {
   proyecto?: string | null;
   proyecto_url?: string | null;
   proyecto_desc?: string | null;
+  proyecto_categoria?: string | null;
 }
 
 /** Deja solo el usuario, venga como URL, con arroba o pelado. */
@@ -144,7 +145,7 @@ export async function saveProfileLinks(sb: SupabaseClient, userId: string, links
 export async function saveProyecto(
   sb: SupabaseClient,
   userId: string,
-  datos: { proyecto: string; proyecto_url: string; proyecto_desc: string },
+  datos: { proyecto: string; proyecto_url: string; proyecto_desc: string; proyecto_categoria: string },
   nombreParaHandle: string,
   handleActual?: string | null,
 ): Promise<string> {
@@ -152,14 +153,27 @@ export async function saveProyecto(
     proyecto: datos.proyecto.trim() || null,
     proyecto_url: datos.proyecto_url.trim() || null,
     proyecto_desc: datos.proyecto_desc.trim() || null,
+    proyecto_categoria: datos.proyecto_categoria || null,
   };
+  // PGRST204 = la columna todavía no existe en la base. Pasa entre que sale el
+  // deploy y que se corre la migración: sin esto, en esa ventana no se puede
+  // guardar ningún proyecto.
+  const sinColumnaNueva = (e: unknown) => (e as { code?: string })?.code === "PGRST204";
+  const guardar = async (extra: Record<string, unknown>) => {
+    const { error } = await sb.from("profiles").update({ ...campos, ...extra }).eq("id", userId);
+    if (!sinColumnaNueva(error)) return error;
+    const viejos = { ...campos };
+    delete (viejos as Partial<typeof campos>).proyecto_categoria;
+    return (await sb.from("profiles").update({ ...viejos, ...extra }).eq("id", userId)).error;
+  };
+
   if (handleActual) {
-    const { error } = await sb.from("profiles").update(campos).eq("id", userId);
+    const error = await guardar({});
     if (error) throw error;
     return handleActual;
   }
   for (const handle of candidatosDeHandle(nombreParaHandle)) {
-    const { error } = await sb.from("profiles").update({ ...campos, handle }).eq("id", userId);
+    const error = await guardar({ handle });
     if (!error) return handle;
     // 23505 = el handle ya lo tiene otro; se reintenta con sufijo
     if ((error as { code?: string }).code !== "23505") throw error;

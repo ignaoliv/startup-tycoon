@@ -3,7 +3,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ListaProyectos } from "@/components/ListaProyectos";
-import { fetchProyectos } from "@/lib/perfil";
+import { fetchActividad, fetchProyectos } from "@/lib/perfil";
+import { IconoProyecto } from "@/components/IconoProyecto";
 import { SITIO } from "@/lib/seo";
 
 export const revalidate = 60;
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 };
 
 export default async function Proyectos() {
-  const proyectos = await fetchProyectos();
+  const [proyectos, actividad] = await Promise.all([fetchProyectos(), fetchActividad(6).catch(() => [])]);
 
   // La lista en datos estructurados: es lo que un buscador con IA puede citar
   // cuando le preguntan qué está construyendo la comunidad de vibecoding.
@@ -68,13 +69,40 @@ export default async function Proyectos() {
         </div>
       </header>
 
-      <div className="mb-5">
-        <h1 className="text-3xl font-black leading-tight">Qué está construyendo la comunidad vibecodera</h1>
-        <p className="mt-1 text-sm text-ink/60">
+      <div className="mb-5 rounded-2xl border-2 border-ink bg-indigo px-5 py-6 text-cream shadow-sm">
+        <h1 className="text-2xl font-black leading-tight sm:text-3xl">
+          Todo lo que está vibecodeando la comunidad.
+        </h1>
+        <p className="mt-1.5 text-sm text-cream/75">
           Productos reales hechos con IA, por la gente que juega. Se votan con vibecoins, y las vibecoins se ganan
           jugando.
         </p>
+        <Link href="/home?s=perfil" className="btn mt-4 inline-flex border-ink bg-amber px-4 py-2.5 text-sm text-ink">
+          🛠️ Sumá tu proyecto
+        </Link>
       </div>
+
+      {actividad.length > 0 && (
+        <div className="mb-5 rounded-2xl border-2 border-ink/10 bg-white px-3 py-3">
+          <div className="mb-2 text-[10px] font-black uppercase tracking-wide text-ink/40">Última actividad</div>
+          <ul className="flex gap-2 overflow-x-auto pb-1">
+            {actividad.map((a, i) => (
+              <li
+                key={`${a.handle}-${a.created_at}-${i}`}
+                className="flex shrink-0 items-center gap-2 rounded-xl border-2 border-ink/10 bg-cream/60 px-2.5 py-1.5"
+              >
+                <IconoProyecto nombre={a.proyecto} url={a.proyecto_url} size={22} />
+                <div>
+                  <div className="whitespace-nowrap text-[12px] font-black leading-none">{a.proyecto}</div>
+                  <div className="whitespace-nowrap text-[10px] text-ink/50">
+                    🪙 +1 · {haceCuanto(a.created_at)}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {proyectos.length === 0 ? (
         <div className="rounded-2xl border-2 border-dashed border-ink/15 px-4 py-10 text-center">
@@ -98,4 +126,15 @@ export default async function Proyectos() {
       <SiteFooter />
     </main>
   );
+}
+
+/** "hace 2 horas", con la precisión que hace falta y ni una más. */
+function haceCuanto(iso: string) {
+  const min = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
+  if (min < 1) return "recién";
+  if (min < 60) return `hace ${min} min`;
+  const h = Math.round(min / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "hace 1 día" : `hace ${d} días`;
 }
