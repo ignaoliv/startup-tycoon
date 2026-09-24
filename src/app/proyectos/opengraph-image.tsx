@@ -61,7 +61,7 @@ export default async function OgProyectos() {
 
           <div style={{ display: "flex", marginTop: 32 }}>
             {(haySala ? proyectos : []).map((p) => (
-              <div key={p.user_id} style={{ display: "flex", flexDirection: "column", background: "#ffffff", border: "5px solid #1f1b16", borderRadius: 22, padding: "14px 24px", marginRight: 16, width: 330 }}>
+              <div key={p.id} style={{ display: "flex", flexDirection: "column", background: "#ffffff", border: "5px solid #1f1b16", borderRadius: 22, padding: "14px 24px", marginRight: 16, width: 330 }}>
                 <div style={{ fontSize: 34, color: "#1f1b16", display: "flex" }}>{p.proyecto.slice(0, 18)}</div>
                 <div style={{ fontSize: 22, color: "#1f1b16", opacity: 0.5, marginTop: 2, display: "flex" }}>
                   🪙 {p.votos} · {p.display_name ?? p.handle}

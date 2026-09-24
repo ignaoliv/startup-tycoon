@@ -137,48 +137,78 @@ export async function saveProfileLinks(sb: SupabaseClient, userId: string, links
   if (error) throw error;
 }
 
+export interface MiProyecto {
+  id: string;
+  nombre: string;
+  url: string | null;
+  descripcion: string | null;
+  categoria: string | null;
+  created_at: string;
+}
+
+/** Tope por persona, igual que la policy de la base. */
+export const TOPE_PROYECTOS = 5;
+
+export async function fetchMisProyectos(sb: SupabaseClient, userId: string): Promise<MiProyecto[]> {
+  const { data, error } = await sb
+    .from("projects")
+    .select("id, nombre, url, descripcion, categoria, created_at")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []) as MiProyecto[];
+}
+
 /**
- * Guarda el proyecto y, si todavía no tenía, le asigna un handle. El handle se
- * deriva del nombre y el índice único de la base decide: si está tomado, se
- * reintenta con sufijo en vez de pedirle al jugador que invente uno.
+ * El handle se deriva del nombre y el índice único de la base decide: si está
+ * tomado, se reintenta con sufijo en vez de pedirle al jugador que invente uno.
+ * Hace falta antes del primer proyecto, porque es la dirección de su página.
  */
-export async function saveProyecto(
+export async function asegurarHandle(
   sb: SupabaseClient,
   userId: string,
-  datos: { proyecto: string; proyecto_url: string; proyecto_desc: string; proyecto_categoria: string },
   nombreParaHandle: string,
   handleActual?: string | null,
 ): Promise<string> {
-  const campos = {
-    proyecto: datos.proyecto.trim() || null,
-    proyecto_url: datos.proyecto_url.trim() || null,
-    proyecto_desc: datos.proyecto_desc.trim() || null,
-    proyecto_categoria: datos.proyecto_categoria || null,
-  };
-  // PGRST204 = la columna todavía no existe en la base. Pasa entre que sale el
-  // deploy y que se corre la migración: sin esto, en esa ventana no se puede
-  // guardar ningún proyecto.
-  const sinColumnaNueva = (e: unknown) => (e as { code?: string })?.code === "PGRST204";
-  const guardar = async (extra: Record<string, unknown>) => {
-    const { error } = await sb.from("profiles").update({ ...campos, ...extra }).eq("id", userId);
-    if (!sinColumnaNueva(error)) return error;
-    const viejos = { ...campos };
-    delete (viejos as Partial<typeof campos>).proyecto_categoria;
-    return (await sb.from("profiles").update({ ...viejos, ...extra }).eq("id", userId)).error;
-  };
-
-  if (handleActual) {
-    const error = await guardar({});
-    if (error) throw error;
-    return handleActual;
-  }
+  if (handleActual) return handleActual;
   for (const handle of candidatosDeHandle(nombreParaHandle)) {
-    const error = await guardar({ handle });
+    const { error } = await sb.from("profiles").update({ handle }).eq("id", userId);
     if (!error) return handle;
     // 23505 = el handle ya lo tiene otro; se reintenta con sufijo
     if ((error as { code?: string }).code !== "23505") throw error;
   }
   throw new Error("No pude armarte una dirección de perfil. Probá de nuevo.");
+}
+
+const camposProyecto = (d: { nombre: string; url: string; descripcion: string; categoria: string }) => ({
+  nombre: d.nombre.trim(),
+  url: d.url.trim() || null,
+  descripcion: d.descripcion.trim() || null,
+  categoria: d.categoria || "otros",
+});
+
+/** Crea o edita un proyecto. `id` nulo es uno nuevo. */
+export async function guardarProyecto(
+  sb: SupabaseClient,
+  userId: string,
+  id: string | null,
+  datos: { nombre: string; url: string; descripcion: string; categoria: string },
+): Promise<void> {
+  const campos = camposProyecto(datos);
+  const { error } = id
+    ? await sb.from("projects").update({ ...campos, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId)
+    : await sb.from("projects").insert({ ...campos, user_id: userId });
+  if (!error) return;
+  const codigo = (error as { code?: string }).code;
+  // 23505 = el índice de (persona, nombre); 42501 = la policy del tope de 5
+  if (codigo === "23505") throw new Error("Ya tenés un proyecto con ese nombre.");
+  if (codigo === "42501") throw new Error(`Llegaste al tope de ${TOPE_PROYECTOS} proyectos.`);
+  throw error;
+}
+
+export async function borrarProyecto(sb: SupabaseClient, userId: string, id: string): Promise<void> {
+  const { error } = await sb.from("projects").delete().eq("id", id).eq("user_id", userId);
+  if (error) throw error;
 }
 
 export interface Post {
@@ -560,10 +590,10 @@ export async function fetchVibecoins(sb: SupabaseClient, userId: string): Promis
 export async function votarProyecto(
   sb: SupabaseClient,
   voter: string,
-  target: string,
+  projectId: string,
   tipo: "juego" | "invitacion" = "juego",
 ): Promise<string | null> {
-  const { error } = await sb.from("project_votes").insert({ voter, target, tipo });
+  const { error } = await sb.from("project_votes").insert({ voter, project_id: projectId, tipo });
   if (!error) return null;
   const codigo = (error as { code?: string }).code;
   // la policy junta dos reglas, así que el 42501 puede ser falta de saldo o el
@@ -578,9 +608,9 @@ export const TOPE_VOTOS_POR_PROYECTO = 3;
 
 export async function fetchMisVotos(sb: SupabaseClient, userId: string): Promise<Record<string, number>> {
   // solo las de juego: son las que cuentan para el tope de 3
-  const { data } = await sb.from("project_votes").select("target").eq("voter", userId).eq("tipo", "juego").limit(1000);
+  const { data } = await sb.from("project_votes").select("project_id").eq("voter", userId).eq("tipo", "juego").limit(1000);
   const out: Record<string, number> = {};
-  for (const v of (data ?? []) as { target: string }[]) out[v.target] = (out[v.target] ?? 0) + 1;
+  for (const v of (data ?? []) as { project_id: string }[]) out[v.project_id] = (out[v.project_id] ?? 0) + 1;
   return out;
 }
 

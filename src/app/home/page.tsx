@@ -6,11 +6,12 @@ import type { User } from "@supabase/supabase-js";
 import { Bar, Btn, Card, Pill } from "@/components/ui";
 import { SiteFooter } from "@/components/SiteFooter";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
-import { fetchLeaderboard, fetchMiPuestoRuns, fetchMiPuestoVivo, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, saveProyecto, urlLinkedin, urlX, type LeaderRow, type MiPuesto, type Perfil, type RunRanking } from "@/lib/storage";
+import { fetchLeaderboard, fetchMiPuestoRuns, fetchMiPuestoVivo, fetchMisRuns, fetchProfile, fetchRankingRuns, fetchVibecoins, limpiarHandle, saveProfileLinks, urlLinkedin, urlX, type LeaderRow, type MiPuesto, type Perfil, type RunRanking } from "@/lib/storage";
 import type { Vibecoins } from "@/lib/perfil";
 import { SITIO } from "@/lib/seo";
 import { ListaProyectos } from "@/components/ListaProyectos";
-import { CATEGORIAS, fetchProyectos, type ProyectoListado } from "@/lib/perfil";
+import { fetchProyectos, type ProyectoListado } from "@/lib/perfil";
+import { MisProyectos } from "@/components/MisProyectos";
 import { calcularCarrera, conseguido, GRUPOS, LOGROS, type Carrera, type RunResumen } from "@/lib/logros";
 import { money, num } from "@/lib/game/format";
 import { SECTORS } from "@/lib/game/data";
@@ -161,7 +162,13 @@ function Home() {
         </Card>
       )}
 
-      {user && seccion === "perfil" && <MiPerfil userId={user.id} nombre={user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Fundador/a"} avatar={user.user_metadata?.avatar_url ?? user.user_metadata?.picture} />}
+      {user && seccion === "perfil" && (
+        <MiPerfil
+          userId={user.id}
+          nombre={user.user_metadata?.full_name ?? user.user_metadata?.name ?? "Fundador/a"}
+          avatar={user.user_metadata?.avatar_url ?? user.user_metadata?.picture}
+        />
+      )}
 
       {user && seccion === "carrera" && (
         <>
@@ -278,12 +285,6 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [tw, setTw] = useState("");
   const [li, setLi] = useState("");
-  const [proy, setProy] = useState("");
-  const [proyUrl, setProyUrl] = useState("");
-  const [proyDesc, setProyDesc] = useState("");
-  const [proyCat, setProyCat] = useState("otros");
-  const [editandoProy, setEditandoProy] = useState(false);
-  const [copiado, setCopiado] = useState(false);
   const [copiadoRef, setCopiadoRef] = useState(false);
   const [coins, setCoins] = useState<Vibecoins | null>(null);
   const [editando, setEditando] = useState(false);
@@ -298,10 +299,6 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
         setPerfil(p);
         setTw(p?.twitter ?? "");
         setLi(p?.linkedin ?? "");
-        setProy(p?.proyecto ?? "");
-        setProyUrl(p?.proyecto_url ?? "");
-        setProyDesc(p?.proyecto_desc ?? "");
-        setProyCat(p?.proyecto_categoria ?? "otros");
       })
       .catch(console.error);
     fetchVibecoins(sb, userId).then(setCoins).catch(console.error);
@@ -328,35 +325,10 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
     }
   };
 
-  const guardarProyecto = async () => {
-    const sb = getSupabase();
-    if (!sb) return;
-    setGuardando(true);
-    setAviso(null);
-    try {
-      const handle = await saveProyecto(
-        sb,
-        userId,
-        { proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc, proyecto_categoria: proyCat },
-        nombre,
-        perfil?.handle,
-      );
-      setPerfil((p) =>
-        p ? { ...p, handle, proyecto: proy, proyecto_url: proyUrl, proyecto_desc: proyDesc, proyecto_categoria: proyCat } : p,
-      );
-      setEditandoProy(false);
-      setAviso("Listo, tu página ya se puede compartir.");
-    } catch (e) {
-      setAviso((e as Error).message);
-    } finally {
-      setGuardando(false);
-    }
-  };
-
-  const miUrl = perfil?.handle ? `${SITIO}/u/${perfil.handle}` : null;
   const guardadas = perfil?.twitter || perfil?.linkedin;
 
   return (
+    <>
     <Card className="mb-3" title="Mi perfil" right={!editando ? <Btn size="sm" variant="ghost" onClick={() => setEditando(true)}>{guardadas ? "Editar" : "Agregar redes"}</Btn> : null}>
       <div className="mb-2 flex items-center gap-3">
         {avatar ? (
@@ -458,94 +430,15 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
         </div>
       )}
 
-      {/* El proyecto real: es lo que hace que la página valga la pena compartir */}
-      <div className="mt-3 border-t-2 border-ink/10 pt-3">
-        {!editandoProy ? (
-          perfil?.proyecto ? (
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-wide text-ink/45">Estás construyendo</div>
-              <div className="text-sm font-black">{perfil.proyecto}</div>
-              {perfil.proyecto_desc && <div className="text-[11px] text-ink/60">{perfil.proyecto_desc}</div>}
-              <div className="mt-2 flex flex-wrap items-center gap-2">
-                {miUrl && (
-                  <>
-                    <Link href={`/u/${perfil.handle}`} className="btn border-ink/25 bg-white px-3 py-1.5 text-xs">
-                      Ver mi página
-                    </Link>
-                    <Btn
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(miUrl).then(() => {
-                          setCopiado(true);
-                          setTimeout(() => setCopiado(false), 2000);
-                        });
-                      }}
-                    >
-                      {copiado ? "¡Copiado!" : "🔗 Copiar link"}
-                    </Btn>
-                  </>
-                )}
-                <Btn size="sm" variant="ghost" onClick={() => setEditandoProy(true)}>
-                  Editar
-                </Btn>
-              </div>
-            </div>
-          ) : (
-            <div>
-              <div className="text-xs font-bold">¿Qué estás construyendo?</div>
-              <p className="mb-2 text-[11px] text-ink/60">
-                Tu proyecto real, no el del juego. Te armamos una página con tu mejor partida al lado, para que la compartas.
-              </p>
-              <Btn size="sm" variant="amber" onClick={() => setEditandoProy(true)}>
-                Sumar mi proyecto
-              </Btn>
-            </div>
-          )
-        ) : (
-          <div>
-            <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
-              Nombre del proyecto
-              <input value={proy} onChange={(e) => setProy(e.target.value)} maxLength={40} placeholder="Cuida el Mango" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
-            </label>
-            <label className="mb-2 block text-[11px] font-bold uppercase text-ink/50">
-              Link
-              <input value={proyUrl} onChange={(e) => setProyUrl(e.target.value)} maxLength={200} placeholder="cuidaelmango.com" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
-            </label>
-            <label className="mb-3 block text-[11px] font-bold uppercase text-ink/50">
-              En una línea
-              <input value={proyDesc} onChange={(e) => setProyDesc(e.target.value)} maxLength={140} placeholder="Todas las promos bancarias de Argentina en un lugar" className="mt-1 w-full rounded-xl border-2 border-ink/20 bg-cream px-3 py-2 text-sm font-bold normal-case outline-none focus:border-indigo" />
-            </label>
-            <div className="mb-3">
-              <span className="mb-1 block text-[11px] font-bold uppercase text-ink/50">Categoría</span>
-              <div className="flex flex-wrap gap-1.5">
-                {CATEGORIAS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => setProyCat(c.id)}
-                    className={`rounded-full border-2 px-2.5 py-1 text-[11px] font-black transition ${
-                      proyCat === c.id ? "border-ink bg-ink text-cream" : "border-ink/15 bg-white text-ink/60 hover:border-ink/40"
-                    }`}
-                  >
-                    {c.icono} {c.nombre}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Btn className="flex-1" disabled={guardando || !proy.trim()} onClick={guardarProyecto}>
-                {guardando ? "Guardando…" : "Guardar"}
-              </Btn>
-              <Btn variant="ghost" onClick={() => setEditandoProy(false)}>
-                Cancelar
-              </Btn>
-            </div>
-          </div>
-        )}
-      </div>
       {aviso && <p className="mt-2 text-[11px] font-bold text-green">{aviso}</p>}
     </Card>
+    <MisProyectos
+      userId={userId}
+      nombre={nombre}
+      handle={perfil?.handle ?? null}
+      onHandle={(h) => setPerfil((x) => (x ? { ...x, handle: h } : x))}
+    />
+    </>
   );
 }
 

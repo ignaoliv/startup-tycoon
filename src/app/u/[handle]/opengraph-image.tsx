@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import { numCorto, plataCorta } from "@/lib/compartir";
-import { dominioDe, fetchPerfilPorHandle, sectorDe } from "@/lib/perfil";
+import { dominioDe, fetchPerfilPorHandle, fetchProyectosDe, sectorDe } from "@/lib/perfil";
 
 export const runtime = "nodejs";
 export const alt = "Perfil de un vibecoder en Vibe Coding Game";
@@ -19,7 +19,10 @@ export default async function OgPerfil({ params }: { params: Promise<{ handle: s
   const logoSrc = `data:image/png;base64,${logo.toString("base64")}`;
   const nombre = p?.display_name ?? p?.handle ?? "Vibecoder";
   const sec = sectorDe(p?.mejor_sector ?? null);
-  const dominio = dominioDe(p?.proyecto_url ?? null);
+  // la tarjeta muestra el proyecto que encabeza; los demás se ven en la página
+  const proyectos = p ? await fetchProyectosDe(p.id).catch(() => []) : [];
+  const primero = proyectos[0];
+  const dominio = dominioDe(primero?.proyecto_url ?? null);
 
   // Satori: cada bloque con más de un hijo necesita display flex explícito.
   const datos = p?.mejor_valuacion
@@ -44,10 +47,12 @@ export default async function OgPerfil({ params }: { params: Promise<{ handle: s
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 30, color: "#1f1b16", opacity: 0.6, display: "flex" }}>{nombre}</div>
           <div style={{ fontSize: 64, color: "#1f1b16", lineHeight: 1.05, marginTop: 4, display: "flex" }}>
-            {p?.proyecto ? `Está construyendo ${p.proyecto}` : `${nombre} vibecodea startups`}
+            {primero ? `Está construyendo ${primero.proyecto}` : `${nombre} vibecodea startups`}
           </div>
-          {p?.proyecto_desc ? (
-            <div style={{ fontSize: 30, color: "#1f1b16", opacity: 0.65, marginTop: 10, display: "flex" }}>{p.proyecto_desc}</div>
+          {primero?.proyecto_desc ? (
+            <div style={{ fontSize: 30, color: "#1f1b16", opacity: 0.65, marginTop: 10, display: "flex" }}>
+              {primero.proyecto_desc}
+            </div>
           ) : null}
           {dominio ? (
             <div style={{ fontSize: 28, color: "#5b5bd6", marginTop: 10, display: "flex" }}>{dominio}</div>

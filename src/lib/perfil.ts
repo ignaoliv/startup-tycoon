@@ -8,9 +8,6 @@ export interface PerfilPublico {
   avatar_url: string | null;
   twitter: string | null;
   linkedin: string | null;
-  proyecto: string | null;
-  proyecto_url: string | null;
-  proyecto_desc: string | null;
   mejor_startup: string | null;
   mejor_sector: string | null;
   mejor_valuacion: number | null;
@@ -173,6 +170,7 @@ export async function fetchActividad(limite = 8): Promise<ActividadProyecto[]> {
 }
 
 export interface ProyectoListado {
+  id: string;
   user_id: string;
   handle: string;
   display_name: string | null;
@@ -187,6 +185,17 @@ export interface ProyectoListado {
   votos_semana: number;
   mejor_valuacion: number | null;
   mejor_startup: string | null;
+}
+
+/** Los proyectos de una persona, para su página pública. */
+export async function fetchProyectosDe(userId: string): Promise<ProyectoListado[]> {
+  if (!SUPABASE_URL || !SUPABASE_KEY) return [];
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/proyectos?select=*&user_id=eq.${encodeURIComponent(userId)}&order=votos.desc,created_at.asc`,
+    { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` }, next: { revalidate: 60 } },
+  );
+  if (!res.ok) return [];
+  return (await res.json()) as ProyectoListado[];
 }
 
 /** El ranking de proyectos: más monedas arriba, y a igualdad, lo más nuevo. */

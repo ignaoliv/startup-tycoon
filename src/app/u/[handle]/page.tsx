@@ -4,7 +4,9 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 import { SiteFooter } from "@/components/SiteFooter";
 import { numCorto, plataCorta } from "@/lib/compartir";
-import { dominioDe, fetchPerfilPorHandle, fetchPuesto, sectorDe, urlProyecto } from "@/lib/perfil";
+import { categoriaDe, dominioDe, fetchPerfilPorHandle, fetchProyectosDe, fetchPuesto, sectorDe, urlProyecto } from "@/lib/perfil";
+import { IconoProyecto } from "@/components/IconoProyecto";
+import { BotonEditarPerfil } from "@/components/BotonEditarPerfil";
 import { SITIO } from "@/lib/seo";
 
 export const revalidate = 120;
@@ -17,8 +19,12 @@ export async function generateMetadata({ params }: { params: Promise<{ handle: s
   const p = await fetchPerfilPorHandle(handle);
   if (!p) return { title: "Perfil no encontrado · Vibe Coding Game" };
   const nombre = p.display_name ?? p.handle ?? "Jugador";
-  const titulo = p.proyecto ? `${nombre} está construyendo ${p.proyecto}` : `${nombre} en Vibe Coding Game`;
-  const desc = p.proyecto_desc ?? (p.mejor_valuacion ? `Su mejor startup valió ${plataCorta(Number(p.mejor_valuacion))}.` : "Construyendo con IA.");
+  const proyectos = await fetchProyectosDe(p.id);
+  const primero = proyectos[0];
+  const titulo = primero ? `${nombre} está construyendo ${primero.proyecto}` : `${nombre} en Vibe Coding Game`;
+  const desc =
+    primero?.proyecto_desc ??
+    (p.mejor_valuacion ? `Su mejor startup valió ${plataCorta(Number(p.mejor_valuacion))}.` : "Construyendo con IA.");
   const url = `${SITIO}/u/${p.handle}`;
   return {
     title: { absolute: `${titulo} · Vibe Coding Game` },
@@ -36,9 +42,10 @@ export default async function PerfilPublico({ params }: { params: Promise<{ hand
 
   const nombre = p.display_name ?? p.handle ?? "Jugador";
   const sec = sectorDe(p.mejor_sector);
-  const puesto = p.mejor_valuacion ? await fetchPuesto(Number(p.mejor_valuacion)) : null;
-  const link = urlProyecto(p.proyecto_url);
-  const dominio = dominioDe(p.proyecto_url);
+  const [puesto, proyectos] = await Promise.all([
+    p.mejor_valuacion ? fetchPuesto(Number(p.mejor_valuacion)) : Promise.resolve(null),
+    fetchProyectosDe(p.id),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-4 py-5">
@@ -65,7 +72,7 @@ export default async function PerfilPublico({ params }: { params: Promise<{ hand
           ) : (
             <span className="text-5xl">👤</span>
           )}
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <h1 className="truncate text-2xl font-black leading-tight">{nombre}</h1>
             <div className="mt-1 flex flex-wrap gap-3 text-xs font-bold">
               {p.twitter && (
@@ -80,20 +87,50 @@ export default async function PerfilPublico({ params }: { params: Promise<{ hand
               )}
             </div>
           </div>
+          <BotonEditarPerfil userId={p.id} />
         </div>
       </section>
 
       {/* qué está construyendo, que es el motivo de la página */}
-      {p.proyecto && (
+      {proyectos.length > 0 && (
         <section className="mb-4 rounded-2xl border-2 border-amber bg-amber/10 p-5">
-          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-ink/45">Está construyendo</div>
-          <div className="mt-1 text-2xl font-black leading-tight">{p.proyecto}</div>
-          {p.proyecto_desc && <p className="mt-1 text-sm text-ink/70">{p.proyecto_desc}</p>}
-          {link && (
-            <a href={link} target="_blank" rel="noreferrer" className="btn mt-3 inline-flex border-ink bg-white px-4 py-2 text-sm">
-              🔗 {dominio ?? "Ver el proyecto"}
-            </a>
-          )}
+          <div className="text-[11px] font-black uppercase tracking-[0.18em] text-ink/45">
+            {proyectos.length === 1 ? "Está construyendo" : `Está construyendo ${proyectos.length} cosas`}
+          </div>
+          <ul className="mt-2 space-y-3">
+            {proyectos.map((x) => {
+              const link = urlProyecto(x.proyecto_url);
+              const dominio = dominioDe(x.proyecto_url);
+              const cat = categoriaDe(x.categoria);
+              return (
+                <li key={x.id} className="flex items-start gap-3">
+                  <IconoProyecto nombre={x.proyecto} url={x.proyecto_url} size={40} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-xl font-black leading-tight">{x.proyecto}</span>
+                      <span className="shrink-0 rounded-full bg-ink/10 px-2 py-0.5 text-[10px] font-black text-ink/55">
+                        {cat.icono} {cat.nombre}
+                      </span>
+                      {x.votos > 0 && (
+                        <span className="shrink-0 text-[11px] font-black text-ink/50 tabular-nums">🪙 {x.votos}</span>
+                      )}
+                    </div>
+                    {x.proyecto_desc && <p className="mt-0.5 text-sm text-ink/70">{x.proyecto_desc}</p>}
+                    {link && (
+                      <a
+                        href={link}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn mt-2 inline-flex border-ink bg-white px-3 py-1.5 text-xs"
+                      >
+                        🔗 {dominio ?? "Ver el proyecto"}
+                      </a>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </section>
       )}
 

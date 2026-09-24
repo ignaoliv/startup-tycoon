@@ -45,22 +45,23 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
    * Las de invitación quedan para cuando el tope ya no deja, que es justamente
    * para lo que sirven.
    */
-  const monedaParaUsar = (target: string): "juego" | "invitacion" | null => {
+  /** `projectId`, no la persona: el tope de 3 es por proyecto. */
+  const monedaParaUsar = (projectId: string): "juego" | "invitacion" | null => {
     if (!coins) return null;
-    const dadas = mios[target] ?? 0;
+    const dadas = mios[projectId] ?? 0;
     if (coins.saldo_juego > 0 && dadas < TOPE_VOTOS_POR_PROYECTO) return "juego";
     if (coins.saldo_invitacion > 0) return "invitacion";
     return null;
   };
 
-  const votar = async (target: string) => {
+  const votar = async (projectId: string) => {
     const sb = getSupabase();
     if (!sb || !userId) return;
-    const tipo = monedaParaUsar(target);
+    const tipo = monedaParaUsar(projectId);
     if (!tipo) return;
-    setVotando(target);
+    setVotando(projectId);
     setAviso(null);
-    const error = await votarProyecto(sb, userId, target, tipo);
+    const error = await votarProyecto(sb, userId, projectId, tipo);
     if (error) {
       setAviso(error);
       fetchVibecoins(sb, userId).then(setCoins).catch(() => {});
@@ -73,9 +74,9 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
             ? { ...c, saldo_juego: c.saldo_juego - 1, saldo: c.saldo - 1 }
             : { ...c, saldo_invitacion: c.saldo_invitacion - 1, saldo: c.saldo - 1 },
       );
-      if (tipo === "juego") setMios((m) => ({ ...m, [target]: (m[target] ?? 0) + 1 }));
+      if (tipo === "juego") setMios((m) => ({ ...m, [projectId]: (m[projectId] ?? 0) + 1 }));
       setFilas((f) =>
-        [...f.map((p) => (p.user_id === target ? { ...p, votos: p.votos + 1, votos_semana: p.votos_semana + 1 } : p))]
+        [...f.map((p) => (p.id === projectId ? { ...p, votos: p.votos + 1, votos_semana: p.votos_semana + 1 } : p))]
           .sort((a, b) => b.votos - a.votos),
       );
     }
@@ -100,8 +101,9 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
   const resto = hayPodio ? visibles.slice(3) : visibles;
 
   const votoDe = (p: ProyectoListado) => ({
-    dados: mios[p.user_id] ?? 0,
-    tipo: monedaParaUsar(p.user_id),
+    dados: mios[p.id] ?? 0,
+    tipo: monedaParaUsar(p.id),
+    // el dueño es la persona, aunque el voto vaya al proyecto
     propio: p.user_id === userId,
   });
 
@@ -111,8 +113,8 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
     const enElTope = dados >= TOPE_VOTOS_POR_PROYECTO;
     return (
       <button
-        onClick={() => votar(p.user_id)}
-        disabled={votando === p.user_id || !tipo}
+        onClick={() => votar(p.id)}
+        disabled={votando === p.id || !tipo}
         title={
           tipo === "invitacion"
             ? "Usás una moneda de invitación, que no tiene tope"
@@ -130,7 +132,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
             : "border-ink bg-amber text-ink hover:brightness-105"
         }`}
       >
-        {votando === p.user_id ? "…" : !tipo && enElTope ? `${dados}/${TOPE_VOTOS_POR_PROYECTO}` : "🪙 +1"}
+        {votando === p.id ? "…" : !tipo && enElTope ? `${dados}/${TOPE_VOTOS_POR_PROYECTO}` : "🪙 +1"}
       </button>
     );
   };
@@ -206,7 +208,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
         <ul className="mb-5 space-y-2.5">
           {podio.map((p, i) => (
             <li
-              key={p.user_id}
+              key={p.id}
               className={`rounded-2xl border-2 p-4 shadow-sm ${
                 i === 0 ? "border-amber bg-amber/10" : "border-ink/15 bg-white"
               }`}
@@ -258,7 +260,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
           )}
           <ul className="divide-y-2 divide-ink/5 overflow-hidden rounded-2xl border-2 border-ink/10 bg-white">
             {resto.map((p, i) => (
-              <li key={p.user_id} className="flex items-start gap-3 px-3 py-3">
+              <li key={p.id} className="flex items-start gap-3 px-3 py-3">
                 <span className="mt-2 w-6 shrink-0 text-center text-xs font-black tabular-nums text-ink/35">
                   {podio.length + i + 1}
                 </span>
