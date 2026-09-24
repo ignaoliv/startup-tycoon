@@ -1,41 +1,51 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { FormProyecto, type DatosProyecto } from "@/components/FormProyecto";
 import { getSupabase, signInWithGoogle, supabaseEnabled } from "@/lib/supabase/client";
 import { asegurarHandle, fetchMisProyectos, fetchProfile, guardarProyecto } from "@/lib/storage";
 import { SITIO } from "@/lib/seo";
 
 const CLAVE = "startup-tycoon:cartel-proyecto";
-/** Si lo cerraron, no se vuelve a asomar por una semana. */
+const CLAVE_NUNCA = "startup-tycoon:cartel-proyecto-nunca";
+/** Si lo cerraron sin tildar nada, no se vuelve a asomar por una semana. */
 const DESCANSO_MS = 7 * 864e5;
 /** Un cartel encima de una página que todavía está pintando se cierra sin leer. */
 const ESPERA_MS = 1400;
 
-function dormido() {
+const leer = (k: string) => {
   try {
-    const t = Number(localStorage.getItem(CLAVE));
-    return Number.isFinite(t) && Date.now() - t < DESCANSO_MS;
+    return localStorage.getItem(k);
   } catch {
-    return false;
+    return null;
   }
-}
-
-function dormir() {
+};
+const anotar = (k: string, v: string) => {
   try {
-    localStorage.setItem(CLAVE, String(Date.now()));
+    localStorage.setItem(k, v);
   } catch {}
-}
+};
+
+const nunca = () => leer(CLAVE_NUNCA) === "1";
+const dormido = () => {
+  const t = Number(leer(CLAVE));
+  return Number.isFinite(t) && t > 0 && Date.now() - t < DESCANSO_MS;
+};
 
 /**
- * El cartel que pide el proyecto al entrar, a quien todavía no cargó ninguno.
+ * El cartel que pide el proyecto al entrar.
+ *
+ * Lo ve todo el mundo, con sesión o sin ella: al que todavía no entró se le
+ * ofrece entrar, y vuelve con el formulario abierto. El único que no lo ve es
+ * el que ya cargó un proyecto, que no tiene nada que hacer acá.
  *
  * El formulario va adentro del cartel y no en un link a otra pantalla: mandar
  * a alguien a "tu perfil" para que complete algo es donde se cae la mitad.
  */
 export function ModalSumaProyecto() {
   const pedido = useSearchParams().get("sumar") === "1";
+  const aca = usePathname();
   const [abierto, setAbierto] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [nombre, setNombre] = useState("");
@@ -43,29 +53,31 @@ export function ModalSumaProyecto() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [listoHandle, setListoHandle] = useState<string | null>(null);
+  const [noMostrarMas, setNoMostrarMas] = useState(false);
 
   useEffect(() => {
     const sb = getSupabase();
     if (!sb) return;
     let vivo = true;
     (async () => {
+      // venir de "Sumá tu proyecto" es un pedido explícito y gana sobre
+      // cualquier "no me lo muestres" de antes
+      if (!pedido && (nunca() || dormido())) return;
       const { data } = await sb.auth.getUser();
-      const u = data.user;
-      // sin sesión no sabemos si ya tiene proyecto, así que no molestamos:
-      // el que llega de afuera primero mira, y el botón lo manda a entrar
-      if (!vivo || !u) return;
-      setUserId(u.id);
-      setNombre(u.user_metadata?.full_name ?? u.user_metadata?.name ?? "Fundador/a");
-      const [proyectos, perfil] = await Promise.all([
-        fetchMisProyectos(sb, u.id).catch(() => []),
-        fetchProfile(sb, u.id).catch(() => null),
-      ]);
+      const u = data.user ?? null;
       if (!vivo) return;
-      setHandle(perfil?.handle ?? null);
-      if (proyectos.length > 0) return;
-      // venir de "Sumá tu proyecto" es un pedido explícito: se abre aunque lo
-      // hayan cerrado antes
-      if (!pedido && dormido()) return;
+      if (u) {
+        const [proyectos, perfil] = await Promise.all([
+          fetchMisProyectos(sb, u.id).catch(() => []),
+          fetchProfile(sb, u.id).catch(() => null),
+        ]);
+        if (!vivo) return;
+        // el que ya cargó no tiene nada que hacer acá
+        if (proyectos.length > 0) return;
+        setUserId(u.id);
+        setNombre(u.user_metadata?.full_name ?? u.user_metadata?.name ?? "Fundador/a");
+        setHandle(perfil?.handle ?? null);
+      }
       setTimeout(() => vivo && setAbierto(true), pedido ? 0 : ESPERA_MS);
     })();
     return () => {
@@ -75,8 +87,9 @@ export function ModalSumaProyecto() {
 
   const cerrar = useCallback(() => {
     setAbierto(false);
-    dormir();
-  }, []);
+    if (noMostrarMas) anotar(CLAVE_NUNCA, "1");
+    else anotar(CLAVE, String(Date.now()));
+  }, [noMostrarMas]);
 
   useEffect(() => {
     if (!abierto) return;
@@ -85,7 +98,7 @@ export function ModalSumaProyecto() {
     return () => window.removeEventListener("keydown", onKey);
   }, [abierto, cerrar]);
 
-  const guardar = async (d: DatosProyecto) => {
+  const onGuardar = async (d: DatosProyecto) => {
     const sb = getSupabase();
     if (!sb || !userId) return;
     setGuardando(true);
@@ -93,7 +106,7 @@ export function ModalSumaProyecto() {
     try {
       const h = await asegurarHandle(sb, userId, nombre, handle);
       await guardarProyecto(sb, userId, null, d);
-      dormir();
+      anotar(CLAVE_NUNCA, "1"); // ya cargó: no se le pregunta nunca más
       setListoHandle(h);
     } catch (e) {
       setError((e as Error).message);
@@ -160,9 +173,46 @@ export function ModalSumaProyecto() {
                 ✕
               </button>
             </div>
-            <FormProyecto guardando={guardando} onGuardar={guardar} textoGuardar="Sumar mi proyecto" />
-            {error && <p className="mt-2 text-[11px] font-bold text-red">{error}</p>}
-            <button onClick={cerrar} className="mt-3 w-full text-[11px] font-bold text-ink/40 underline">
+
+            {userId ? (
+              <>
+                <FormProyecto guardando={guardando} onGuardar={onGuardar} textoGuardar="Sumar mi proyecto" />
+                {error && <p className="mt-2 text-[11px] font-bold text-red">{error}</p>}
+              </>
+            ) : (
+              /* sin sesión no hay dónde guardarlo, así que el cartel ofrece entrar
+                 y vuelve acá con el formulario ya abierto */
+              <div>
+                <p className="mb-3 rounded-xl border-2 border-ink/10 bg-white px-3 py-2.5 text-[12px] text-ink/65">
+                  Se vota con vibecoins, que se ganan jugando. El que quiere votos trae gente que juega, no clicks de
+                  paso.
+                </p>
+                <button
+                  onClick={() => signInWithGoogle(`${aca}?sumar=1`)}
+                  className="btn w-full justify-center border-ink bg-amber px-4 py-3 text-sm text-ink"
+                >
+                  Entrar con Google y sumarlo
+                </button>
+                <Link
+                  href="/comunidad"
+                  onClick={cerrar}
+                  className="mt-2 block text-center text-[11px] font-bold text-ink/45 underline"
+                >
+                  Ver primero lo que hay
+                </Link>
+              </div>
+            )}
+
+            <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 text-[11px] font-bold text-ink/45">
+              <input
+                type="checkbox"
+                checked={noMostrarMas}
+                onChange={(e) => setNoMostrarMas(e.target.checked)}
+                className="h-3.5 w-3.5 accent-indigo"
+              />
+              No mostrarme esto de nuevo
+            </label>
+            <button onClick={cerrar} className="mt-1 w-full text-[11px] font-bold text-ink/40 underline">
               Ahora no
             </button>
           </>
