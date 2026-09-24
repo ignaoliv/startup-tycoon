@@ -49,7 +49,7 @@ function armar({ display_name, baja_token }) {
   const baja = `${SITIO}/baja?t=${baja_token}`;
   const utm = "utm_source=mail&utm_medium=email&utm_campaign=proyectos";
   const sumar = `${SITIO}/home?${utm}`;
-  const lista = `${SITIO}/proyectos?${utm}`;
+  const lista = `${SITIO}/comunidad?${utm}`;
 
   const texto = `${nombre}, armé un lugar para esto.
 

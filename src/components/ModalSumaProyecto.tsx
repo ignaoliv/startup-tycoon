@@ -190,7 +190,7 @@ export function BotonSumarProyecto({ className, children }: { className?: string
     );
   }
   return (
-    <button onClick={() => signInWithGoogle("/proyectos?sumar=1")} className={className}>
+    <button onClick={() => signInWithGoogle("/comunidad?sumar=1")} className={className}>
       {children}
     </button>
   );

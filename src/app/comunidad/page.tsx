@@ -19,8 +19,8 @@ export const metadata: Metadata = {
   title: { absolute: `${TITULO} · Vibe Coding Game` },
   description: DESC,
   keywords: ["vibecoding", "vibecoders", "comunidad vibecoding", "proyectos hechos con IA", "indie hackers"],
-  alternates: { canonical: `${SITIO}/proyectos` },
-  openGraph: { title: TITULO, description: DESC, url: `${SITIO}/proyectos` },
+  alternates: { canonical: `${SITIO}/comunidad` },
+  openGraph: { title: TITULO, description: DESC, url: `${SITIO}/comunidad` },
   twitter: { card: "summary_large_image", title: TITULO, description: DESC },
 };
 
@@ -34,7 +34,7 @@ export default async function Proyectos() {
     "@type": "CollectionPage",
     name: TITULO,
     description: DESC,
-    url: `${SITIO}/proyectos`,
+    url: `${SITIO}/comunidad`,
     isPartOf: { "@type": "WebSite", name: "Vibe Coding Game", url: SITIO },
     mainEntity: {
       "@type": "ItemList",

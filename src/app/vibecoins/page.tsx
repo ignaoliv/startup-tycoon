@@ -62,7 +62,7 @@ export default function Vibecoins() {
           <Image src="/logo.png" alt="Vibe Coding Game" width={596} height={160} className="h-8 w-auto sm:h-10" />
         </Link>
         <div className="flex shrink-0 items-center gap-2">
-          <Link href="/proyectos" className="btn border-ink/25 bg-white px-3 py-2 text-sm">
+          <Link href="/comunidad" className="btn border-ink/25 bg-white px-3 py-2 text-sm">
             🛠️ <span className="hidden sm:inline">Proyectos</span>
           </Link>
           <Link href="/play" className="btn border-ink bg-amber px-3 py-2 text-sm text-ink">
@@ -128,7 +128,7 @@ export default function Vibecoins() {
           <Link href="/home" className="btn border-ink bg-indigo px-4 py-2.5 text-sm text-white">
             Ver mis vibecoins
           </Link>
-          <Link href="/proyectos" className="btn border-ink/25 bg-white px-4 py-2.5 text-sm">
+          <Link href="/comunidad" className="btn border-ink/25 bg-white px-4 py-2.5 text-sm">
             Ver los proyectos
           </Link>
         </div>

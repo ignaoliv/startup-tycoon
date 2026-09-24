@@ -9,7 +9,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const hoy = new Date();
   const fijas: MetadataRoute.Sitemap = [
     { url: SITIO, lastModified: hoy, changeFrequency: "weekly", priority: 1 },
-    { url: `${SITIO}/proyectos`, lastModified: hoy, changeFrequency: "daily", priority: 0.9 },
+    { url: `${SITIO}/comunidad`, lastModified: hoy, changeFrequency: "daily", priority: 0.9 },
     { url: `${SITIO}/como-se-juega`, lastModified: hoy, changeFrequency: "monthly", priority: 0.8 },
     { url: `${SITIO}/vibecoins`, lastModified: hoy, changeFrequency: "monthly", priority: 0.7 },
     { url: `${SITIO}/home`, lastModified: hoy, changeFrequency: "daily", priority: 0.7 },

@@ -175,7 +175,7 @@ export function ListaProyectos({ iniciales }: { iniciales: ProyectoListado[] }) 
               🚀 Jugar
             </Link>
           ) : (
-            <Btn size="sm" variant="ghost" className="shrink-0" onClick={() => signInWithGoogle("/proyectos")}>
+            <Btn size="sm" variant="ghost" className="shrink-0" onClick={() => signInWithGoogle("/comunidad")}>
               Entrar
             </Btn>
           )}

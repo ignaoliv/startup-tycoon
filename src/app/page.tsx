@@ -77,7 +77,7 @@ export default function Home() {
             {/* secundarios más chicos: con tres del mismo tamaño la columna del hero
                 los parte en varias líneas */}
             <div className="flex w-full gap-3 sm:w-auto">
-              <Link href="/proyectos" className="btn flex-1 justify-center whitespace-nowrap border-ink/25 bg-white px-4 py-3 text-sm text-ink sm:flex-none">
+              <Link href="/comunidad" className="btn flex-1 justify-center whitespace-nowrap border-ink/25 bg-white px-4 py-3 text-sm text-ink sm:flex-none">
                 <span aria-hidden>🛠️</span> La comunidad
               </Link>
               <Link href="/home" className="btn flex-1 justify-center whitespace-nowrap border-ink/25 bg-white px-4 py-3 text-sm text-ink sm:flex-none">

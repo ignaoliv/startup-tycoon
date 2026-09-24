@@ -398,7 +398,7 @@ function MiPerfil({ userId, nombre, avatar }: { userId: string; nombre: string; 
               </Link>
             </div>
           </div>
-          <Link href="/proyectos" className="btn shrink-0 border-ink/25 bg-white px-3 py-1.5 text-xs">
+          <Link href="/comunidad" className="btn shrink-0 border-ink/25 bg-white px-3 py-1.5 text-xs">
             Ver proyectos
           </Link>
         </div>
