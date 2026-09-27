@@ -22,11 +22,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Si la base no responde, el sitemap sale igual con las fijas.
   try {
     const proyectos = await fetchProyectos(500);
+    // La consulta devuelve una fila por PROYECTO, y una persona puede tener
+    // varios: sin agrupar, su /u/handle saldría repetido tantas veces como
+    // proyectos tenga. Se queda la fecha del más nuevo.
+    const porHandle = new Map<string, Date>();
+    for (const p of proyectos) {
+      const fecha = new Date(p.created_at);
+      const previa = porHandle.get(p.handle);
+      if (!previa || fecha > previa) porHandle.set(p.handle, fecha);
+    }
     return [
       ...fijas,
-      ...proyectos.map((p) => ({
-        url: `${SITIO}/u/${p.handle}`,
-        lastModified: new Date(p.created_at),
+      ...[...porHandle].map(([handle, lastModified]) => ({
+        url: `${SITIO}/u/${handle}`,
+        lastModified,
         changeFrequency: "weekly" as const,
         priority: 0.5,
       })),
